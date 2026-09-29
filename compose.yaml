@@ -1,0 +1,60 @@
+# Full stack: PostgreSQL + Redis + one-shot schema migrator + the Native AOT API.
+#
+#   docker compose up --build            # API on http://localhost:8080
+#   docker compose up -d postgres redis  # only the backing services, for `dotnet run` against localhost
+#
+# Credentials below are local-development defaults only; override through the environment or an .env file.
+name: subscription-management
+
+services:
+  postgres:
+    image: postgres:17   # pinned major: a stateful volume must not follow "latest" across a major upgrade
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-subscriptions}
+      POSTGRES_USER: ${POSTGRES_USER:-subs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-subs-dev-only}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-subs} -d ${POSTGRES_DB:-subscriptions}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrator:
+    build: { context: ., target: migrator }
+    image: subscription-management-migrator:latest
+    environment:
+      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only}
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ., target: api }
+    image: subscription-management:latest
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only}
+      ConnectionStrings__Redis: redis:6379
+      OpenApi__Enabled: ${OPENAPI_ENABLED:-false}
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

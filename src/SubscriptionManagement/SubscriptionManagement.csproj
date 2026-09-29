@@ -6,7 +6,9 @@
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <StripSymbols>true</StripSymbols>
-    <!-- Keep ASP.NET Core's launch profile behaviour; only HTTP is served (TLS terminates at the ingress). -->
+    <!-- Generate the minimal-API request delegates at build time regardless of PublishAot, so a JIT publish
+         (-p:PublishAot=false) runs exactly the same reflection-free code as the native build. -->
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,8 +16,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.3" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.11" />
   </ItemGroup>
 
 </Project>

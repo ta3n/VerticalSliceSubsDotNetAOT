@@ -1,95 +1,81 @@
-# Chạy API: dotnet run --launch-profile http
-# Dùng REST Client (VS Code) hoặc HTTP Client của Visual Studio.
-# Chạy lần lượt các request 1–5; các request còn lại chạy độc lập.
-# Database nằm trong memory: chạy lại request 1 sau khi khởi động lại API.
+# Run the stack:  docker compose up --build            (API on :8080)
+#   or locally:   docker compose up -d postgres redis && dotnet run --project src/SubscriptionManagement.Migrator -- \
+#                   "Host=localhost;Database=subscriptions;Username=subs;Password=subs-dev-only" \
+#                 && dotnet run --project src/SubscriptionManagement --launch-profile http   (API on :5127)
+# Use REST Client (VS Code) or the Visual Studio HTTP client. Run requests 1-5 in order; the rest are independent.
 @baseUrl = http://localhost:5127
 @subscriptionId = {{createSubscription.response.body.$.id}}
-@missingSubscriptionId = 00000000-0000-0000-0000-000000000000
+@invoiceId = {{renew.response.body.$.invoice.id}}
+@missingId = 00000000-0000-0000-0000-000000000000
 
-### 1. Tạo subscription có dùng thử — 201 Created, status = 1 (Active)
+### 1. Create a subscription with a trial - 201 Created, status = 1 (Active)
 # @name createSubscription
 POST {{baseUrl}}/subscriptions
 Content-Type: application/json
 
-{
-  "serviceName": "Netflix",
-  "price": 99000,
-  "startDate": "2026-09-05",
-  "trialEndsAt": "2026-09-12"
-}
+{ "serviceName": "Netflix", "price": 99000, "startDate": "2026-09-05", "trialEndsAt": "2026-09-12" }
 
-### 2. Xem subscription vừa tạo — 200 OK, status = 1 (Active)
+### 2. Read it back (served from Redis after create) - 200 OK
 GET {{baseUrl}}/subscriptions/{{subscriptionId}}
-Accept: application/json
 
-### 3. Hủy subscription — 204 No Content
+### 3. Pause - 200 OK, status = 3 (Paused)
+POST {{baseUrl}}/subscriptions/{{subscriptionId}}/pause
+
+### 4. Pause again - 409 Conflict (invalid-subscription-transition)
+POST {{baseUrl}}/subscriptions/{{subscriptionId}}/pause
+
+### 5. Resume - 200 OK, status = 1
+POST {{baseUrl}}/subscriptions/{{subscriptionId}}/resume
+
+### 6. Renew - 200 OK, advances the billing period and issues an OPEN invoice
+# @name renew
+POST {{baseUrl}}/subscriptions/{{subscriptionId}}/renew
+
+### 7. List the subscription's invoices (newest first)
+GET {{baseUrl}}/subscriptions/{{subscriptionId}}/invoices
+
+### 8. Pay the invoice - 200 OK; paying again is 409 (invoice-not-payable)
+POST {{baseUrl}}/invoices/{{invoiceId}}/pay
+
+### 9. Search with keyset pagination (all body fields optional) - use nextCursor as "cursor" for the next page
+POST {{baseUrl}}/subscriptions/search
+Content-Type: application/json
+
+{ "status": "ACTIVE", "limit": 10 }
+
+### 10. Cancel - 204 No Content (row is kept, status = 2)
 DELETE {{baseUrl}}/subscriptions/{{subscriptionId}}
 
-### 4. Xem sau khi hủy — 200 OK, status = 2 (Canceled)
-GET {{baseUrl}}/subscriptions/{{subscriptionId}}
-Accept: application/json
-
-### 5. Hủy lại — 400 Bad Request, error = "Subscription already canceled."
+### 11. Cancel again - 400 (problem+json; detail and "error" = "Subscription already canceled.")
 DELETE {{baseUrl}}/subscriptions/{{subscriptionId}}
 
-### 6. Tạo subscription không dùng thử — 201 Created
+### 12. Validation - 400 problem+json with an "errors" map keyed by field name
 POST {{baseUrl}}/subscriptions
 Content-Type: application/json
 
-{
-  "serviceName": "Spotify",
-  "price": 59000,
-  "startDate": "2026-09-05",
-  "trialEndsAt": null
-}
+{ "serviceName": "", "price": 0, "startDate": "2026-09-05", "trialEndsAt": "2026-09-05" }
 
-### 7. Tên dịch vụ rỗng — 400 Bad Request
-POST {{baseUrl}}/subscriptions
+### 13. Unknown subscription - 404 problem+json
+GET {{baseUrl}}/subscriptions/{{missingId}}
+
+### 14. Plans catalog (seeded: free, pro-monthly, pro-yearly)
+GET {{baseUrl}}/plans
+
+### 15. Create a plan - 201; the same code again is 409
+POST {{baseUrl}}/plans
 Content-Type: application/json
 
-{
-  "serviceName": "",
-  "price": 99000,
-  "startDate": "2026-09-05",
-  "trialEndsAt": null
-}
+{ "code": "team", "name": "Team", "amount": 49, "currency": "USD", "interval": "MONTH", "trialDays": 7 }
 
-### 8. Tên dịch vụ vượt quá 100 ký tự — 400 Bad Request
-POST {{baseUrl}}/subscriptions
-Content-Type: application/json
+### 16. Get a plan
+GET {{baseUrl}}/plans/team
 
-{
-  "serviceName": "This service name is intentionally longer than one hundred characters to test the maximum length validation.",
-  "price": 99000,
-  "startDate": "2026-09-05",
-  "trialEndsAt": null
-}
+### 17. Health: liveness / readiness (database) / everything (database + cache)
+GET {{baseUrl}}/health/live
+###
+GET {{baseUrl}}/health/ready
+###
+GET {{baseUrl}}/health
 
-### 9. Giá bằng 0 — 400 Bad Request (giá phải lớn hơn 0)
-POST {{baseUrl}}/subscriptions
-Content-Type: application/json
-
-{
-  "serviceName": "Netflix",
-  "price": 0,
-  "startDate": "2026-09-05",
-  "trialEndsAt": null
-}
-
-### 10. Ngày hết dùng thử bằng ngày bắt đầu — 400 Bad Request
-POST {{baseUrl}}/subscriptions
-Content-Type: application/json
-
-{
-  "serviceName": "Netflix",
-  "price": 99000,
-  "startDate": "2026-09-05",
-  "trialEndsAt": "2026-09-05"
-}
-
-### 11. Xem subscription không tồn tại — 404 Not Found
-GET {{baseUrl}}/subscriptions/{{missingSubscriptionId}}
-Accept: application/json
-
-### 12. Hủy subscription không tồn tại — 404 Not Found
-DELETE {{baseUrl}}/subscriptions/{{missingSubscriptionId}}
+### 18. OpenAPI document and Scalar UI (Development, or OpenApi__Enabled=true)
+GET {{baseUrl}}/openapi/v1.json

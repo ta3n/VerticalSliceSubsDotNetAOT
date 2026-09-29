@@ -178,6 +178,31 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
+    public async Task OpenApi_document_describes_the_endpoints_when_enabled()
+    {
+        var response = await Client.GetAsync("/openapi/v1.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var paths = (await ReadAsync(response)).GetProperty("paths");
+        Assert.True(paths.TryGetProperty("/subscriptions", out _));
+        Assert.True(paths.TryGetProperty("/subscriptions/{id}/renew", out _));
+        Assert.True(paths.TryGetProperty("/plans", out _));
+        Assert.True(paths.TryGetProperty("/invoices/{id}/pay", out _));
+
+        Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("/scalar")).StatusCode);
+    }
+
+    [Fact]
+    public async Task OpenApi_is_not_exposed_unless_enabled()
+    {
+        // UseSetting (not ConfigureAppConfiguration): Program reads this flag while building, before later overrides apply.
+        await using var factory = Fixture.CreateFactory(redis: false).WithWebHostBuilder(b => b.UseSetting("OpenApi:Enabled", "false"));
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/openapi/v1.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/scalar")).StatusCode);
+    }
+
+    [Fact]
     public async Task Migrations_are_idempotent_and_detect_tampering()
     {
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;

@@ -6,6 +6,10 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 using SubscriptionManagement.Features.Invoices.GetInvoice;
 using SubscriptionManagement.Features.Invoices.ListInvoicesBySubscription;
 using SubscriptionManagement.Features.Invoices.PayInvoice;
@@ -21,6 +25,13 @@ using SubscriptionManagement.Features.Subscriptions.RenewSubscription;
 using SubscriptionManagement.Features.Subscriptions.ResumeSubscription;
 using SubscriptionManagement.Features.Subscriptions.SearchSubscriptions;
 using SubscriptionManagement.Infrastructure;
+
+// `SubscriptionManagement healthcheck [url]` probes the liveness endpoint and exits 0/1. It exists because the
+// minimal runtime-deps image has no curl/wget for a container HEALTHCHECK.
+if (args is ["healthcheck", ..])
+{
+    return await HealthProbe.RunAsync(args);
+}
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -59,6 +70,23 @@ builder.Services.AddSingleton<IDistributedCache>(sp =>
         : new RedisCache(Options.Create(new RedisCacheOptions { Configuration = redis, InstanceName = "subs:" }));
 });
 builder.Services.AddSingleton<SubscriptionCache>();
+
+// Telemetry is exported only when an OTLP endpoint is configured (OTEL_EXPORTER_OTLP_ENDPOINT); the exporter reads
+// the standard OTEL_* environment variables itself.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService("subscription-management"))
+        .WithTracing(t => t.AddAspNetCoreInstrumentation().AddNpgsql().AddOtlpExporter())
+        .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddNpgsqlInstrumentation().AddOtlpExporter());
+}
+
+// API description + Scalar UI; off unless OpenApi:Enabled=true (enabled in appsettings.Development.json).
+var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
+if (openApiEnabled)
+{
+    builder.Services.AddOpenApi();
+}
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddHealthChecks()
@@ -109,7 +137,14 @@ PayInvoiceEndpoint.Map(app);
 
 app.MapHealth();
 
+if (openApiEnabled)
+{
+    app.MapOpenApi();                 // /openapi/v1.json
+    app.MapScalarApiReference();      // /scalar
+}
+
 app.Run();
+return 0;
 
 /// <summary>Exposed for <c>WebApplicationFactory&lt;Program&gt;</c> in the integration tests.</summary>
 public partial class Program;

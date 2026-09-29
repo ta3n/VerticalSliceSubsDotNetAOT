@@ -41,10 +41,8 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 var settings = new Dictionary<string, string?> { ["ConnectionStrings:Postgres"] = PostgresConnectionString };
-                if (redis)
-                {
-                    settings["ConnectionStrings:Redis"] = RedisConnectionString;
-                }
+                // Always set explicitly: appsettings.Development.json points at localhost:6379 for local runs.
+                settings["ConnectionStrings:Redis"] = redis ? RedisConnectionString : "";
 
                 config.AddInMemoryCollection(settings);
             }));
