@@ -79,3 +79,22 @@ Target: this repository. Both were read from source; the READMEs/design docs wer
 | Status numbers | 1/2 | 1/2/3 (`Paused`) | Additive |
 | Persistence | InMemory | PostgreSQL | Required by parity; local run needs Postgres (compose provided) |
 | `price` type | `decimal` | `decimal` (`NUMERIC(57,28)` column, as Java) | .NET `decimal` fits within it |
+
+## 5. Implementation status and deviations (verified 2026-09-30)
+
+Every "Required = Yes / Keep" row above is implemented and covered by integration tests; the AOT smoke test exercises them on the native binary.
+Deviations from the Java reference discovered during implementation:
+
+| Area | Java | .NET | Reason |
+|---|---|---|---|
+| Invoice not-payable problem: current-status member | `status` (collides with RFC 9457 `status`) | `invoiceStatus` | Avoid a duplicate JSON key; `ProblemWriter` now forbids reserved extension names |
+| Subscription price range | up to 29 integer digits (`@Digits(29,28)`) | `price < 10^28` | Npgsql cannot read some 29-digit `NUMERIC(57,28)` values into `decimal`, which would poison list/search reads |
+| Renewal invoice amount overflow (`NUMERIC(20,4)`) | unhandled 500 | 400 `value-out-of-range`, transaction rolled back | PostgreSQL error 22003 mapped centrally |
+| Invoice amount | stored value rounded by the database, response returned unrounded | rounded to 4 decimals (half away from zero) before insert, so response = stored value | Consistent read-after-write |
+| Duplicate plan code | `existsById` then `save` (race ⇒ 500) | `INSERT … ON CONFLICT DO NOTHING` ⇒ 409, atomic | Verified with 8 concurrent creates |
+| Cache backend failure | request fails | logged, treated as miss; entries expire by TTL | Redis outage must not take the API down; verified with an unreachable Redis |
+| Health | Actuator `/actuator/health[/liveness|/readiness]` | `/health/live`, `/health/ready` (database only), `/health` (database + cache) | ASP.NET Core health checks; readiness excludes Redis as in the Java Dockerfile note |
+| OpenAPI | springdoc `/v3/api-docs`, Scalar `/scalar` always on | `/openapi/v1.json`, `/scalar` only when `OpenApi:Enabled=true` | Secure by default |
+| Not implemented on purpose | H2 console, devtools, docker-compose auto-start, Lombok, `SchemaDraftExporterTest`, `denyAll` catch-all, CSRF exemptions | — | See matrix: no .NET equivalent value / no auth or cookies exist |
+
+Known limitation shared with the Java reference: subscriptions carry no plan or currency, so renewals bill the current price in USD; plans are a catalog only.
