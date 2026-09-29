@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj" />
+    <Project Path="src/SubscriptionManagement/SubscriptionManagement.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SubscriptionManagement.IntegrationTests/SubscriptionManagement.IntegrationTests.csproj" />
+    <Project Path="tests/SubscriptionManagement.UnitTests/SubscriptionManagement.UnitTests.csproj" />
+  </Folder>
+</Solution>
