@@ -29,7 +29,7 @@
 ## Phase 4 — Tests
 - [x] Unit tests (53): domain state machines, validators, cursor codec, problem writer, status mapping
 - [x] Integration tests (83) on real PostgreSQL 17 + Redis 7, negative and concurrency cases
-- [x] AOT smoke script (`scripts/aot-smoke.sh`, 37 checks on the native binaries)
+- [x] AOT smoke script (`scripts/aot-smoke.sh`, 36 checks on the native binaries)
 
 ## Phase 5 — Performance
 - [x] Startup / RSS / size / latency / throughput: original JIT vs new JIT vs new AOT (.NET 8 column "Not measured" — no .NET 8 build exists)

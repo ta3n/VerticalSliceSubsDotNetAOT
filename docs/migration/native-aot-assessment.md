@@ -52,7 +52,7 @@ Any warning found is recorded below with root cause and disposition; suppression
 
 `dotnet publish -c Release -r linux-x64` of both `SubscriptionManagement` and `SubscriptionManagement.Migrator` (with `PublishAot=true`, trim and AOT analyzers on,
 IL2026/IL2057/IL2067/IL2070/IL3050 as errors) completes with **zero warnings** — no ILCompiler, trim or analyzer diagnostics, and no `NoWarn`/`UnconditionalSuppressMessage` anywhere in the repo.
-The native executables run: `scripts/aot-smoke.sh` migrates with the native migrator, starts the native API against real PostgreSQL 17 and Redis 7 and passes all 37 checks
+The native executables run: `scripts/aot-smoke.sh` migrates with the native migrator, starts the native API against real PostgreSQL 17 and Redis 7 and passes all 36 checks
 (critical flows, problem+json, cache, OpenAPI document + Scalar UI, and OTLP trace/metric export received by a fake collector).
 
 | Risk item from §4 | Outcome |
