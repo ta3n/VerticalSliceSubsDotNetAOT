@@ -132,9 +132,10 @@ For a JIT build of the same code (e.g. to compare): `dotnet publish -p:PublishAo
 ## Docker
 
 ```bash
-docker compose up --build              # postgres, redis, migrator (one-shot), api on http://localhost:8080
+podman compose up -d --build         # (or docker compose) postgres, redis, migrator (one-shot), api on http://localhost:8080
+scripts/load-test.sh                    # k6 load test against localhost:8080 (VUS=, DURATION=, BASE_URL= to tune)
 curl localhost:8080/health
-docker compose down -v                 # also removes the database volume
+podman compose down -v                 # also removes the database volume
 ```
 
 Override host ports/credentials with `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `OPENAPI_ENABLED`.

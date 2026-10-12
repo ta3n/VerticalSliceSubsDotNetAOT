@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # Native AOT images for the API and the migrator. Build:
-#   docker build --target api      -t subscription-management:latest .
-#   docker build --target migrator -t subscription-management-migrator:latest .
+#   podman build --target api      -t subscription-management:latest .
+#   podman build --target migrator -t subscription-management-migrator:latest .
+# (docker works too). The probe below is also declared in compose.yaml, because podman's default OCI image format drops HEALTHCHECK.
 
 # ---- build: SDK + the native toolchain ILCompiler needs (clang, zlib) ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -11,7 +12,7 @@ RUN apt-get update \
 WORKDIR /src
 
 # Restore first so this layer is cached until a project file changes.
-COPY global.json Directory.Build.props ./
+COPY Directory.Build.props ./
 COPY src/SubscriptionManagement/SubscriptionManagement.csproj src/SubscriptionManagement/
 COPY src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj src/SubscriptionManagement.Migrator/
 RUN dotnet restore src/SubscriptionManagement -r linux-x64 \

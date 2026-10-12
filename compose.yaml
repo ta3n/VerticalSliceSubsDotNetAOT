@@ -1,14 +1,15 @@
 # Full stack: PostgreSQL + Redis + one-shot schema migrator + the Native AOT API.
 #
-#   docker compose up --build            # API on http://localhost:8080
-#   docker compose up -d postgres redis  # only the backing services, for `dotnet run` against localhost
+#   podman compose up -d --build            # API on http://localhost:8080 (docker compose works too)
+#   podman compose up -d postgres redis     # only the backing services, for `dotnet run` against localhost
+#   podman compose down -v                  # stop and drop data
 #
 # Credentials below are local-development defaults only; override through the environment or an .env file.
 name: subscription-management
 
 services:
   postgres:
-    image: postgres:17   # pinned major: a stateful volume must not follow "latest" across a major upgrade
+    image: docker.io/library/postgres:17   # pinned major: a stateful volume must not follow "latest" across a major upgrade
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-subscriptions}
       POSTGRES_USER: ${POSTGRES_USER:-subs}
@@ -24,7 +25,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
@@ -48,12 +49,18 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
     environment:
-      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only}
+      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only};Maximum Pool Size=50
       ConnectionStrings__Redis: redis:6379
       OpenApi__Enabled: ${OPENAPI_ENABLED:-false}
     depends_on:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "./SubscriptionManagement", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     restart: unless-stopped
 
 volumes:
