@@ -1,0 +1,25 @@
+# Values for argo/argo-rollouts: the controller plus its dashboard, served through Kong.
+#   task rollouts:install   (release "argo-rollouts" in namespace "argo-rollouts")
+#   dashboard: http://rollouts.localhost:9080   (no authentication: local use only)
+controller:
+  replicas: 1
+  resources:
+    requests: { cpu: 20m, memory: 48Mi }
+    limits: { memory: 256Mi }
+  # rollout_info_* / analysis_run_* metrics: the app's PrometheusRule and dashboard read rollout_info_replicas_available.
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+dashboard:
+  enabled: true
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  ingress:
+    enabled: true
+    ingressClassName: kong
+    hosts: [rollouts.localhost]
+    paths: [/]
+    pathType: Prefix

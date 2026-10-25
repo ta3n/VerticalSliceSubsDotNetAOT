@@ -1,0 +1,33 @@
+# `helm test <release>`: the API is ready (database reachable) and serves a real query (schema migrated).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "subs.fullname" . }}-test
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: "{{ .Values.tests.image.repository }}:{{ .Values.tests.image.tag }}"
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      command: [sh, -ec]
+      args:
+        - |
+          base="http://{{ include "subs.fullname" . }}:{{ .Values.service.port }}"
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 2 "$base/health/ready"; echo
+          curl -fsS "$base/health"; echo
+          curl -fsS "$base/plans"; echo

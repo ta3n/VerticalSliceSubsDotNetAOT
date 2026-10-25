@@ -1,0 +1,20 @@
+{{- if .Values.metrics.grafanaDashboard.enabled }}
+# Picked up by Grafana's dashboard sidecar (label grafana_dashboard=1, folder from the grafana_folder annotation).
+# The JSON is plain Grafana JSON with __PLACEHOLDERS__ for this release, so it can be edited in Grafana and exported back.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "subs.fullname" . }}-dashboard
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: {{ .Values.metrics.grafanaDashboard.folder | quote }}
+data:
+  subscription-management-overview.json: |-
+    {{- .Files.Get "dashboards/overview.json"
+        | replace "__NAMESPACE__" .Release.Namespace
+        | replace "__DEPLOYMENT__" (include "subs.fullname" .)
+        | replace "__DATABASE__" .Values.postgresql.auth.database
+        | nindent 4 }}
+{{- end }}

@@ -1,0 +1,27 @@
+Subscription Management {{ .Chart.AppVersion }} is deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+  API image      : {{ include "subs.image" . }}
+  {{- if .Values.migrator.enabled }}
+  Migrator image : {{ include "subs.migratorImage" . }} (init container)
+  {{- end }}
+  PostgreSQL     : {{ if .Values.postgresql.enabled }}in-cluster ({{ include "subs.postgresql.fullname" . }}){{ else }}external ({{ .Values.externalDatabase.host }}){{ end }}
+  Redis          : {{ if .Values.redis.enabled }}in-cluster ({{ include "subs.redis.fullname" . }}){{ else if .Values.externalRedis.connectionString }}external{{ else }}disabled (in-process cache){{ end }}
+
+{{- if .Values.ingress.enabled }}
+
+Through the Kong gateway (ingressClassName: {{ .Values.ingress.className }}, plugins: {{ include "subs.kong.pluginNames" . }}):
+{{- range .Values.ingress.hosts }}
+  {{- if .host }}
+  curl -H 'Host: {{ .host }}' http://127.0.0.1:9080/health
+  {{- else }}
+  curl http://127.0.0.1:9080/plans        (host-less rule)
+  {{- end }}
+{{- end }}
+  kind with deploy/kind/cluster.yaml publishes Kong on 127.0.0.1:9080; otherwise run `task kong:port-forward`.
+{{- end }}
+
+Directly, bypassing Kong:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "subs.fullname" . }} 8080:{{ .Values.service.port }}
+
+Verify:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

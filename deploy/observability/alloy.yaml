@@ -1,0 +1,177 @@
+# Values for grafana/alloy: the single telemetry pipeline of the cluster.
+#   OTLP in (API: gRPC :4317, Kong opentelemetry plugin: HTTP :4318)
+#     traces  -> Tempo
+#     metrics -> Prometheus remote write (OTel names become Prometheus names, e.g. http_server_request_duration_seconds)
+#   pod logs (/var/log/pods on each node) -> Loki, with namespace/pod/container/app/component labels
+controller:
+  type: daemonset
+
+alloy:
+  stabilityLevel: generally-available
+  enableReporting: false
+  mounts:
+    varlog: true
+  extraEnv:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+      appProtocol: grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  configMap:
+    content: |
+      // ---------------------------------------------------------------- OTLP: traces + metrics
+      otelcol.receiver.otlp "default" {
+        grpc { endpoint = "0.0.0.0:4317" }
+        http { endpoint = "0.0.0.0:4318" }
+        output {
+          metrics = [otelcol.processor.memory_limiter.default.input]
+          traces  = [otelcol.processor.memory_limiter.default.input]
+        }
+      }
+
+      // Back-pressure instead of OOM when a load test outruns Tempo: the receiver refuses data above the limit.
+      otelcol.processor.memory_limiter "default" {
+        check_interval         = "1s"
+        limit_percentage       = 75
+        spike_limit_percentage = 20
+
+        output {
+          metrics = [otelcol.processor.batch.default.input]
+          traces  = [otelcol.processor.batch.default.input]
+        }
+      }
+
+      otelcol.processor.batch "default" {
+        output {
+          metrics = [otelcol.exporter.prometheus.default.input]
+          traces  = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+      // A small queue: while Tempo is down the default 1000-batch queue fills with millions of spans and replays them all
+      // the moment Tempo is back, which is exactly when it can least absorb them. Overflow is dropped (and counted).
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "tempo.observability:4317"
+          tls { insecure = true }
+        }
+        sending_queue {
+          queue_size = 100
+        }
+      }
+
+      // Resource attributes become labels (k8s_namespace_name, k8s_pod_name, ...), so per-namespace/per-pod queries
+      // work without joining target_info. Fine at this scale: one service, a handful of pods.
+      otelcol.exporter.prometheus "default" {
+        resource_to_telemetry_conversion = true
+        forward_to                       = [prometheus.remote_write.default.receiver]
+      }
+
+      prometheus.remote_write "default" {
+        endpoint {
+          url            = "http://monitoring-prometheus.observability:9090/api/v1/write"
+          send_exemplars = true
+        }
+      }
+
+      // ---------------------------------------------------------------- pod logs
+      // Only pods on this node: each DaemonSet pod tails its own node's /var/log/pods.
+      discovery.kubernetes "pods" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("NODE_NAME")
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+          target_label  = "component"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "job"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          replacement   = "/var/log/pods/*$1/*.log"
+          target_label  = "__path__"
+        }
+      }
+
+      local.file_match "pod_logs" {
+        path_targets = discovery.relabel.pod_logs.output
+      }
+
+      loki.source.file "pod_logs" {
+        targets    = local.file_match.pod_logs.targets
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+        stage.cri {}
+
+        // The API logs JSON (JsonConsole): lift the level into a label for quick filtering.
+        stage.match {
+          selector = "{app=\"subscription-management\", container=\"api\"}"
+          stage.json {
+            expressions = { level = "LogLevel" }
+          }
+          stage.labels {
+            values = { level = "" }
+          }
+        }
+
+        // Kong's access log is one line per request (1M+ lines in a 10-minute load test). Successful requests are already
+        // counted by the prometheus plugin and traced by the opentelemetry plugin, so only 4xx/5xx and errors are kept.
+        stage.match {
+          selector = "{namespace=\"kong\", container=\"proxy\"}"
+          stage.drop {
+            expression          = `"[A-Z]+ [^"]* HTTP/[0-9.]+" [23][0-9]{2} `
+            drop_counter_reason = "kong_access_2xx_3xx"
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.observability:3100/loki/api/v1/push"
+        }
+      }
+
+serviceMonitor:
+  enabled: true

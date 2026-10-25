@@ -1,0 +1,42 @@
+{{- if and .Values.rollout.enabled .Values.rollout.analysis.enabled .Values.config.otlpEndpoint }}
+{{- $a := .Values.rollout.analysis }}
+{{- /* Canary pods only (their metrics carry the Latest ReplicaSet's hash), health probes excluded. Both queries always
+     return one sample: no traffic yet counts as passing instead of erroring the analysis. */}}
+{{- $sel := printf "job=\"subscription-management\", k8s_namespace_name=\"%s\", rollouts_pod_template_hash=\"{{args.canary-hash}}\", http_route!~\"/health.*\"" .Release.Namespace }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "subs.fullname" . }}-canary
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+  annotations:
+    # Applied before the Rollout: the AnalysisRun is created from the template the moment the Rollout changes, so in a
+    # single wave a release that also changes the thresholds would still be analysed with the previous ones.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  args:
+    - name: canary-hash
+  metrics:
+    - name: error-ratio
+      initialDelay: {{ $a.initialDelay }}
+      interval: {{ $a.interval }}
+      failureLimit: {{ $a.failureLimit }}
+      successCondition: isNaN(result[0]) || result[0] <= {{ $a.maxErrorRatio }}
+      provider:
+        prometheus:
+          address: {{ $a.prometheusAddress }}
+          query: |
+            (sum(rate(http_server_request_duration_seconds_count{ {{- $sel }}, http_response_status_code=~"5.."}[1m])) or vector(0))
+              /
+            (sum(rate(http_server_request_duration_seconds_count{ {{- $sel -}} }[1m])) > 0 or vector(1))
+    - name: p95-latency
+      initialDelay: {{ $a.initialDelay }}
+      interval: {{ $a.interval }}
+      failureLimit: {{ $a.failureLimit }}
+      successCondition: isNaN(result[0]) || result[0] < {{ $a.maxP95Seconds }}
+      provider:
+        prometheus:
+          address: {{ $a.prometheusAddress }}
+          query: |
+            histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{ {{- $sel -}} }[1m]))) or vector(0)
+{{- end }}

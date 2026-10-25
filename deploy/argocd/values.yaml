@@ -1,0 +1,58 @@
+# Values for argo/argo-cd, sized for a laptop kind cluster.
+#   task argocd:install   (release "argocd" in namespace "argocd"; UI on http://argocd.localhost:9080 through Kong)
+global:
+  domain: argocd.localhost
+
+configs:
+  params:
+    # Kong terminates the client connection and talks plain HTTP to argocd-server.
+    server.insecure: true
+  cm:
+    # Re-check the OCI chart repository every minute (default 3 min); `task gitops:deploy` also forces a hard refresh.
+    timeout.reconciliation: 60s
+    timeout.reconciliation.jitter: 10s
+    exec.enabled: false
+    # Argo Rollouts health assessment is built in; no extra customizations needed.
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: kong
+    hostname: argocd.localhost
+    path: /
+    pathType: Prefix
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  metrics:
+    enabled: true
+    serviceMonitor: { enabled: true }
+
+controller:
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 768Mi }
+  metrics:
+    enabled: true
+    serviceMonitor: { enabled: true }
+
+repoServer:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 384Mi }
+  metrics:
+    enabled: true
+    serviceMonitor: { enabled: true }
+
+redis:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+
+# Not used here: single local user (admin), no notifications, Applications defined declaratively.
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  replicas: 0                  # this chart has no enabled flag for it

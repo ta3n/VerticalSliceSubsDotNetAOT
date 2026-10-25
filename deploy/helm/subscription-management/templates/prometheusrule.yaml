@@ -1,0 +1,94 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $deploy := include "subs.fullname" . }}
+{{- /* API metrics arrive over OTLP: job = OTel service.name, selected per namespace via the k8s resource attribute. */}}
+{{- $api := printf "job=\"subscription-management\", k8s_namespace_name=\"%s\"" $ns }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $deploy }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+    {{- with .Values.metrics.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: subscription-management.api
+      rules:
+        - record: subs:http_requests:rate5m
+          expr: sum by (http_route, http_request_method, http_response_status_code) (rate(http_server_request_duration_seconds_count{ {{- $api -}} }[5m]))
+        - alert: SubsApiUnavailable
+          # Deployment (kube-state-metrics) or Argo Rollout (rollouts controller metrics), whichever the chart renders.
+          expr: |
+            (kube_deployment_status_replicas_available{namespace="{{ $ns }}", deployment="{{ $deploy }}"}
+              or rollout_info_replicas_available{namespace="{{ $ns }}", name="{{ $deploy }}"}) < 1
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: No ready API pod in {{ $ns }}
+            description: Deployment {{ $deploy }} has had no available replica for 2 minutes.
+        - alert: SubsApiHighErrorRate
+          expr: |
+            sum(rate(http_server_request_duration_seconds_count{ {{- $api -}}, http_response_status_code=~"5.."}[5m]))
+              / sum(rate(http_server_request_duration_seconds_count{ {{- $api -}} }[5m])) > 0.05
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: API 5xx ratio above 5%
+            description: '{{ "{{" }} $value | humanizePercentage {{ "}}" }} of requests fail with 5xx.'
+        - alert: SubsApiHighLatency
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{ {{- $api -}} }[5m]))) > 0.5
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: API p95 latency above 500 ms
+            description: 'p95 is {{ "{{" }} $value | humanizeDuration {{ "}}" }}.'
+    {{- if and .Values.postgresql.enabled .Values.postgresql.metrics.enabled }}
+    - name: subscription-management.postgresql
+      rules:
+        - alert: SubsPostgresDown
+          # The exporter is a sidecar: when the whole pod is gone, pg_up disappears instead of dropping to 0.
+          expr: pg_up{namespace="{{ $ns }}"} == 0 or absent(pg_up{namespace="{{ $ns }}"})
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: PostgreSQL is unreachable
+            description: PostgreSQL in {{ $ns }} is down, or its pod (and the postgres_exporter sidecar) is gone.
+        - alert: SubsPostgresConnectionsNearLimit
+          expr: |
+            sum by (namespace) (pg_stat_activity_count{namespace="{{ $ns }}"})
+              / max by (namespace) (pg_settings_max_connections{namespace="{{ $ns }}"}) > 0.8
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: PostgreSQL connections above 80% of max_connections
+            description: '{{ "{{" }} $value | humanizePercentage {{ "}}" }} of max_connections in use; check config.postgresMaxPoolSize x replicas.'
+        - alert: SubsPostgresDeadlocks
+          expr: increase(pg_stat_database_deadlocks{namespace="{{ $ns }}", datname="{{ .Values.postgresql.auth.database }}"}[10m]) > 0
+          labels: { severity: warning }
+          annotations:
+            summary: PostgreSQL deadlocks detected
+            description: '{{ "{{" }} $value {{ "}}" }} deadlocks in the last 10 minutes.'
+    {{- end }}
+    {{- if and .Values.redis.enabled .Values.redis.metrics.enabled }}
+    - name: subscription-management.redis
+      rules:
+        - alert: SubsRedisDown
+          # Sidecar exporter: absent when the whole Redis pod is gone.
+          expr: redis_up{namespace="{{ $ns }}"} == 0 or absent(redis_up{namespace="{{ $ns }}"})
+          for: 1m
+          labels: { severity: warning }
+          annotations:
+            summary: Redis is unreachable
+            description: The API falls back to cache misses (reads go to PostgreSQL) while Redis is down.
+        - alert: SubsRedisMemoryHigh
+          expr: redis_memory_used_bytes{namespace="{{ $ns }}"} / redis_memory_max_bytes{namespace="{{ $ns }}"} > 0.9
+          for: 5m
+          labels: { severity: info }
+          annotations:
+            summary: Redis above 90% of maxmemory
+            description: Keys are being evicted (allkeys-lru); raise redis.maxMemory if the hit ratio drops.
+    {{- end }}
+{{- end }}

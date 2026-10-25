@@ -1,0 +1,290 @@
+# Defaults for the subscription-management chart. Local (kind) overrides live in values-local.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ---- API ----
+image:
+  repository: subscription-management
+  tag: ""                      # defaults to .Chart.AppVersion
+  digest: ""                   # e.g. sha256:...; pins the image (rendered as repository:tag@digest)
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: false             # the API never talks to the Kubernetes API
+
+podAnnotations: {}
+podLabels: {}
+
+# Non-root `app` user of the .NET chiseled images (APP_UID=1654).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+containerPort: 8080
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 256Mi }
+
+# /health/live = process up; /health/ready = database reachable (Redis is optional by design).
+probes:
+  startup:
+    httpGet: { path: /health/live, port: http }
+    periodSeconds: 2
+    failureThreshold: 30
+  liveness:
+    httpGet: { path: /health/live, port: http }
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    httpGet: { path: /health/ready, port: http }
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Application settings rendered into a ConfigMap (environment variables, `__` = section separator).
+config:
+  logLevel: Information
+  cacheSubscriptionTtl: "00:05:00"
+  openApiEnabled: false
+  # Per pod. With several replicas the sum must fit postgresql.maxConnections (the chart fails the render otherwise).
+  postgresMaxPoolSize: 30
+  # Set to e.g. http://alloy.observability:4317 to export traces/metrics over OTLP (gRPC).
+  otlpEndpoint: ""
+  # OTLP metric export period; the SDK's 60 s default makes dashboards lag a minute behind.
+  otlpMetricExportIntervalMs: 15000
+  # deployment.environment.name resource attribute on traces/metrics (empty = not set).
+  environment: ""
+
+extraEnv: []
+#  - name: DOTNET_GCHeapHardLimitPercent
+#    value: "75"
+
+# ---- Schema migrator ----
+# Runs as an init container of every API pod: the API never starts against an outdated schema, and the
+# migrator's pg_advisory_lock serialises concurrent replicas (a no-op once the schema is current).
+migrator:
+  enabled: true
+  image:
+    repository: subscription-management-migrator
+    tag: ""                    # defaults to image.tag, then .Chart.AppVersion
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+# ---- Gateway: Kong Ingress Controller ----
+ingress:
+  enabled: true
+  className: kong
+  annotations: {}
+  hosts:
+    - host: subs.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: subs-tls
+  #    hosts: [subs.localhost]
+
+# KongPlugin resources created by the chart and attached to the Ingress (konghq.com/plugins).
+# Keys are suffixed to the release name; set `enabled: false` to drop one.
+kong:
+  plugins:
+    # Kong mints X-Trace-Id when the client sends none; the API honours an inbound X-Trace-Id, so the gateway log,
+    # the API log scope and the problem+json traceId all carry the same value.
+    correlation-id:
+      enabled: true
+      plugin: correlation-id
+      config:
+        header_name: X-Trace-Id
+        generator: uuid
+        echo_downstream: true
+    rate-limiting:
+      enabled: true
+      plugin: rate-limiting
+      config:
+        minute: 6000
+        policy: local
+        limit_by: ip
+        fault_tolerant: true
+        hide_client_headers: false
+    request-size-limiting:
+      enabled: true
+      plugin: request-size-limiting
+      config:
+        allowed_payload_size: 1
+        size_unit: megabytes
+        require_content_length: false
+  # Names of KongPlugin/KongClusterPlugin resources managed outside this chart, attached as well.
+  extraPlugins: []
+  # Upstream timeouts on the Kubernetes Service (milliseconds).
+  upstream:
+    connectTimeout: 5000
+    readTimeout: 30000
+    writeTimeout: 30000
+    retries: 2
+
+# ---- Progressive delivery (Argo Rollouts: deploy/argo-rollouts, task argo:install) ----
+# enabled: the API is an argoproj.io Rollout instead of a Deployment. Canary without a traffic router: the weight is
+# the share of canary pods behind the same Service (Kong balances across all of them).
+rollout:
+  enabled: false
+  canary:
+    maxSurge: "25%"
+    maxUnavailable: 0
+    steps:
+      - setWeight: 25
+      - pause: { duration: 45s }
+      - setWeight: 50
+      - pause: { duration: 45s }
+      - setWeight: 75
+      - pause: { duration: 30s }
+  # Background analysis over the canary pods only (OTel metrics carry rollouts_pod_template_hash); a failed
+  # measurement aborts the rollout and scales the canary back to zero. Needs config.otlpEndpoint + Prometheus.
+  analysis:
+    enabled: true
+    prometheusAddress: http://monitoring-prometheus.observability:9090
+    initialDelay: 30s
+    interval: 30s
+    failureLimit: 1
+    maxErrorRatio: 0.01        # 5xx share of the canary's (non-health) requests
+    maxP95Seconds: 0.3         # canary p95 latency
+
+# ---- Scaling / availability ----
+autoscaling:
+  enabled: false               # needs metrics-server
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# ---- Network policies (API from Kong only; Postgres/Redis from the API only) ----
+networkPolicy:
+  enabled: false
+  # Namespace the Kong gateway runs in (matched via kubernetes.io/metadata.name).
+  kongNamespace: kong
+
+# ---- Monitoring (Prometheus operator CRDs + Grafana from deploy/observability: task monitoring:install) ----
+metrics:
+  serviceMonitor:
+    enabled: false             # scrapes the postgres/redis exporters (postgresql.metrics / redis.metrics)
+    interval: 15s
+    labels: {}
+  prometheusRule:
+    enabled: false             # alerts: API errors/latency/availability, Postgres, Redis
+    labels: {}
+  grafanaDashboard:
+    enabled: false             # "Subscription Management" overview, picked up by Grafana's sidecar
+    folder: Subscription Management
+  # Namespace of Prometheus: allowed to reach the exporters when networkPolicy.enabled.
+  monitoringNamespace: observability
+
+# ---- PostgreSQL (in-cluster, official image) ----
+postgresql:
+  enabled: true
+  image:
+    repository: docker.io/library/postgres
+    tag: "17"                  # pinned major: a data volume must not follow "latest" across a major upgrade
+    pullPolicy: IfNotPresent
+  auth:
+    database: subscriptions
+    username: subs
+    password: subs-dev-only    # local default only; use existingSecret anywhere else
+    # Secret with keys `postgres-password` (and optionally `connection-string`); overrides `password`.
+    existingSecret: ""
+  port: 5432
+  # Must cover (max API pods + 1 rolling-update surge) x config.postgresMaxPoolSize, plus 3 superuser-reserved slots.
+  maxConnections: 200
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""           # cluster default (kind: standard / local-path)
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  # postgres_exporter sidecar on :9187 (connections, transactions, locks, database size, settings).
+  metrics:
+    enabled: false
+    image:
+      repository: quay.io/prometheuscommunity/postgres-exporter
+      tag: v0.20.1
+      pullPolicy: IfNotPresent
+    resources:
+      requests: { cpu: 10m, memory: 24Mi }
+      limits: { memory: 64Mi }
+
+# Used when postgresql.enabled=false.
+externalDatabase:
+  host: ""
+  port: 5432
+  database: subscriptions
+  username: subs
+  password: ""
+  existingSecret: ""           # key: postgres-password
+
+# ---- Redis (cache only, no persistence) ----
+redis:
+  enabled: true
+  image:
+    repository: docker.io/library/redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  port: 6379
+  maxMemory: 128mb
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 192Mi }
+  # redis_exporter sidecar on :9121 (commands, hit ratio, memory, clients, evictions).
+  metrics:
+    enabled: false
+    image:
+      repository: docker.io/oliver006/redis_exporter
+      tag: v1.96.0
+      pullPolicy: IfNotPresent
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { memory: 48Mi }
+
+# Used when redis.enabled=false; empty = the API falls back to its in-process cache.
+externalRedis:
+  connectionString: ""
+
+# ---- helm test ----
+tests:
+  image:
+    repository: docker.io/curlimages/curl
+    tag: "8.17.0"

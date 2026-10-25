@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "subs.fullname" . }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+  annotations:
+    # Read by the Kong Ingress Controller when it builds the Kong Service/Upstream for this backend.
+    konghq.com/protocol: http
+    konghq.com/connect-timeout: {{ .Values.kong.upstream.connectTimeout | quote }}
+    konghq.com/read-timeout: {{ .Values.kong.upstream.readTimeout | quote }}
+    konghq.com/write-timeout: {{ .Values.kong.upstream.writeTimeout | quote }}
+    konghq.com/retries: {{ .Values.kong.upstream.retries | quote }}
+    {{- with .Values.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "subs.selectorLabels" (dict "ctx" . "component" "api") | nindent 4 }}

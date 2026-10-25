@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Npgsql;
 using SubscriptionManagement.Migrator;
-using StackExchange.Redis;
 
 namespace SubscriptionManagement.IntegrationTests;
 

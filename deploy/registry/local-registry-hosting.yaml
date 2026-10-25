@@ -1,0 +1,10 @@
+# Documents the local registry for cluster tooling (KEP-1755: communicating a local registry). Applied by setup.sh.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:@REGISTRY_PORT@"
+    help: "https://kind.sigs.k8s.io/docs/user/local-registry/"

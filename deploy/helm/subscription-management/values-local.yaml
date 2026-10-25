@@ -1,0 +1,54 @@
+# Overrides for the local kind cluster (task app:deploy). Images are pushed to the local registry
+# (deploy/registry, localhost:5001); task app:deploy also pins each image to the digest it just pushed.
+image:
+  repository: localhost:5001/subscription-management
+  tag: dev
+migrator:
+  image:
+    repository: localhost:5001/subscription-management-migrator
+    tag: dev
+
+ingress:
+  hosts:
+    - host: subs.localhost
+      paths:
+        - { path: /, pathType: Prefix }
+    # Host-less catch-all, so tools that hit http://127.0.0.1:9080 directly (k6, Locust) also reach the API.
+    - paths:
+        - { path: /, pathType: Prefix }
+
+# Load tests (scripts/.env) all come from one client IP; at the default 6000/min they would mostly measure 429s.
+# The plugin stays on, so its headers and overhead are still part of the path.
+kong:
+  plugins:
+    rate-limiting:
+      config:
+        minute: 100000000
+
+config:
+  openApiEnabled: true       # /scalar and /openapi/v1.json through Kong
+  otlpEndpoint: http://alloy.observability:4317   # traces + metrics -> Alloy -> Tempo / Prometheus
+  environment: local
+
+# Monitoring stack from deploy/observability (task monitoring:install must run before this release).
+metrics:
+  serviceMonitor: { enabled: true }
+  prometheusRule: { enabled: true }
+  grafanaDashboard: { enabled: true }
+postgresql:
+  metrics: { enabled: true }
+redis:
+  metrics: { enabled: true }
+
+autoscaling:
+  enabled: true              # task metrics:install provides metrics-server
+  minReplicas: 2
+  maxReplicas: 4
+
+networkPolicy:
+  enabled: true
+  kongNamespace: kong
+
+# Canary releases through Argo Rollouts, analysed against Prometheus (task argo:install; deployed by Argo CD).
+rollout:
+  enabled: true

@@ -1,0 +1,18 @@
+{{- if .Values.ingress.enabled }}
+{{- range $key, $p := .Values.kong.plugins }}
+{{- if $p.enabled }}
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: {{ printf "%s-%s" (include "subs.fullname" $) $key }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" "gateway") | nindent 4 }}
+plugin: {{ $p.plugin }}
+{{- with $p.config }}
+config:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
