@@ -1,0 +1,176 @@
+{{- if .Values.postgresql.enabled }}
+{{- $name := include "subs.postgresql.fullname" . }}
+{{- $pg := .Values.postgresql }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "postgresql") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgresql
+      port: {{ $pg.port }}
+      targetPort: postgresql
+    {{- if $pg.metrics.enabled }}
+    - name: metrics
+      port: 9187
+      targetPort: metrics
+    {{- end }}
+  selector:
+    {{- include "subs.selectorLabels" (dict "ctx" . "component" "postgresql") | nindent 4 }}
+---
+# Headless governing Service for the StatefulSet's stable pod DNS names.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-hl
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "postgresql") | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: postgresql
+      port: {{ $pg.port }}
+      targetPort: postgresql
+  selector:
+    {{- include "subs.selectorLabels" (dict "ctx" . "component" "postgresql") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "postgresql") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}-hl
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "subs.selectorLabels" (dict "ctx" . "component" "postgresql") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "subs.labels" (dict "ctx" . "component" "postgresql") | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # uid/gid of the `postgres` user in the official Debian-based image.
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: "{{ $pg.image.repository }}:{{ $pg.image.tag }}"
+          imagePullPolicy: {{ $pg.image.pullPolicy }}
+          args: ["-c", "max_connections={{ $pg.maxConnections }}"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ $pg.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ $pg.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "subs.db.secretName" . }}
+                  key: postgres-password
+            # A subdirectory, so initdb does not trip over the volume's lost+found.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          startupProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $pg.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: dshm
+              mountPath: /dev/shm
+        {{- if $pg.metrics.enabled }}
+        - name: metrics
+          image: "{{ $pg.metrics.image.repository }}:{{ $pg.metrics.image.tag }}"
+          imagePullPolicy: {{ $pg.metrics.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: DATA_SOURCE_URI
+              value: {{ printf "127.0.0.1:5432/%s?sslmode=disable" $pg.auth.database | quote }}
+            - name: DATA_SOURCE_USER
+              value: {{ $pg.auth.username | quote }}
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "subs.db.secretName" . }}
+                  key: postgres-password
+          ports:
+            - name: metrics
+              containerPort: 9187
+          readinessProbe:
+            tcpSocket: { port: metrics }
+            periodSeconds: 10
+          resources:
+            {{- toYaml $pg.metrics.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        - name: run
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+        {{- if not $pg.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+  {{- if $pg.persistence.enabled }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "subs.selectorLabels" (dict "ctx" . "component" "postgresql") | nindent 10 }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $pg.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $pg.persistence.size }}
+  {{- end }}
+{{- end }}

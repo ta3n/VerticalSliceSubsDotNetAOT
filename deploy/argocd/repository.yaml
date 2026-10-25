@@ -1,0 +1,15 @@
+# The local registry as an OCI Helm repository for Argo CD. In-cluster pods reach the registry container by its name on
+# the kind network (kind-registry:5000); the host pushes the same charts to localhost:5001. Plain HTTP, no credentials.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: local-registry-charts
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: local-registry-charts
+  type: helm
+  url: kind-registry:5000/charts
+  enableOCI: "true"
+  insecureOCIForceHttp: "true"

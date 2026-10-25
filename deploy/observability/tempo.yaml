@@ -1,0 +1,37 @@
+# Values for grafana-community/tempo (single binary). Receives OTLP traces from Alloy (API + Kong spans) and derives
+# service-graph and span metrics, remote-written to Prometheus (Grafana's service map and Tempo -> metrics links).
+tempo:
+  reportingEnabled: false
+  retention: 48h
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: http://monitoring-prometheus.observability:9090/api/v1/write
+    processor:
+      service_graphs:
+        dimensions: [k8s.namespace.name]
+      span_metrics:
+        dimensions: [k8s.namespace.name]
+    storage:
+      path: /var/tempo/generator
+  overrides:
+    defaults:
+      # No local-blocks processor: it keeps spans in memory for TraceQL metrics queries and was what OOM-killed Tempo
+      # under a load test at 100% sampling.
+      metrics_generator:
+        processors: [service-graphs, span-metrics]
+      # Every request is traced (Kong samples 100%), so a load test produces tens of thousands of spans per second.
+      # Past these limits Tempo refuses spans (Alloy logs and drops them) instead of running out of memory.
+      ingestion:
+        rate_limit_bytes: 4000000
+        burst_size_bytes: 8000000
+        max_traces_per_user: 5000
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+serviceMonitor:
+  enabled: true

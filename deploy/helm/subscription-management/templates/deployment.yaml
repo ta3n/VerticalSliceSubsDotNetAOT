@@ -1,0 +1,158 @@
+{{- include "subs.db.validatePool" . }}
+{{- /* Same pod template either way; with rollout.enabled Argo Rollouts runs a canary instead of a rolling update. */}}
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+{{- else }}
+apiVersion: apps/v1
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ include "subs.fullname" . }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    {{- if .Values.rollout.enabled }}
+    canary:
+      maxSurge: {{ .Values.rollout.canary.maxSurge | quote }}
+      maxUnavailable: {{ .Values.rollout.canary.maxUnavailable }}
+      {{- if and .Values.rollout.analysis.enabled .Values.config.otlpEndpoint }}
+      analysis:
+        templates:
+          - templateName: {{ include "subs.fullname" . }}-canary
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      {{- end }}
+      steps:
+        {{- toYaml .Values.rollout.canary.steps | nindent 8 }}
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "subs.selectorLabels" (dict "ctx" . "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the pods when configuration changes (env from ConfigMap/Secret is read only at start).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "subs.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      {{- if .Values.migrator.enabled }}
+      initContainers:
+        - name: migrator
+          image: {{ include "subs.migratorImage" . }}
+          imagePullPolicy: {{ .Values.migrator.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            {{- include "subs.db.env" (dict "ctx" . "suffix" ";Timeout=5") | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrator.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ include "subs.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "subs.fullname" . }}
+          env:
+            {{- include "subs.db.env" (dict "ctx" . "suffix" (printf ";Maximum Pool Size=%v" .Values.config.postgresMaxPoolSize)) | nindent 12 }}
+            {{- if .Values.config.otlpEndpoint }}
+            # Kubernetes resource attributes on every span/metric (Tempo -> Loki links filter by k8s.namespace.name).
+            - name: K8S_POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: K8S_NAMESPACE_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: K8S_NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+            {{- $attrs := printf "k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE_NAME),k8s.node.name=$(K8S_NODE_NAME),k8s.deployment.name=%s" (include "subs.fullname" .) }}
+            {{- if .Values.config.environment }}
+            {{- $attrs = printf "%s,deployment.environment.name=%s" $attrs .Values.config.environment }}
+            {{- end }}
+            {{- if .Values.rollout.enabled }}
+            # Set by Argo Rollouts on every pod: lets the canary analysis select the new version's metrics only.
+            - name: ROLLOUTS_POD_TEMPLATE_HASH
+              valueFrom: { fieldRef: { fieldPath: "metadata.labels['rollouts-pod-template-hash']" } }
+            {{- $attrs = printf "%s,rollouts.pod_template_hash=$(ROLLOUTS_POD_TEMPLATE_HASH)" $attrs }}
+            {{- end }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: {{ $attrs | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            {{- toYaml .Values.probes.startup | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+          lifecycle:
+            # Give Kong's endpoint watcher time to drop the pod before Kestrel stops accepting connections.
+            # Native sleep action: the chiseled image has no shell.
+            preStop:
+              sleep:
+                seconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

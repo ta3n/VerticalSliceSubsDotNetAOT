@@ -1,0 +1,172 @@
+# Values for prometheus-community/kube-prometheus-stack: Prometheus (+ operator), Alertmanager, Grafana,
+# kube-state-metrics and node-exporter, sized for a laptop kind cluster.
+#   task monitoring:install   (release "monitoring" in namespace "observability")
+fullnameOverride: monitoring
+
+# kind binds these control-plane components to 127.0.0.1 inside the node: their targets would only ever be "down".
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 192Mi }
+
+prometheus:
+  prometheusSpec:
+    # Pick up every ServiceMonitor/PodMonitor/PrometheusRule in the cluster, not only those labelled for this release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    # Alloy (the API's OTLP metrics) and Tempo's metrics-generator (service graph, span metrics) push via remote write;
+    # exemplars carry trace ids from latency histograms to Tempo.
+    enableRemoteWriteReceiver: true
+    enableFeatures: [exemplar-storage]
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    retention: 3d
+    retentionSize: 4GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 5Gi
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+      limits: { memory: 1Gi }
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 64Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 48Mi }
+    limits: { memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 24Mi }
+    limits: { memory: 64Mi }
+
+grafana:
+  fullnameOverride: grafana
+  adminUser: admin
+  adminPassword: grafana-dev-only   # local only; `task grafana:open` prints it
+  # Grafana 13 also runs its preinstalled app plugins (Traces/Logs/Metrics Drilldown) as child processes in this container:
+  # ~270Mi idle, and 384Mi was OOM-killed while a busy dashboard loaded (the UI then shows "Could not load plugin").
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  persistence:
+    enabled: false                  # everything is provisioned from values/ConfigMaps
+  # Served through the Kong gateway, like the API.
+  ingress:
+    enabled: true
+    ingressClassName: kong
+    hosts: [grafana.localhost]
+    path: /
+  grafana.ini:
+    server:
+      root_url: http://grafana.localhost:9080
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    plugins:
+      # Preinstalled apps run as separate processes in the Grafana container. Keep the Drilldown apps (metrics, logs,
+      # traces); there is no Pyroscope here, and the Advisor app is not useful locally.
+      disable_plugins: grafana-pyroscope-app,grafana-advisor-app
+  sidecar:
+    dashboards:
+      # Dashboards from ConfigMaps labelled grafana_dashboard=1 in any namespace (the app chart ships one), with the
+      # folder taken from the grafana_folder annotation.
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      exemplarTraceIdDestinations:
+        datasourceUid: tempo
+        traceIdLabelName: trace_id
+        urlDisplayLabel: View trace
+  additionalDataSources:
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.observability:3200
+      jsonData:
+        serviceMap: { datasourceUid: prometheus }
+        nodeGraph: { enabled: true }
+        lokiSearch: { datasourceUid: loki }
+        tracesToLogsV2:
+          datasourceUid: loki
+          filterByTraceID: true
+          spanStartTimeShift: -5m
+          spanEndTimeShift: 5m
+          tags:
+            - { key: k8s.namespace.name, value: namespace }
+        tracesToMetrics:
+          datasourceUid: prometheus
+          spanStartTimeShift: -5m
+          spanEndTimeShift: 5m
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.observability:3100
+      jsonData:
+        # .NET writes the W3C trace id into the JSON log scope ("TraceId":"<32 hex>").
+        derivedFields:
+          - name: TraceId
+            datasourceUid: tempo
+            matcherRegex: '"TraceId":"([0-9a-f]{32})"'
+            url: "$${__value.raw}"
+            urlDisplayLabel: View trace
+  # Community dashboards, downloaded from grafana.com at pod start (pinned revisions); ${DS_*} -> the Prometheus uid.
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: community
+          folder: Community
+          type: file
+          disableDeletion: true
+          options:
+            path: /var/lib/grafana/dashboards/community
+  dashboards:
+    community:
+      aspnetcore:
+        gnetId: 19924
+        revision: 5
+        datasource: [{ name: DS_PROMETHEUS, value: prometheus }]
+      aspnetcore-endpoint:
+        gnetId: 19925
+        revision: 4
+        datasource: [{ name: DS_PROMETHEUS, value: prometheus }]
+      kong:
+        gnetId: 7424
+        revision: 11
+        datasource: [{ name: DS_PROMETHEUS, value: prometheus }]
+      postgresql:
+        gnetId: 9628
+        revision: 8
+        datasource: [{ name: DS_PROMETHEUS, value: prometheus }]
+      redis:
+        gnetId: 763
+        revision: 6
+        datasource: [{ name: DS_PROM, value: prometheus }]

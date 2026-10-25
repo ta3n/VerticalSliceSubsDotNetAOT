@@ -1,0 +1,628 @@
+# Local Kubernetes (kind + Kong + Helm) workflow.  `task --list` shows everything; `task up` does the whole setup.
+#   task up                  # cluster → local registry → Kong → metrics-server → monitoring → build/push images → helm install → helm test
+#   task grafana:open        # Grafana (metrics, logs, traces) through Kong: http://grafana.localhost:9080
+#   task smoke               # end-to-end requests through Kong (http://127.0.0.1:9080)
+#   task dev                 # after a code change: rebuild, push, publish the chart; Argo CD + Argo Rollouts canary it out
+#   task rollout:watch       # follow the canary (steps, analysis, pods)
+#   task down                # remove the release and Kong (cluster kept);  task cluster:delete  removes the cluster
+# Variables can be overridden per call, e.g. `task up CLUSTER=subs TAG=feature-x`.
+version: "3"
+
+# Shared with the test scripts: DOCKER_CONTEXT (the daemon hosting kind + registry), BASE_URL, VUS, ... Variables already
+# set in the shell take precedence over the file.
+dotenv: [scripts/.env]
+
+vars:
+  CLUSTER: kind
+  NAMESPACE: subscriptions
+  RELEASE: subs
+  TAG: dev
+  # Local registry (deploy/registry): pushed from the host and pulled by the kind nodes under the same name.
+  REGISTRY_NAME: kind-registry
+  REGISTRY_PORT: 5001
+  REGISTRY: localhost:{{.REGISTRY_PORT}}
+  API_REPO: subscription-management
+  MIGRATOR_REPO: subscription-management-migrator
+  API_IMAGE: "{{.REGISTRY}}/{{.API_REPO}}"
+  MIGRATOR_IMAGE: "{{.REGISTRY}}/{{.MIGRATOR_REPO}}"
+  CHART_DIR: deploy/helm/subscription-management
+  CHART_VALUES: "{{.CHART_DIR}}/values-local.yaml"
+  KONG_NAMESPACE: kong
+  KONG_RELEASE: kong
+  KONG_CHART_VERSION: 0.24.0
+  METRICS_SERVER_CHART_VERSION: 3.14.0
+  # Monitoring stack (deploy/observability): Prometheus + Grafana + Alertmanager, Loki, Tempo, Alloy.
+  MONITORING_NAMESPACE: observability
+  KPS_CHART_VERSION: 92.11.0
+  LOKI_CHART_VERSION: 19.2.0
+  TEMPO_CHART_VERSION: 3.2.1
+  ALLOY_CHART_VERSION: 1.14.3
+  # GitOps (deploy/argocd, deploy/argo-rollouts): Argo CD syncs the chart published to the local registry.
+  ARGOCD_NAMESPACE: argocd
+  ROLLOUTS_NAMESPACE: argo-rollouts
+  ARGOCD_CHART_VERSION: 10.11.1
+  ROLLOUTS_CHART_VERSION: 2.43.8
+  ROLLOUTS_PLUGIN_VERSION: v1.10.1
+  APP_NAME: subscription-management
+  ROLLOUT: "{{.RELEASE}}-subscription-management"
+  CHART_BASE_VERSION:
+    sh: "awk '/^version:/ {print $2}' deploy/helm/subscription-management/Chart.yaml"
+  HELM_VERSION: v4.3.1
+  # Kong proxy on the host: kind's extraPortMappings (deploy/kind/cluster.yaml) or `task kong:port-forward`.
+  # 9080, not Kong's usual 8000, which is commonly taken by other dev tools.
+  KONG_HTTP_PORT: 9080
+  KONG_URL: http://127.0.0.1:{{.KONG_HTTP_PORT}}
+  API_HOST: subs.localhost
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  # ---------------------------------------------------------------- tools
+  tools:check:
+    desc: Check that docker, kind, kubectl and helm are installed
+    silent: true
+    cmds:
+      - |
+        missing=0
+        for t in docker kind kubectl helm; do
+          if command -v "$t" >/dev/null; then printf '  %-8s %s\n' "$t" "$(command -v "$t")"; else echo "  $t: MISSING"; missing=1; fi
+        done
+        [ "$missing" = 0 ] || { echo "Install the missing tools (helm: task tools:helm)"; exit 1; }
+
+  tools:rollouts-plugin:
+    desc: Install the kubectl argo rollouts plugin {{.ROLLOUTS_PLUGIN_VERSION}} into ~/.local/bin (checksum-verified)
+    status:
+      - kubectl argo rollouts version --short >/dev/null 2>&1
+    cmds:
+      - |
+        set -eu
+        tmp=$(mktemp -d)
+        base=https://github.com/argoproj/argo-rollouts/releases/download/{{.ROLLOUTS_PLUGIN_VERSION}}
+        curl -fsSL -o "$tmp/kubectl-argo-rollouts-linux-amd64" "$base/kubectl-argo-rollouts-linux-amd64"
+        curl -fsSL -o "$tmp/checksums.txt" "$base/argo-rollouts-checksums.txt"
+        (cd "$tmp" && grep ' kubectl-argo-rollouts-linux-amd64$' checksums.txt | sha256sum -c -)
+        mkdir -p "$HOME/.local/bin" && install -m 0755 "$tmp/kubectl-argo-rollouts-linux-amd64" "$HOME/.local/bin/kubectl-argo-rollouts"
+        rm -rf "$tmp"
+        kubectl argo rollouts version --short
+
+  tools:helm:
+    desc: Install helm {{.HELM_VERSION}} into ~/.local/bin (checksum-verified)
+    status:
+      - command -v helm
+    cmds:
+      - |
+        set -euo pipefail
+        tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+        file=helm-{{.HELM_VERSION}}-linux-amd64.tar.gz
+        curl -fsSL -o "$tmp/$file" "https://get.helm.sh/$file"
+        curl -fsSL -o "$tmp/$file.sha256sum" "https://get.helm.sh/$file.sha256sum"
+        (cd "$tmp" && sha256sum -c "$file.sha256sum")
+        tar -xzf "$tmp/$file" -C "$tmp"
+        mkdir -p "$HOME/.local/bin" && install -m 0755 "$tmp/linux-amd64/helm" "$HOME/.local/bin/helm"
+        helm version
+
+  helm:repos:
+    desc: Add/refresh the Helm repositories (Kong, metrics-server, Prometheus community, Grafana)
+    cmds:
+      - helm repo add kong https://charts.konghq.com --force-update
+      - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+      - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+      # Loki and Tempo charts are maintained here now (the grafana/ copies are frozen on older releases).
+      - helm repo add grafana-community https://grafana-community.github.io/helm-charts --force-update
+      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      - helm repo update kong metrics-server prometheus-community grafana grafana-community argo
+
+  # ---------------------------------------------------------------- cluster
+  cluster:create:
+    desc: Create the kind cluster "{{.CLUSTER}}" with Kong's ports published on localhost:9080/9443
+    status:
+      - kind get clusters 2>/dev/null | grep -qx '{{.CLUSTER}}'
+    cmds:
+      - kind create cluster --name {{.CLUSTER}} --config deploy/kind/cluster.yaml --wait 120s
+      - kubectl config use-context kind-{{.CLUSTER}}
+
+  cluster:delete:
+    desc: Delete the kind cluster "{{.CLUSTER}}" (all data is lost)
+    prompt: Delete kind cluster "{{.CLUSTER}}"?
+    cmds:
+      - kind delete cluster --name {{.CLUSTER}}
+
+  cluster:recreate:
+    desc: Delete and recreate the cluster (e.g. to pick up the port mappings of deploy/kind/cluster.yaml)
+    cmds:
+      - task: cluster:delete
+      - task: cluster:create
+
+  cluster:ports:
+    desc: Show whether the cluster publishes Kong on localhost:{{.KONG_HTTP_PORT}} (otherwise use kong:port-forward)
+    silent: true
+    cmds:
+      - |
+        if docker port {{.CLUSTER}}-control-plane 2>/dev/null | grep -q '^30080/tcp'; then
+          echo "Kong is published on {{.KONG_URL}} (kind extraPortMappings)"
+        else
+          echo "Cluster {{.CLUSTER}} has no port mapping for Kong: run 'task kong:port-forward' (or 'task cluster:recreate')"
+        fi
+
+  # ---------------------------------------------------------------- kong
+  kong:install:
+    desc: Install Kong Ingress Controller + Kong Gateway (DB-less) into namespace "{{.KONG_NAMESPACE}}"
+    deps: [helm:repos]
+    cmds:
+      - >-
+        helm upgrade --install {{.KONG_RELEASE}} kong/ingress
+        --namespace {{.KONG_NAMESPACE}} --create-namespace
+        --version {{.KONG_CHART_VERSION}}
+        -f deploy/kong/values.yaml
+        --wait --timeout 5m
+      - kubectl -n {{.KONG_NAMESPACE}} get pods,svc
+
+  kong:uninstall:
+    desc: Remove Kong
+    cmds:
+      - helm uninstall {{.KONG_RELEASE}} -n {{.KONG_NAMESPACE}} --ignore-not-found
+
+  kong:port-forward:
+    desc: Forward localhost:{{.KONG_HTTP_PORT}} to the Kong proxy, reconnecting whenever the gateway pod restarts (Ctrl+C stops)
+    cmds:
+      # kubectl port-forward is bound to one pod and exits when that pod goes away (upgrade, probe restart, node restart).
+      - |
+        while true; do
+          kubectl -n {{.KONG_NAMESPACE}} port-forward svc/{{.KONG_RELEASE}}-gateway-proxy {{.KONG_HTTP_PORT}}:80 || true
+          echo "port-forward ended; reconnecting in 2s (Ctrl+C to stop)"
+          sleep 2
+        done
+
+  kong:routes:
+    desc: Show the routes, services and plugins Kong received from the controller
+    silent: true
+    cmds:
+      # Through the API server's service proxy: no port-forward to manage.
+      - for: [routes, services, plugins]
+        cmd: |
+          echo "== {{.ITEM}}"
+          kubectl get --raw "/api/v1/namespaces/{{.KONG_NAMESPACE}}/services/https:{{.KONG_RELEASE}}-gateway-admin:8444/proxy/{{.ITEM}}" | python3 -m json.tool
+
+  # ---------------------------------------------------------------- metrics-server (HPA)
+  metrics:install:
+    desc: Install metrics-server (kind's kubelets use self-signed certs, hence --kubelet-insecure-tls)
+    deps: [helm:repos]
+    cmds:
+      - >-
+        helm upgrade --install metrics-server metrics-server/metrics-server
+        --namespace kube-system
+        --version {{.METRICS_SERVER_CHART_VERSION}}
+        --set 'args={--kubelet-insecure-tls}'
+        --wait --timeout 3m
+
+  # ---------------------------------------------------------------- monitoring (Grafana, Prometheus, Loki, Tempo, Alloy)
+  monitoring:install:
+    desc: Install the monitoring stack into "{{.MONITORING_NAMESPACE}}" and wire Kong into it (run after kong:install)
+    deps: [helm:repos]
+    cmds:
+      # Prometheus operator first: its CRDs (ServiceMonitor, PodMonitor, PrometheusRule) are used by everything below.
+      - >-
+        helm upgrade --install monitoring prometheus-community/kube-prometheus-stack
+        --namespace {{.MONITORING_NAMESPACE}} --create-namespace
+        --version {{.KPS_CHART_VERSION}}
+        -f deploy/observability/kube-prometheus-stack.yaml
+        --wait --timeout 10m
+      - >-
+        helm upgrade --install loki grafana-community/loki
+        --namespace {{.MONITORING_NAMESPACE}} --version {{.LOKI_CHART_VERSION}}
+        -f deploy/observability/loki.yaml --wait --timeout 5m
+      - >-
+        helm upgrade --install tempo grafana-community/tempo
+        --namespace {{.MONITORING_NAMESPACE}} --version {{.TEMPO_CHART_VERSION}}
+        -f deploy/observability/tempo.yaml --wait --timeout 5m
+      - >-
+        helm upgrade --install alloy grafana/alloy
+        --namespace {{.MONITORING_NAMESPACE}} --version {{.ALLOY_CHART_VERSION}}
+        -f deploy/observability/alloy.yaml --wait --timeout 5m
+      - kubectl apply -f deploy/observability/kong.yaml
+      - task: monitoring:status
+
+  monitoring:status:
+    desc: Show the monitoring pods and the Prometheus scrape targets that are not up
+    silent: true
+    cmds:
+      - kubectl -n {{.MONITORING_NAMESPACE}} get pods
+      - |
+        kubectl get --raw "/api/v1/namespaces/{{.MONITORING_NAMESPACE}}/services/monitoring-prometheus:9090/proxy/api/v1/targets?state=active" | python3 -c '
+        import json, sys
+        targets = json.load(sys.stdin)["data"]["activeTargets"]
+        down = [t for t in targets if t["health"] != "up"]
+        print(f"Prometheus targets: {len(targets) - len(down)}/{len(targets)} up")
+        for t in down: print("  DOWN", t["scrapePool"], t["scrapeUrl"], t.get("lastError", ""))'
+
+  monitoring:uninstall:
+    desc: Remove the monitoring stack (PVCs and the Prometheus operator CRDs are kept)
+    cmds:
+      - kubectl delete -f deploy/observability/kong.yaml --ignore-not-found
+      - for: [alloy, tempo, loki, monitoring]
+        cmd: helm uninstall {{.ITEM}} -n {{.MONITORING_NAMESPACE}} --ignore-not-found --wait
+
+  grafana:open:
+    desc: Print the Grafana URL (through Kong) and the admin credentials
+    silent: true
+    cmds:
+      - |
+        user=$(kubectl -n {{.MONITORING_NAMESPACE}} get secret grafana -o jsonpath='{.data.admin-user}' | base64 -d)
+        pass=$(kubectl -n {{.MONITORING_NAMESPACE}} get secret grafana -o jsonpath='{.data.admin-password}' | base64 -d)
+        echo "Grafana:   http://grafana.localhost:{{.KONG_HTTP_PORT}}   ($user / $pass)"
+        echo "Dashboard: http://grafana.localhost:{{.KONG_HTTP_PORT}}/d/subs-overview-{{.NAMESPACE}}"
+        echo "(needs Kong on 127.0.0.1:{{.KONG_HTTP_PORT}}: kind port mapping or 'task kong:port-forward'; or use 'task grafana:port-forward')"
+
+  grafana:port-forward:
+    desc: Reach Grafana directly on localhost:3000, bypassing Kong
+    cmds:
+      - kubectl -n {{.MONITORING_NAMESPACE}} port-forward svc/grafana 3000:80
+
+  prometheus:port-forward:
+    desc: Reach the Prometheus UI on localhost:9090
+    cmds:
+      - kubectl -n {{.MONITORING_NAMESPACE}} port-forward svc/monitoring-prometheus 9090:9090
+
+  alertmanager:port-forward:
+    desc: Reach the Alertmanager UI on localhost:9093
+    cmds:
+      - kubectl -n {{.MONITORING_NAMESPACE}} port-forward svc/monitoring-alertmanager 9093:9093
+
+  # ---------------------------------------------------------------- images
+  image:build:
+    desc: Build the Native AOT API and migrator images ({{.TAG}})
+    sources:
+      - Dockerfile
+      - Directory.Build.props
+      - src/**/*
+      - exclude: src/**/bin/**
+      - exclude: src/**/obj/**
+    status:
+      - docker image inspect {{.API_IMAGE}}:{{.TAG}} {{.MIGRATOR_IMAGE}}:{{.TAG}} >/dev/null 2>&1
+    cmds:
+      - docker build --target api -t {{.API_IMAGE}}:{{.TAG}} .
+      - docker build --target migrator -t {{.MIGRATOR_IMAGE}}:{{.TAG}} .
+
+  image:push:
+    desc: Push both images to the local registry ({{.REGISTRY}})
+    deps: [image:build, registry:setup]
+    cmds:
+      - docker push {{.API_IMAGE}}:{{.TAG}}
+      - docker push {{.MIGRATOR_IMAGE}}:{{.TAG}}
+
+  # ---------------------------------------------------------------- local registry
+  registry:setup:
+    desc: Start the local registry ({{.REGISTRY}}) and wire it into the kind nodes (idempotent)
+    env:
+      CLUSTER: "{{.CLUSTER}}"
+      REGISTRY_NAME: "{{.REGISTRY_NAME}}"
+      REGISTRY_PORT: "{{.REGISTRY_PORT}}"
+    cmds:
+      - deploy/registry/setup.sh
+
+  registry:images:
+    desc: List the repositories, tags and digests in the local registry
+    silent: true
+    cmds:
+      - |
+        for repo in $(curl -fsS http://{{.REGISTRY}}/v2/_catalog | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["repositories"]))'); do
+          for tag in $(curl -fsS "http://{{.REGISTRY}}/v2/$repo/tags/list" | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["tags"] or []))'); do
+            printf '%-60s %s\n' "{{.REGISTRY}}/$repo:$tag" "$(deploy/registry/digest.sh {{.REGISTRY}} "$repo" "$tag")"
+          done
+        done
+
+  registry:delete:
+    desc: Remove the registry container (add VOLUME=true to also drop the stored images)
+    prompt: Remove the local registry "{{.REGISTRY_NAME}}"?
+    vars:
+      VOLUME: '{{.VOLUME | default "false"}}'
+    cmds:
+      - docker rm -f {{.REGISTRY_NAME}}
+      - '{{if eq .VOLUME "true"}}docker volume rm {{.REGISTRY_NAME}}-data{{else}}echo "volume {{.REGISTRY_NAME}}-data kept"{{end}}'
+
+  # ---------------------------------------------------------------- app (helm chart)
+  app:lint:
+    desc: Lint the chart with the default and the local values
+    cmds:
+      - helm lint {{.CHART_DIR}} --strict
+      - helm lint {{.CHART_DIR}} -f {{.CHART_VALUES}} --strict
+
+  app:template:
+    desc: Render the chart with the local values
+    cmds:
+      - >-
+        helm template {{.RELEASE}} {{.CHART_DIR}} -n {{.NAMESPACE}} -f {{.CHART_VALUES}}
+        --set image.repository={{.API_IMAGE}} --set image.tag={{.TAG}}
+        --set migrator.image.repository={{.MIGRATOR_IMAGE}} --set migrator.image.tag={{.TAG}}
+
+  app:deploy:
+    desc: Install/upgrade the release "{{.RELEASE}}" with plain Helm (no Argo CD; `task dev` picks the right path)
+    deps: [image:push]
+    preconditions:
+      - sh: "! kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} >/dev/null 2>&1"
+        msg: "{{.APP_NAME}} is managed by Argo CD (it would revert a manual helm upgrade): use 'task gitops:deploy' or 'task dev'."
+    cmds:
+      # Pin both images to the digests just pushed: pods roll exactly when an image changed, and a node never
+      # runs a stale cached ":{{.TAG}}".
+      - |
+        set -eu
+        api_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.API_REPO}} {{.TAG}})
+        migrator_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.MIGRATOR_REPO}} {{.TAG}})
+        echo "api      {{.API_IMAGE}}:{{.TAG}}@$api_digest"
+        echo "migrator {{.MIGRATOR_IMAGE}}:{{.TAG}}@$migrator_digest"
+        helm upgrade --install {{.RELEASE}} {{.CHART_DIR}} \
+          --namespace {{.NAMESPACE}} --create-namespace \
+          -f {{.CHART_VALUES}} \
+          --set image.repository={{.API_IMAGE}} --set image.tag={{.TAG}} --set image.digest="$api_digest" \
+          --set migrator.image.repository={{.MIGRATOR_IMAGE}} --set migrator.image.tag={{.TAG}} --set migrator.image.digest="$migrator_digest" \
+          --wait --timeout 5m
+      - task: app:status
+
+  app:test:
+    desc: In-cluster check of the API (helm test for a Helm release, a curl pod otherwise)
+    cmds:
+      - |
+        if helm status {{.RELEASE}} -n {{.NAMESPACE}} >/dev/null 2>&1; then
+          helm test {{.RELEASE}} -n {{.NAMESPACE}} --logs
+        else
+          # Labelled like the chart's test pod, which the API NetworkPolicy admits.
+          kubectl -n {{.NAMESPACE}} run {{.RELEASE}}-check --rm -i --restart=Never --image=docker.io/curlimages/curl:8.17.0 \
+            --labels=app.kubernetes.io/name=subscription-management,app.kubernetes.io/instance={{.RELEASE}},app.kubernetes.io/component=test \
+            --command -- sh -ec 'b=http://{{.ROLLOUT}}; curl -fsS --retry 10 --retry-all-errors --retry-delay 2 $b/health/ready; echo; curl -fsS $b/health; echo; curl -fsS $b/plans; echo'
+        fi
+
+  app:status:
+    desc: Show the release's resources
+    cmds:
+      - kubectl -n {{.NAMESPACE}} get deploy,sts,pods,svc,ingress,kongplugins,hpa,pdb,networkpolicy,pvc
+      - kubectl -n {{.NAMESPACE}} get rollouts,analysisruns 2>/dev/null || true
+
+  app:logs:
+    desc: Follow the API logs (all replicas)
+    cmds:
+      - kubectl -n {{.NAMESPACE}} logs -f --prefix --max-log-requests 10 -l app.kubernetes.io/instance={{.RELEASE}},app.kubernetes.io/component=api -c api
+
+  app:migrator-logs:
+    desc: Show the migrator init-container logs
+    cmds:
+      - kubectl -n {{.NAMESPACE}} logs --prefix -l app.kubernetes.io/instance={{.RELEASE}},app.kubernetes.io/component=api -c migrator
+
+  app:restart:
+    desc: Restart the API pods (Rollout or Deployment)
+    cmds:
+      - |
+        if kubectl -n {{.NAMESPACE}} get rollout {{.ROLLOUT}} >/dev/null 2>&1; then
+          kubectl -n {{.NAMESPACE}} patch rollout {{.ROLLOUT}} --type merge -p "{\"spec\":{\"restartAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+        else
+          kubectl -n {{.NAMESPACE}} rollout restart deploy/{{.ROLLOUT}}
+          kubectl -n {{.NAMESPACE}} rollout status deploy/{{.ROLLOUT}}
+        fi
+
+  app:port-forward:
+    desc: Reach the API directly on localhost:8080, bypassing Kong
+    cmds:
+      - kubectl -n {{.NAMESPACE}} port-forward svc/{{.RELEASE}}-subscription-management 8080:80
+
+  app:psql:
+    desc: Open psql in the PostgreSQL pod
+    interactive: true
+    cmds:
+      - kubectl -n {{.NAMESPACE}} exec -it sts/{{.RELEASE}}-subscription-management-postgresql -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+  app:uninstall:
+    desc: Remove the app (Argo CD Application with cascade, or the Helm release); the PostgreSQL volume is kept
+    cmds:
+      - kubectl -n {{.ARGOCD_NAMESPACE}} delete application {{.APP_NAME}} --ignore-not-found --wait 2>/dev/null || true
+      - helm uninstall {{.RELEASE}} -n {{.NAMESPACE}} --ignore-not-found --wait
+
+  app:purge:
+    desc: Uninstall the release and delete its namespace, including the PostgreSQL volume
+    prompt: Delete namespace "{{.NAMESPACE}}" and all its data?
+    cmds:
+      - task: app:uninstall
+      - kubectl delete namespace {{.NAMESPACE}} --ignore-not-found --wait
+
+  # ---------------------------------------------------------------- GitOps: Argo CD + Argo Rollouts
+  argo:install:
+    desc: Install Argo CD and Argo Rollouts (UIs through Kong) and the kubectl argo rollouts plugin
+    cmds:
+      - task: argocd:install
+      - task: rollouts:install
+      - task: tools:rollouts-plugin
+
+  argocd:install:
+    desc: Install Argo CD into "{{.ARGOCD_NAMESPACE}}" and register the local registry as its OCI chart repository
+    deps: [helm:repos]
+    cmds:
+      - >-
+        helm upgrade --install argocd argo/argo-cd
+        --namespace {{.ARGOCD_NAMESPACE}} --create-namespace
+        --version {{.ARGOCD_CHART_VERSION}}
+        -f deploy/argocd/values.yaml
+        --wait --timeout 10m
+      - kubectl apply -f deploy/argocd/repository.yaml
+
+  rollouts:install:
+    desc: Install the Argo Rollouts controller and dashboard into "{{.ROLLOUTS_NAMESPACE}}"
+    deps: [helm:repos]
+    cmds:
+      - >-
+        helm upgrade --install argo-rollouts argo/argo-rollouts
+        --namespace {{.ROLLOUTS_NAMESPACE}} --create-namespace
+        --version {{.ROLLOUTS_CHART_VERSION}}
+        -f deploy/argo-rollouts/values.yaml
+        --wait --timeout 5m
+
+  argo:uninstall:
+    desc: Remove Argo CD and Argo Rollouts (run app:uninstall first; the CRDs are kept)
+    cmds:
+      - helm uninstall argo-rollouts -n {{.ROLLOUTS_NAMESPACE}} --ignore-not-found --wait
+      - kubectl delete -f deploy/argocd/repository.yaml --ignore-not-found
+      - helm uninstall argocd -n {{.ARGOCD_NAMESPACE}} --ignore-not-found --wait
+
+  argocd:open:
+    desc: Print the Argo CD and Rollouts dashboard URLs and the Argo CD admin password
+    silent: true
+    cmds:
+      - |
+        pass=$(kubectl -n {{.ARGOCD_NAMESPACE}} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+        echo "Argo CD:            http://argocd.localhost:{{.KONG_HTTP_PORT}}   (admin / $pass)"
+        echo "Rollouts dashboard: http://rollouts.localhost:{{.KONG_HTTP_PORT}}/rollouts/{{.NAMESPACE}}"
+        echo "(needs Kong on 127.0.0.1:{{.KONG_HTTP_PORT}}: kind port mapping or 'task kong:port-forward')"
+
+  app:publish:
+    desc: Package the chart as a new version pinning the just-pushed image digests, and push it to the local registry
+    deps: [image:push]
+    cmds:
+      - |
+        set -eu
+        version="{{.CHART_BASE_VERSION}}-dev.$(date -u +%Y%m%d%H%M%S)"
+        api_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.API_REPO}} {{.TAG}})
+        migrator_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.MIGRATOR_REPO}} {{.TAG}})
+        build=$(mktemp -d)
+        cp -r {{.CHART_DIR}} "$build/{{.APP_NAME}}"
+        cat > "$build/{{.APP_NAME}}/values-release.yaml" <<EOF
+        # Generated by task app:publish ($version): the images this chart version deploys.
+        image:
+          repository: {{.API_IMAGE}}
+          tag: {{.TAG}}
+          digest: $api_digest
+        migrator:
+          image:
+            repository: {{.MIGRATOR_IMAGE}}
+            tag: {{.TAG}}
+            digest: $migrator_digest
+        EOF
+        # appVersion stays the Chart.yaml one: it is a pod label, and changing it would restart every pod (PostgreSQL too).
+        helm package "$build/{{.APP_NAME}}" --version "$version" -d "$build" >/dev/null
+        helm push "$build/{{.APP_NAME}}-$version.tgz" oci://{{.REGISTRY}}/charts --plain-http
+        rm -rf "$build"
+        mkdir -p .task && echo "$version" > .task/published-chart-version
+        echo "published {{.APP_NAME}} $version (api @$api_digest, migrator @$migrator_digest)"
+
+  gitops:adopt:
+    desc: Hand a release installed with plain Helm over to Argo CD (forgets the Helm release, deletes no resources)
+    status:
+      - "! helm status {{.RELEASE}} -n {{.NAMESPACE}} >/dev/null 2>&1"
+    cmds:
+      - kubectl -n {{.NAMESPACE}} delete secret -l owner=helm,name={{.RELEASE}}
+
+  gitops:deploy:
+    desc: Publish the chart and let Argo CD sync it (API changes roll out as an analysed canary)
+    deps: [app:publish]
+    cmds:
+      - task: gitops:adopt
+      - kubectl apply -f deploy/argocd/application.yaml
+      - kubectl -n {{.ARGOCD_NAMESPACE}} annotate application {{.APP_NAME}} argocd.argoproj.io/refresh=hard --overwrite >/dev/null
+      - |
+        want=$(cat .task/published-chart-version)
+        for i in $(seq 1 60); do
+          have=$(kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} -o jsonpath='{.status.sync.revision}')
+          [ "$have" = "$want" ] && break
+          sleep 3
+        done
+        kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} \
+          -o custom-columns='APP:.metadata.name,REVISION:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status'
+        [ "$have" = "$want" ] || { echo "Argo CD has not picked up $want yet (task argocd:open to look)"; exit 1; }
+        echo "Argo CD is on $want. A changed API image now rolls out as a canary: task rollout:watch"
+      # After adopting a Helm release: the old API Deployment is not tracked by Argo CD, so it is never pruned.
+      # Retire it once the Rollout that replaces it is healthy (both select the same pods' labels).
+      - |
+        if kubectl -n {{.NAMESPACE}} get deploy {{.ROLLOUT}} >/dev/null 2>&1 && kubectl -n {{.NAMESPACE}} get rollout {{.ROLLOUT}} >/dev/null 2>&1; then
+          kubectl -n {{.NAMESPACE}} wait --for=jsonpath='{.status.phase}'=Healthy rollout/{{.ROLLOUT}} --timeout=5m
+          kubectl -n {{.NAMESPACE}} delete deploy {{.ROLLOUT}} --wait
+        fi
+
+  rollout:watch:
+    desc: Follow the API Rollout live (canary steps, analysis, pods)
+    interactive: true
+    cmds:
+      - kubectl argo rollouts get rollout {{.ROLLOUT}} -n {{.NAMESPACE}} --watch
+
+  rollout:status:
+    desc: Show the API Rollout and its latest AnalysisRuns
+    cmds:
+      - kubectl argo rollouts get rollout {{.ROLLOUT}} -n {{.NAMESPACE}}
+      - kubectl -n {{.NAMESPACE}} get analysisruns --sort-by=.metadata.creationTimestamp
+
+  rollout:promote:
+    desc: Skip the current canary pause (FULL=true skips all remaining steps and analysis)
+    cmds:
+      - kubectl argo rollouts promote {{.ROLLOUT}} -n {{.NAMESPACE}} {{if eq (.FULL | default "") "true"}}--full{{end}}
+
+  rollout:abort:
+    desc: Abort the canary and go back to the stable version
+    cmds:
+      - kubectl argo rollouts abort {{.ROLLOUT}} -n {{.NAMESPACE}}
+
+  rollout:retry:
+    desc: Retry an aborted rollout
+    cmds:
+      - kubectl argo rollouts retry rollout {{.ROLLOUT}} -n {{.NAMESPACE}}
+
+  # ---------------------------------------------------------------- verification
+  smoke:
+    desc: Smoke test through Kong ({{.KONG_URL}}, Host {{.API_HOST}})
+    silent: true
+    cmds:
+      - |
+        set -euo pipefail
+        req() { curl -sS --fail-with-body -H 'Host: {{.API_HOST}}' -H 'Content-Type: application/json' "$@"; echo; }
+        echo "== GET /health";            req {{.KONG_URL}}/health
+        echo "== GET /plans";             req {{.KONG_URL}}/plans
+        echo "== POST /subscriptions"
+        body=$(req -X POST {{.KONG_URL}}/subscriptions -d '{"serviceName":"Netflix","price":99000,"startDate":"2026-09-05","trialEndsAt":"2026-09-12"}')
+        echo "$body"
+        id=$(printf '%s' "$body" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+        echo "== GET /subscriptions/$id"; req {{.KONG_URL}}/subscriptions/$id
+        echo "== Gateway headers (correlation-id + rate-limiting plugins)"
+        curl -sS -o /dev/null -D - -H 'Host: {{.API_HOST}}' {{.KONG_URL}}/health/live | grep -iE '^(x-trace-id|ratelimit-|x-ratelimit|x-kong)' || true
+
+  # Settings for the three tests: scripts/.env (BASE_URL, VUS, DURATION, LEVELS, USERS, ...); e.g. `VUS=200 task load-test`.
+  load-test:
+    desc: k6 load test through Kong (scripts/load-test.sh, settings in scripts/.env)
+    cmds:
+      - scripts/load-test.sh
+
+  stress-test:
+    desc: k6 step-up stress ladder through Kong (scripts/stress-test.sh, LEVELS in scripts/.env)
+    cmds:
+      - scripts/stress-test.sh
+
+  locust-test:
+    desc: Locust load test through Kong (scripts/locust-test.sh; WEB=1 for the UI on :8089)
+    cmds:
+      - scripts/locust-test.sh
+
+  # ---------------------------------------------------------------- end to end
+  up:
+    desc: "Full local setup: cluster, registry, Kong, metrics-server, monitoring, Argo CD + Rollouts, app via GitOps, test"
+    cmds:
+      - task: tools:check
+      - task: cluster:create
+      - task: registry:setup
+      - task: kong:install
+      - task: metrics:install
+      - task: monitoring:install
+      - task: argo:install
+      - task: gitops:deploy
+      - task: cluster:ports
+      - task: app:test
+
+  dev:
+    desc: "After a code change: rebuild + push, then Argo CD (publish chart -> canary) or plain Helm if Argo CD is absent"
+    cmds:
+      - |
+        if kubectl get crd applications.argoproj.io >/dev/null 2>&1; then task gitops:deploy; else task app:deploy; fi
+
+  down:
+    desc: Remove the app, Argo, the monitoring stack and Kong (the cluster is kept)
+    cmds:
+      - task: app:uninstall
+      - task: argo:uninstall
+      - task: monitoring:uninstall
+      - task: kong:uninstall

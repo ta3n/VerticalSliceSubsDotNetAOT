@@ -1,0 +1,38 @@
+# The API stack as an Argo CD Application, sourced from the chart published to the local registry (task app:publish).
+# Each publish is a new prerelease version (0.1.0-dev.<timestamp>) that pins both image digests in values-release.yaml,
+# so the version Argo CD deploys fully identifies what runs; ">=0.1.0-0" always resolves to the newest one.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: subscription-management
+  namespace: argocd
+  finalizers:
+    # Deleting the Application deletes what it deployed (task app:uninstall); the PostgreSQL PVC is kept by its
+    # StatefulSet retention policy.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: kind-registry:5000/charts
+    chart: subscription-management
+    targetRevision: ">=0.1.0-0"
+    helm:
+      # Same release name as the plain-Helm path, so resource names do not change between the two.
+      releaseName: subs
+      valueFiles:
+        - values-local.yaml
+        - values-release.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: subscriptions
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Prune (e.g. the Deployment replaced by the Rollout) only after everything else is applied and healthy.
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff: { duration: 10s, factor: 2, maxDuration: 1m }

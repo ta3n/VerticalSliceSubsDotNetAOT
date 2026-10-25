@@ -1,0 +1,71 @@
+# Kong gateway observability, applied by `task monitoring:install` (needs Kong's CRDs and the Prometheus operator's).
+#   - prometheus plugin (global): per-service/route request, status, latency and bandwidth metrics on the status port
+#   - opentelemetry plugin (global): one span per proxied request, W3C traceparent propagated to the API, so a trace
+#     starts at the gateway and continues through ASP.NET Core and Npgsql
+#   - PodMonitors scraping the gateway (status :8100/metrics) and the ingress controller (:10255/metrics)
+# Span generation itself is switched on in deploy/kong/values.yaml (tracing_instrumentations / tracing_sampling_rate).
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: prometheus
+  labels:
+    global: "true"
+  annotations:
+    kubernetes.io/ingress.class: kong
+plugin: prometheus
+config:
+  status_code_metrics: true
+  latency_metrics: true
+  bandwidth_metrics: true
+  upstream_health_metrics: true
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: opentelemetry
+  labels:
+    global: "true"
+  annotations:
+    kubernetes.io/ingress.class: kong
+plugin: opentelemetry
+config:
+  traces_endpoint: http://alloy.observability:4318/v1/traces
+  resource_attributes:
+    service.name: kong-gateway
+    k8s.namespace.name: kong
+  propagation:
+    default_format: w3c
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kong-gateway
+  namespace: observability
+spec:
+  namespaceSelector:
+    matchNames: [kong]
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kong
+      app.kubernetes.io/name: gateway
+  podMetricsEndpoints:
+    - port: status
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kong-controller
+  namespace: observability
+spec:
+  namespaceSelector:
+    matchNames: [kong]
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kong
+      app.kubernetes.io/name: controller
+  podMetricsEndpoints:
+    - port: cmetrics
+      path: /metrics
+      interval: 30s

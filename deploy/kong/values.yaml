@@ -1,0 +1,39 @@
+# Values for the kong/ingress chart (Kong Ingress Controller + DB-less Kong Gateway).
+#   helm upgrade --install kong kong/ingress -n kong --create-namespace -f deploy/kong/values.yaml   (or: task kong:install)
+# Keys under `controller` and `gateway` are kong/kong chart values.
+
+controller:
+  ingressController:
+    ingressClass: kong
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+
+gateway:
+  replicaCount: 1
+  # NodePorts match the extraPortMappings in deploy/kind/cluster.yaml (host :9080 / :9443).
+  proxy:
+    type: NodePort
+    http:
+      enabled: true
+      servicePort: 80
+      containerPort: 8000
+      nodePort: 30080
+    tls:
+      enabled: true
+      servicePort: 443
+      containerPort: 8443
+      nodePort: 30443
+  env:
+    log_level: notice
+    # Kong's own Server/Via headers are noise for an API; the X-Kong-* latency headers are kept for debugging.
+    headers: latency_tokens
+    # Spans exported by the global opentelemetry plugin (deploy/observability/kong.yaml); harmless without it.
+    # Head sampling for the whole request path: the API's ParentBased sampler follows the sampled flag in traceparent.
+    # 10%: at 100% a load test (~3k req/s, ~4.6M spans in 4 min) produced trace blocks that OOM-killed Tempo's compaction
+    # on every start. Set 1.0 temporarily to trace every request while debugging.
+    tracing_instrumentations: all
+    tracing_sampling_rate: 0.1
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 512Mi }

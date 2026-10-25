@@ -1,0 +1,29 @@
+{{- /* The API itself pushes OTLP metrics (config.otlpEndpoint); only the data-store exporters are scraped. */}}
+{{- if .Values.metrics.serviceMonitor.enabled }}
+{{- range $component, $enabled := dict "postgresql" (and .Values.postgresql.enabled .Values.postgresql.metrics.enabled) "redis" (and .Values.redis.enabled .Values.redis.metrics.enabled) }}
+{{- if $enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ printf "%s-%s" (include "subs.fullname" $) $component }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" $component) | nindent 4 }}
+    {{- with $.Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "subs.selectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ $.Values.metrics.serviceMonitor.interval }}
+      # One series set per data store, not per pod/IP.
+      relabelings:
+        - targetLabel: instance
+          replacement: {{ printf "%s-%s" (include "subs.fullname" $) $component }}
+{{- end }}
+{{- end }}
+{{- end }}

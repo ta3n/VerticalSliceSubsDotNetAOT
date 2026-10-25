@@ -1,0 +1,46 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullname := include "subs.fullname" . }}
+{{- $plugins := include "subs.kong.pluginNames" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+  annotations:
+    # Routes are served as-is (the API owns the whole path space), and the client's Host reaches the API.
+    konghq.com/strip-path: "false"
+    konghq.com/preserve-host: "true"
+    {{- if .Values.ingress.tls }}
+    konghq.com/protocols: "http,https"
+    {{- end }}
+    {{- with $plugins }}
+    konghq.com/plugins: {{ . | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $fullname }}
+                port:
+                  name: http
+          {{- end }}
+      {{- with .host }}
+      host: {{ . | quote }}
+      {{- end }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,111 @@
+{{- if .Values.redis.enabled }}
+{{- $name := include "subs.redis.fullname" . }}
+{{- $r := .Values.redis }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "redis") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: {{ $r.port }}
+      targetPort: redis
+    {{- if $r.metrics.enabled }}
+    - name: metrics
+      port: 9121
+      targetPort: metrics
+    {{- end }}
+  selector:
+    {{- include "subs.selectorLabels" (dict "ctx" . "component" "redis") | nindent 4 }}
+---
+# Cache only: no persistence, so a plain Deployment is enough (a restart just means a cold cache).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "redis") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "subs.selectorLabels" (dict "ctx" . "component" "redis") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "subs.labels" (dict "ctx" . "component" "redis") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # uid/gid of the `redis` user in the official Alpine image.
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: "{{ $r.image.repository }}:{{ $r.image.tag }}"
+          imagePullPolicy: {{ $r.image.pullPolicy }}
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - {{ $r.maxMemory | quote }}
+            - --maxmemory-policy
+            - allkeys-lru
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: redis
+              containerPort: 6379
+          livenessProbe:
+            exec:
+              command: [redis-cli, ping]
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            exec:
+              command: [redis-cli, ping]
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $r.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        {{- if $r.metrics.enabled }}
+        - name: metrics
+          image: "{{ $r.metrics.image.repository }}:{{ $r.metrics.image.tag }}"
+          imagePullPolicy: {{ $r.metrics.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: REDIS_ADDR
+              value: redis://127.0.0.1:6379
+          ports:
+            - name: metrics
+              containerPort: 9121
+          readinessProbe:
+            httpGet: { path: /health, port: metrics }
+            periodSeconds: 10
+          resources:
+            {{- toYaml $r.metrics.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        - name: data
+          emptyDir: {}
+{{- end }}

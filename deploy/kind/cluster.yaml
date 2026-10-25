@@ -1,0 +1,18 @@
+# Local kind cluster. Kong's proxy is a NodePort (30080/30443, see deploy/kong/values.yaml); these mappings publish it
+# on the host as http://localhost:9080 and https://localhost:9443 without a port-forward.
+#   kind create cluster --name kind --config deploy/kind/cluster.yaml   (or: task cluster:create)
+# The local image registry (deploy/registry/setup.sh, task registry:setup) is wired in after creation; kind v0.27+
+# node images read /etc/containerd/certs.d by default, so no containerdConfigPatches are needed here.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 9080
+        listenAddress: 127.0.0.1
+        protocol: TCP
+      - containerPort: 30443
+        hostPort: 9443
+        listenAddress: 127.0.0.1
+        protocol: TCP

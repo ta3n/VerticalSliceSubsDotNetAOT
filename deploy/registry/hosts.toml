@@ -1,0 +1,4 @@
+# containerd registry host config, installed by setup.sh as /etc/containerd/certs.d/localhost:<port>/hosts.toml
+# on every kind node. Pulls of localhost:<port>/... go to the registry container over plain HTTP on the kind network.
+[host."http://@REGISTRY_NAME@:5000"]
+  capabilities = ["pull", "resolve"]
