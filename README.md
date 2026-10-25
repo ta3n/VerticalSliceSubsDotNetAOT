@@ -133,13 +133,96 @@ For a JIT build of the same code (e.g. to compare): `dotnet publish -p:PublishAo
 
 ```bash
 podman compose up -d --build         # (or docker compose) postgres, redis, migrator (one-shot), api on http://localhost:8080
-scripts/load-test.sh                    # k6 load test against localhost:8080 (VUS=, DURATION=, BASE_URL= to tune)
+ENV_FILE=scripts/.env.compose scripts/load-test.sh   # k6 load test against localhost:8080 (VUS=, DURATION=, BASE_URL= to tune)
 curl localhost:8080/health
 podman compose down -v                 # also removes the database volume
 ```
 
 Override host ports/credentials with `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `OPENAPI_ENABLED`.
 The images are multi-stage (`--target api|migrator`), built with clang, run on `runtime-deps:10.0-noble-chiseled` (no shell), as the non-root `app` user (UID 1654).
+
+## Kubernetes (kind + Kong + Helm)
+
+Requires docker, [kind](https://kind.sigs.k8s.io), kubectl, [Task](https://taskfile.dev) and helm (`task tools:helm` installs it into `~/.local/bin`).
+
+```bash
+task up                  # kind cluster → local registry → Kong (kong/ingress, DB-less) → metrics-server → monitoring → Argo CD + Rollouts → build, push, publish → Argo CD sync → test
+task kong:port-forward   # only if the cluster was not created from deploy/kind/cluster.yaml (task cluster:ports tells you)
+task smoke               # requests through Kong on http://127.0.0.1:9080 (Host: subs.localhost)
+task dev                 # after a code change: rebuild, push, publish the chart; Argo CD syncs it and Argo Rollouts canaries the API
+task rollout:watch       # follow the canary live (rollout:promote / rollout:abort / rollout:retry to steer it)
+task registry:images     # what is in the local registry (repository:tag + digest)
+task load-test           # k6 through Kong; also stress-test, locust-test (settings: scripts/.env, e.g. VUS=200 task load-test)
+task grafana:open        # Grafana URL + login (http://grafana.localhost:9080, through Kong)
+task argocd:open         # Argo CD (http://argocd.localhost:9080) + Rollouts dashboard URLs and the admin password
+task down                # remove the release, monitoring and Kong;  task cluster:delete  removes the cluster
+```
+
+The test scripts read [scripts/.env](scripts/.env) (local k8s: `BASE_URL=http://127.0.0.1:9080`, `DOCKER_CONTEXT=default`, VUs/levels);
+explicit variables win, and `ENV_FILE=scripts/.env.compose` targets the compose stack instead. Taskfile loads the same file.
+`task --list` shows the rest (`app:logs`, `app:migrator-logs`, `app:psql`, `kong:routes`, `load-test`, …).
+The chart ([deploy/helm/subscription-management](deploy/helm/subscription-management)) deploys the API (migrator as an init container — its
+advisory lock makes concurrent replicas safe), PostgreSQL (StatefulSet + PVC), Redis, an Ingress for `ingressClassName: kong` with
+KongPlugins (correlation-id on `X-Trace-Id`, rate-limiting, request-size-limiting), HPA, PDB and NetworkPolicies.
+Defaults are in `values.yaml`; kind overrides in `values-local.yaml`; Kong's values in [deploy/kong/values.yaml](deploy/kong/values.yaml).
+Images go through a local registry ([deploy/registry](deploy/registry), the `kind-registry` container on `localhost:5001`): the host pushes to
+`localhost:5001/subscription-management[-migrator]`, and each kind node's containerd maps that name to the registry container over the `kind` network.
+
+### GitOps and progressive delivery (Argo CD, Argo Rollouts)
+
+`task argo:install` (part of `task up`) installs Argo CD ([deploy/argocd](deploy/argocd)) and Argo Rollouts ([deploy/argo-rollouts](deploy/argo-rollouts)).
+The source of truth is an **OCI Helm chart in the local registry**, not a Git remote, so nothing leaves the machine:
+
+```mermaid
+flowchart LR
+  D["task dev"] --> B["build + push images<br/>localhost:5001"]
+  B --> P["task app:publish<br/>chart 0.1.0-dev.&lt;ts&gt; + values-release.yaml (image digests)"]
+  P --> R[("kind-registry:5000/charts")]
+  R -- "targetRevision >=0.1.0-0" --> A[Argo CD Application]
+  A -- "sync (auto, self-heal, prune)" --> RO["Rollout (API)"]
+  RO -- "25% → 50% → 75% → 100%" --> K["canary pods behind the same Service / Kong route"]
+  RO -. "background AnalysisRun" .-> PR[(Prometheus)]
+```
+
+* Every publish is a new chart version that pins both image digests, so the version Argo CD shows identifies exactly what runs.
+* With `rollout.enabled` (values-local) the API is a `Rollout`: canary steps 25/50/75% with pauses, weight = share of canary pods
+  (no traffic router; Kong balances across all pods). An `AnalysisTemplate` queries Prometheus for the **canary pods only**
+  (`rollouts_pod_template_hash`, set from the pod label into the OTel resource): 5xx ratio ≤ 1% and p95 < 300 ms, health probes excluded.
+  One failed measurement aborts the rollout and the stable version keeps serving.
+* `task app:deploy` (plain Helm) still works on a cluster without Argo CD; once the Application exists it refuses, because Argo CD would revert it.
+  `task gitops:adopt` hands an existing Helm release over to Argo CD without deleting anything.
+
+### Monitoring (Grafana, Prometheus, Loki, Tempo)
+
+`task monitoring:install` (part of `task up`, after Kong) deploys [deploy/observability](deploy/observability) into the `observability` namespace:
+
+```mermaid
+flowchart LR
+  K[Kong gateway] -- "OTLP spans (opentelemetry plugin)" --> A[Alloy]
+  API[API pods] -- "OTLP traces + metrics" --> A
+  A -- traces --> T[(Tempo)]
+  A -- "metrics (remote write)" --> P[(Prometheus)]
+  A -- "pod logs (/var/log/pods)" --> L[(Loki)]
+  T -- "service graph + span metrics" --> P
+  P -- "scrape" --> E["postgres_exporter · redis_exporter · Kong /metrics · kube-state-metrics · node-exporter"]
+  G[Grafana] --> P & L & T
+```
+
+| | |
+|---|---|
+| Grafana | `http://grafana.localhost:9080` through Kong (`task grafana:open` prints the login), or `task grafana:port-forward` → `:3000` |
+| Dashboards | *Subscription Management / Overview* (gateway vs API traffic and latency, 5xx, HPA, PostgreSQL, Redis, pod CPU/memory, logs, traces) — shipped by the app chart; *Community*: ASP.NET Core (19924/19925), Kong (7424), PostgreSQL (9628), Redis (763); plus the kube-prometheus-stack Kubernetes set |
+| Traces | Kong span → ASP.NET Core → Npgsql in one trace (W3C `traceparent`); Tempo service map; latency exemplars and log `TraceId`s link to the trace |
+| Alerts | `PrometheusRule` from the chart: API unavailable / 5xx > 5% / p95 > 500 ms, PostgreSQL down / connections > 80% / deadlocks, Redis down / memory > 90% (`task alertmanager:port-forward`) |
+| Other UIs | `task prometheus:port-forward` (:9090), `task monitoring:status` (pods + scrape targets that are down) |
+
+The app side is switched on in `values-local.yaml`: `config.otlpEndpoint` (Alloy), exporter sidecars (`postgresql.metrics`, `redis.metrics`),
+`metrics.serviceMonitor`, `metrics.prometheusRule`, `metrics.grafanaDashboard`. With `networkPolicy.enabled`, only the `observability` namespace may scrape the exporters.
+
+Sizing notes (laptop defaults): 10% of requests are traced (Kong `tracing_sampling_rate: 0.1` in deploy/kong/values.yaml; the API follows
+the sampled flag). At 100%, a load test produced trace blocks whose compaction OOM-killed Tempo on every start; set 1.0 only while debugging.
+Tempo's ingestion limits, Alloy's memory limiter and its small export queue shed spans under pressure instead of failing — metrics stay complete. Kong's 2xx/3xx access-log lines
+are dropped before Loki (they are already counted and traced); 4xx/5xx and gateway errors are kept. Retention: Prometheus 3 d, Loki 72 h, Tempo 48 h.
 
 ## Project structure
 
@@ -148,14 +231,15 @@ src/SubscriptionManagement/            API: Program.cs, Features/{Subscriptions,
 src/SubscriptionManagement.Migrator/   SQL migration runner + embedded V*.sql
 tests/SubscriptionManagement.UnitTests/         domain, validators, cursor codec, problem writer
 tests/SubscriptionManagement.IntegrationTests/  Testcontainers + WebApplicationFactory
-scripts/                               aot-smoke.sh, measure-startup.sh
+scripts/                               aot-smoke.sh, measure-startup.sh, load/stress tests
+deploy/                                helm chart, Kong, kind config, local registry, observability, Argo CD/Rollouts (driven by Taskfile.yml)
 docs/                                  technical-design, implementation-plan, migration/*, adr/*, performance
 ```
 
 ## Observability
 
 * **Logging:** structured JSON to stdout with scopes (`traceId`, request path). Unhandled errors are logged once with the trace id and returned as an opaque 500 problem.
-* **Tracing/metrics:** set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` if your collector expects HTTP) to export ASP.NET Core and Npgsql telemetry.
+* **Tracing/metrics:** set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` if your collector expects HTTP) to export ASP.NET Core and Npgsql telemetry. On Kubernetes this is wired to Grafana/Tempo/Prometheus — see [Monitoring](#monitoring-grafana-prometheus-loki-tempo).
 * **Health:** `/health/live` (process), `/health/ready` (database — deliberately not Redis, as in the reference), `/health` (database + cache). Bodies contain only `{"status":"UP|DOWN"}`.
 * **Correlation:** `X-Trace-Id` in/out, and as `traceId` in every problem response.
 
