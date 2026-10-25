@@ -1,6 +1,5 @@
 using SubscriptionManagement.Infrastructure;
 using Npgsql;
-using SubscriptionManagement.Features.Plans;
 
 namespace SubscriptionManagement.Features.Plans.GetPlan;
 

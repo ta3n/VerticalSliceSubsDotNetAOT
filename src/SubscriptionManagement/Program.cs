@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
