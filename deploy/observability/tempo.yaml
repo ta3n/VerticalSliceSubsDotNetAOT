@@ -19,7 +19,7 @@ tempo:
       # under a load test at 100% sampling.
       metrics_generator:
         processors: [service-graphs, span-metrics]
-      # Every request is traced (Kong samples 100%), so a load test produces tens of thousands of spans per second.
+      # Even at Kong's 10% sampling a load test produces thousands of spans per second (tens of thousands at 100%).
       # Past these limits Tempo refuses spans (Alloy logs and drops them) instead of running out of memory.
       ingestion:
         rate_limit_bytes: 4000000

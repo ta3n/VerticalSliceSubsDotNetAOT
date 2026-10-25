@@ -52,5 +52,10 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
 # Task (taskfile.dev) checksum cache
 .task/
+
+# IDE / tooling state
+.idea/
+.serena/
