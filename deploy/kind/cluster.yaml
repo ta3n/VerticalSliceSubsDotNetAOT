@@ -1,10 +1,15 @@
 # Local kind cluster. Kong's proxy is a NodePort (30080/30443, see deploy/kong/values.yaml); these mappings publish it
 # on the host as http://localhost:9080 and https://localhost:9443 without a port-forward.
 #   kind create cluster --name kind --config deploy/kind/cluster.yaml   (or: task cluster:create)
-# The local image registry (deploy/registry/setup.sh, task registry:setup) is wired in after creation; kind v0.27+
-# node images read /etc/containerd/certs.d by default, so no containerdConfigPatches are needed here.
+# The local image registry (deploy/registry/setup.sh, task registry:setup) is wired in after creation through
+# /etc/containerd/certs.d. Node images still ship a CRI config without config_path (seen on kindest/node:v1.34.0), so
+# containerd would ignore that directory and pull localhost:5001 from the node itself: the patch below turns it on.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
 nodes:
   - role: control-plane
     extraPortMappings:

@@ -81,10 +81,11 @@ tasks:
         set -eu
         tmp=$(mktemp -d)
         base=https://github.com/argoproj/argo-rollouts/releases/download/{{.ROLLOUTS_PLUGIN_VERSION}}
-        curl -fsSL -o "$tmp/kubectl-argo-rollouts-linux-amd64" "$base/kubectl-argo-rollouts-linux-amd64"
+        bin=kubectl-argo-rollouts-{{OS}}-{{ARCH}}
+        curl -fsSL -o "$tmp/$bin" "$base/$bin"
         curl -fsSL -o "$tmp/checksums.txt" "$base/argo-rollouts-checksums.txt"
-        (cd "$tmp" && grep ' kubectl-argo-rollouts-linux-amd64$' checksums.txt | sha256sum -c -)
-        mkdir -p "$HOME/.local/bin" && install -m 0755 "$tmp/kubectl-argo-rollouts-linux-amd64" "$HOME/.local/bin/kubectl-argo-rollouts"
+        (cd "$tmp" && grep " $bin\$" checksums.txt | shasum -a 256 -c -)
+        mkdir -p "$HOME/.local/bin" && install -m 0755 "$tmp/$bin" "$HOME/.local/bin/kubectl-argo-rollouts"
         rm -rf "$tmp"
         kubectl argo rollouts version --short
 

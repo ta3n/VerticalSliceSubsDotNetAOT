@@ -10,17 +10,20 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends clang zlib1g-dev \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
+# Native AOT compiles for the build stage's own architecture (no cross toolchain): linux-x64 on amd64, linux-arm64 on
+# arm64 (Apple Silicon, OrbStack/kind nodes). The runtime stages below are pulled for the same platform.
+RUN case "$(dpkg --print-architecture)" in arm64) echo linux-arm64 ;; *) echo linux-x64 ;; esac > /rid
 
 # Restore first so this layer is cached until a project file changes.
 COPY Directory.Build.props ./
 COPY src/SubscriptionManagement/SubscriptionManagement.csproj src/SubscriptionManagement/
 COPY src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj src/SubscriptionManagement.Migrator/
-RUN dotnet restore src/SubscriptionManagement -r linux-x64 \
- && dotnet restore src/SubscriptionManagement.Migrator -r linux-x64
+RUN dotnet restore src/SubscriptionManagement -r "$(cat /rid)" \
+ && dotnet restore src/SubscriptionManagement.Migrator -r "$(cat /rid)"
 
 COPY src/ src/
-RUN dotnet publish src/SubscriptionManagement -c Release -r linux-x64 --no-restore -o /out/api \
- && dotnet publish src/SubscriptionManagement.Migrator -c Release -r linux-x64 --no-restore -o /out/migrator
+RUN dotnet publish src/SubscriptionManagement -c Release -r "$(cat /rid)" --no-restore -o /out/api \
+ && dotnet publish src/SubscriptionManagement.Migrator -c Release -r "$(cat /rid)" --no-restore -o /out/migrator
 
 # ---- runtime base: chiseled Ubuntu (no shell, no package manager, no .NET runtime); runs as the non-root `app` user ----
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled AS runtime-base

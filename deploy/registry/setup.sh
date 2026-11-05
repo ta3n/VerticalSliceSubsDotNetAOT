@@ -3,7 +3,7 @@
 # cluster exists (task registry:setup). The same name, localhost:${REGISTRY_PORT}, works on both ends:
 #   host  : docker push localhost:5001/<image>      -> published port of the registry container
 #   nodes : containerd pulls localhost:5001/<image> -> hosts.toml mirror -> http://kind-registry:5000 on the kind network
-# kind node images v0.27+ already read /etc/containerd/certs.d, so no containerdConfigPatches are needed.
+# containerd only reads /etc/containerd/certs.d because deploy/kind/cluster.yaml sets config_path (containerdConfigPatches).
 set -eu
 
 CLUSTER=${CLUSTER:-kind}
