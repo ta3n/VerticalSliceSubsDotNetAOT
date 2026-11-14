@@ -40,7 +40,7 @@ Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisi
 | API docs | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11 |
 | Telemetry | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter) |
 | Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
-| Load tests | k6 (load + step-up stress), Locust — run in containers by `scripts/*.sh` |
+| Load tests | k6 (smoke, load, stress, spike, soak, breakpoint, contention, pagination), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
 
 Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
@@ -74,6 +74,115 @@ dotnet run --project src/SubscriptionManagement --launch-profile http # API on h
 ```
 
 Try the API with [SubscriptionManagement.http](SubscriptionManagement.http) (VS Code REST Client / Visual Studio).
+
+### With Aspire (one command, dashboard included)
+
+[Aspire](https://aspire.dev) 13 orchestrates the same topology as `compose.yaml` — PostgreSQL 17 + Redis 7 containers,
+the migrator as a one-shot job, then the API — with the two .NET projects running from source and every log, trace and
+metric in the Aspire dashboard. Only Docker (or Podman) is needed; the dashboard and orchestrator come from NuGet.
+
+```bash
+dotnet run --project src/AppHost                         # http profile (default, no dev cert needed)
+dotnet run --project src/AppHost --launch-profile https  # https: needs a *trusted* dev certificate, see below
+```
+
+The `https` profile fails with `UntrustedRoot` ("Error connecting to the resource service") until the ASP.NET Core
+development certificate is trusted. On Linux:
+
+```bash
+dotnet dev-certs https --trust     # writes the cert to ~/.aspnet/dev-certs/trust (+ browser NSS stores)
+export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:${SSL_CERT_DIR:-/usr/lib/ssl/certs}"   # e.g. in ~/.zshrc, then restart the IDE/shell
+```
+
+The console prints the dashboard login URL (`http://localhost:15043` on the http profile). The API stays on
+`http://localhost:5127` (Scalar at `/scalar`, also linked from the dashboard), so `SubscriptionManagement.http` works
+unchanged. Startup order: Postgres → `migrator` (must exit 0) + Redis → `subscription-management` (health-checked on
+`/health/ready`). Postgres data survives restarts in a Docker volume; its generated password is kept in the AppHost's
+user secrets. The AppHost lives in `src/AppHost/AppHost.cs`; the OpenTelemetry setup shared with
+compose/Kubernetes lives in `src/SubscriptionManagement.ServiceDefaults`. Under Aspire the API's pool is capped at
+`Maximum Pool Size=50` (as in compose): Npgsql's default of 100 alone exhausts Postgres' `max_connections` under load.
+
+#### Monitoring and load testing (Grafana)
+
+By default the AppHost also starts a monitoring stack for load tests (`src/AppHost/Observability.cs`, configs in
+`src/AppHost/observability/`):
+
+```
+API / migrator ──OTLP──► OpenTelemetry Collector ─┬─► Aspire dashboard   (logs, traces, metrics)
+                                                  ├─► Prometheus         (metrics, native OTLP receiver)
+                                                  ├─► Tempo              (traces → span metrics + service graph → Prometheus)
+                                                  └─► Loki               (logs, native OTLP)
+postgres-exporter, redis-exporter ◄── scraped by Prometheus;  k6 ──remote write──► Prometheus
+Grafana ◄── Prometheus + Tempo + Loki (exemplars → traces, traces → logs/metrics, logs → traces)
+Grafana ──render──► grafana-image-renderer (headless Chromium) ──loads the panel──► Grafana
+```
+
+| URL | What |
+|---|---|
+| http://localhost:3000 | Grafana — anonymous viewing + Explore; sign in as `admin` / `admin` to edit |
+| http://localhost:9190 | Prometheus (host port 9190: 9090 is often taken) |
+
+Panels and dashboards can be exported as PNG from Grafana's share/export menus — handy for attaching a load-test
+result to a report. The [image renderer](https://grafana.com/grafana/plugins/grafana-image-renderer/) runs as its own
+container (`grafana-renderer`) with a token generated per run. The same thing over HTTP:
+
+```bash
+# one panel (panelId = the panel's "id" in the dashboard JSON) and the whole dashboard
+curl -o panel.png     'http://localhost:3000/render/d-solo/subs-aspire-service/_?panelId=11&from=now-30m&to=now&width=1000&height=500'
+curl -o dashboard.png 'http://localhost:3000/render/d/subs-aspire-loadtest/_?from=now-30m&to=now&width=1600&height=1000&kiosk=true'
+```
+
+Provisioned dashboards (folder *Subscription Management*), generated from the real metric names:
+
+* **Subscription Management — Service**: RED per route (req/s, 4xx/5xx ratio, p50/p95/p99 with exemplars → Tempo,
+  latency heatmap, per-route table), Kestrel connections/queue, exceptions, .NET runtime (CPU, memory, allocation rate,
+  GC collections and pause time, thread pool threads/queue, lock contention), Npgsql pool (used/idle vs max, pending
+  requests, command p95, commands/s), PostgreSQL server (connections vs `max_connections`, TPS, rows, cache hit ratio,
+  locks, deadlocks), Redis (commands, hit ratio, latency, memory, clients), Tempo service graph, slow/error traces,
+  logs by level, and the collector's own pipeline health (exports, failures, queue usage).
+* **Subscription Management — Load test (k6)**: VUs vs client/server throughput, client p95/p99 per scenario, client vs
+  server latency, request phases (blocked/connecting/waiting …), status codes, checks — next to the service's
+  saturation signals (CPU, GC, in-flight requests, Kestrel and thread-pool queues, Npgsql pool, Postgres connections)
+  and the error logs; plus per-endpoint client throughput/p95, dropped iterations (open-model tests), correctness
+  violations (contention, pagination) and journey / first-vs-deep-page latency.
+
+#### k6 scenarios
+
+The scenarios live in `scripts/*-test.js` (shared helpers in `scripts/lib/api.js`) and are the single source of truth:
+the same files run as Aspire resources, from the host and against compose/Kubernetes.
+
+| Scenario | Question it answers | Shape (defaults) | Passes when |
+|---|---|---|---|
+| `smoke` | Is the stack sane? Every endpoint and the whole error contract | 1 VU × 3 iterations | every check passes, no unexpected failure |
+| `load` | How does each endpoint behave under normal load? | 6 scenarios in sequence, 50 VUs × 20 s | <1% failures, p95 < 100–200 ms per scenario |
+| `stress` | What happens at one high, constant load? | 500 VUs × 60 s, mixed workload | (no thresholds; `stress-test.sh` runs the VU ladder) |
+| `spike` | Does it survive a burst, and what do regular users feel meanwhile? | 20 steady VUs + two bursts of 400 VUs | <1% failures, steady users p95 < 500 ms |
+| `soak` | Does anything degrade over time (memory, GC, pools, Redis)? | 100 iterations/s for 10 min (use 1 h+) | <0.5% failures, p95 < 300 ms, <1% dropped |
+| `breakpoint` | Where is the limit? | rate ramps 50 → 3000/s over 5 min | **aborts** at the limit (exit 99 is the result) |
+| `contention` | Is it still correct when clients race the same row? | 8 racers per pay / cancel / create-plan | exactly one winner, always |
+| `pagination` | Does keyset paging stay consistent and flat under writes? | 20 readers walking 10 pages + 2 writers | no duplicate/out-of-order row, deep page p95 < 200 ms |
+
+Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `BP_MAX_RATE`, …). Three ways to run one:
+
+* **From the Aspire dashboard**: resources `k6-<scenario>` ([Community Toolkit k6 integration](https://aspire.dev/integrations/devtools/k6/k6-get-started/),
+  `src/AppHost/LoadTests.cs`) sit under the API and are not started with the app; press ▶ (again for every run) and
+  open the Load test dashboard. A resource that exits non-zero failed its thresholds. Knobs:
+  `--LoadTest:spike:SPIKE_VUS=800 --LoadTest:soak:SOAK_DURATION=1h`; `--LoadTest:AutoStart=smoke,load` starts scenarios
+  right after startup.
+* **From the host** against the Aspire-hosted API: `task aspire:k6 -- spike` (= `ENV_FILE=scripts/.env.aspire
+  scripts/k6-test.sh spike`), e.g. `SOAK_DURATION=1h task aspire:k6 -- soak`. With `K6_PROMETHEUS_RW_SERVER_URL` set
+  (the Aspire env file does) k6 also remote-writes to Prometheus; a JSON summary lands in `artifacts/k6/`.
+* **Against compose or Kubernetes**: `ENV_FILE=scripts/.env.compose scripts/k6-test.sh smoke`, `task k6 -- smoke`.
+
+k6 metrics drop the `url`/`name` tags (they carry entity ids → one series per request); the scripts tag every request
+with its route template instead (`endpoint`, e.g. `GET /subscriptions/{id}`), which the Load test dashboard uses for
+the per-endpoint panels. Expected error responses (404/409/400 in the contract and race tests) are declared as such, so
+they do not count as failed requests. Plans cannot be deleted, so the scenarios create only a handful of them.
+k6's Prometheus remote-write output is deprecated upstream (removal planned for k6 v3) in favour of its OpenTelemetry
+output; it works on the pinned k6 2.x.
+
+Prometheus/Tempo/Loki keep data only for the life of their containers. For a lean run without the stack (Aspire
+dashboard only, k6 resources still available): `dotnet run --project src/AppHost -- --Observability:Enabled=false`.
 
 ### Endpoints
 
@@ -129,6 +238,26 @@ dotnet test tests/SubscriptionManagement.IntegrationTests    # real PostgreSQL 1
 Integration tests host the real application with `WebApplicationFactory<Program>`; the schema is created by the real migrator; there is no EF InMemory and no mocking.
 They cover every endpoint, error shapes, validation and malformed input, cache hits/eviction/TTL against real Redis and a Redis outage, concurrent cancels/payments/duplicate plans
 (row locks), keyset paging with ties, correlation headers, health, OpenAPI on/off and migrator idempotence/tamper detection.
+Failure modes are covered too: an unreachable or unconfigured database (opaque 500, readiness DOWN, liveness still UP,
+startup fail-fast), the `healthcheck` probe mode against a real listener, the OpenTelemetry defaults (opt-in, service
+name, `/health*` not traced) and the migrator's exit codes (2 usage, 1 failure, 0 success).
+
+### Code quality: SonarQube
+
+A local SonarQube (Community Build, PostgreSQL-backed, `deploy/sonarqube/compose.yaml`) analyses the C# code plus the
+scripts, Dockerfile, Helm/Kubernetes YAML, and imports test coverage (coverlet → OpenCover, `tests/coverage.runsettings`).
+
+```bash
+task sonar:up       # start on http://localhost:9000; generates the admin password, project and analysis token (.sonar/, git-ignored)
+task sonar:scan     # dotnet-sonarscanner begin → build → unit + integration tests with coverage → end; prints the report
+task sonar:report   # quality gate, measures, open issues, hotspots and per-file uncovered lines of the last analysis
+task sonar:open     # URL + admin credentials;   task sonar:down / sonar:purge to stop / delete everything
+```
+
+The scanner is a repo-local tool (`dotnet-tools.json`, restored by the script). Excluded from analysis: generated output
+(`graphify-out/`, `artifacts/`, `bin/obj`), docs and the generated Grafana dashboards; excluded from coverage: tests, the
+Aspire AppHost and scripts/deploy files. `kubernetes:S5332` (clear-text HTTP) is ignored for `deploy/**`: those are
+in-cluster service URLs of the local kind platform.
 
 ## Native AOT
 
@@ -321,9 +450,12 @@ are dropped before Loki (they are already counted and traced); 4xx/5xx and gatew
 ```
 src/SubscriptionManagement/            API: Program.cs, Features/{Subscriptions,Plans,Invoices}, Infrastructure/
 src/SubscriptionManagement.Migrator/   SQL migration runner + embedded V*.sql
+src/AppHost/                           Aspire AppHost: local orchestration (Postgres, Redis, migrator, API) + dashboard
+src/AppHost/observability/             OTel Collector, Prometheus, Tempo, Loki configs + Grafana provisioning/dashboards
+src/SubscriptionManagement.ServiceDefaults/  shared OpenTelemetry defaults (logs, traces, metrics over OTLP)
 tests/SubscriptionManagement.UnitTests/         domain, validators, cursor codec, problem writer
 tests/SubscriptionManagement.IntegrationTests/  Testcontainers + WebApplicationFactory
-scripts/                               aot-smoke.sh, measure-startup.sh, k6 load/stress + Locust tests, .env (k8s) / .env.compose
+scripts/                               aot-smoke.sh, measure-startup.sh, k6 scenarios (*-test.js, lib/api.js, k6-test.sh) + Locust, sonar.sh, .env (k8s) / .env.compose / .env.aspire
 deploy/helm/subscription-management/   Helm chart (API/Rollout, migrator, PostgreSQL, Redis, Kong plugins, monitoring, canary analysis)
 deploy/kind/ · kong/ · registry/       kind cluster config, Kong values, local registry setup
 deploy/observability/                  kube-prometheus-stack, Loki, Tempo, Alloy, Kong telemetry plugins
@@ -335,7 +467,7 @@ docs/                                  technical-design, implementation-plan, mi
 ## Observability
 
 * **Logging:** structured JSON to stdout with scopes (`traceId`, request path). Unhandled errors are logged once with the trace id and returned as an opaque 500 problem.
-* **Tracing/metrics:** set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` if your collector expects HTTP) to export ASP.NET Core and Npgsql telemetry. On Kubernetes this is wired to Grafana/Tempo/Prometheus — see [Monitoring](#monitoring-grafana-prometheus-loki-tempo).
+* **Tracing/metrics/logs:** set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` if your collector expects HTTP) to export ASP.NET Core, Npgsql and runtime telemetry plus logs (`/health*` requests are not traced). The Aspire AppHost sets these automatically. On Kubernetes this is wired to Grafana/Tempo/Prometheus — see [Monitoring](#monitoring-grafana-prometheus-loki-tempo).
 * **Health:** `/health/live` (process), `/health/ready` (database — deliberately not Redis, as in the reference), `/health` (database + cache). Bodies contain only `{"status":"UP|DOWN"}`.
 * **Correlation:** `X-Trace-Id` in/out, and as `traceId` in every problem response.
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coverlet settings used by scripts/sonar.sh (dotnet test with the "XPlat Code Coverage" collector and this file):
+     OpenCover output, which SonarQube imports. Only production assemblies are measured. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>opencover</Format>
+          <Include>[SubscriptionManagement]*,[SubscriptionManagement.Migrator]*,[SubscriptionManagement.ServiceDefaults]*</Include>
+          <!-- Not CompilerGeneratedAttribute: it would also drop async state machines and top-level Program. -->
+          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**/*.cs</ExcludeByFile>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -62,3 +62,7 @@ nunit-*.xml
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Local SonarQube credentials (scripts/sonar.sh) and scanner work dir
+.sonar/
+.sonarqube/

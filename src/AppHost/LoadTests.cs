@@ -1,0 +1,96 @@
+using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.Configuration;
+
+namespace AppHost;
+
+/// <summary>
+/// The k6 scenarios of <c>scripts/*-test.js</c> as Aspire resources (Community Toolkit k6 integration). The scripts
+/// are the single source of truth: the same files run from the host (<c>scripts/k6-test.sh</c>), against compose and
+/// against the Kubernetes stack.
+/// <para>
+/// A test does not start with the app: press ▶ on <c>k6-&lt;name&gt;</c> in the dashboard (again for every run), or
+/// pass <c>--LoadTest:AutoStart=smoke</c> (comma-separated names). Knobs documented in each script's header are set
+/// with <c>--LoadTest:&lt;name&gt;:&lt;KNOB&gt;=value</c>, e.g. <c>--LoadTest:spike:SPIKE_VUS=800</c>. A resource
+/// that ends in a non-zero exit code failed its thresholds (99) — for <c>breakpoint</c> that is the expected end.
+/// </para>
+/// </summary>
+internal static class LoadTests
+{
+    private const string ScriptsDir = "../../scripts";
+
+    // No `url`/`name`: they carry entity ids and would create a Prometheus series per request. The scripts tag every
+    // request with the route template (`endpoint`) instead.
+    private const string K6SystemTags = "scenario,status,method,expected_response,check,error_code,group";
+
+    /// <summary>Name → what it answers, plus the sizes that suit a single local instance (script defaults otherwise).</summary>
+    private static readonly (string Name, string Purpose, (string Knob, string Value)[] Defaults)[] Suite =
+    [
+        ("smoke", "every endpoint + error contract, a few iterations", []),
+        ("load", "per-endpoint load: plans, cached reads, creates, lifecycle, search, burst", [("VUS", "50"), ("DURATION", "20s")]),
+        ("stress", "one constant-VU step of the mixed workload", [("VUS", "500"), ("DURATION", "60s")]),
+        ("spike", "steady users + two sudden bursts, and the recovery in between", []),
+        ("soak", "constant request rate over a long time (leaks, GC, pools)", []),
+        ("breakpoint", "ramp the request rate until thresholds abort the run", []),
+        ("contention", "races on the same row: exactly one winner", []),
+        ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency", []),
+    ];
+
+    public static void AddK6Suite(
+        this IDistributedApplicationBuilder builder,
+        IResourceBuilder<ProjectResource> api,
+        ObservabilityStack? stack)
+    {
+        var settings = builder.Configuration.GetSection("LoadTest");
+        var autoStart = (settings["AutoStart"] ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (name, purpose, defaults) in Suite)
+        {
+            // WithScript's virtualUsers/duration map to --vus/--duration, which would REPLACE the scenarios a script
+            // declares; sizes therefore travel as environment variables the scripts read.
+            var k6 = builder.AddK6($"k6-{name}")
+                .WithBindMount(ScriptsDir, "/scripts", isReadOnly: true)
+                .WithScript($"/scripts/{name}-test.js")
+                .WithArgs("--tag", $"testid={name}")
+                .WithReference(api)
+                .WithEnvironment("BASE_URL", api.GetEndpoint("http"))
+                .WithParentRelationship(api)
+                .WaitFor(api)
+                .WithUrlForEndpoint("http", url =>
+                {
+                    url.Url = "/v1/status";
+                    url.DisplayText = $"k6 status ({purpose})";
+                    url.DisplayLocation = UrlDisplayLocation.DetailsOnly;
+                });
+
+            var knobs = defaults.ToDictionary(d => d.Knob, d => d.Value, StringComparer.OrdinalIgnoreCase);
+            foreach (var overridden in settings.GetSection(name).GetChildren())
+            {
+                knobs[overridden.Key.ToUpperInvariant()] = overridden.Value ?? "";
+            }
+
+            foreach (var (knob, value) in knobs)
+            {
+                k6.WithEnvironment(knob, value);
+            }
+
+            if (stack is not null)
+            {
+                // Client-side metrics → Prometheus remote write → Grafana "Load test (k6)" dashboard.
+                k6.WithEnvironment("K6_OUT", "experimental-prometheus-rw")
+                    .WithEnvironment("K6_PROMETHEUS_RW_SERVER_URL", ReferenceExpression.Create($"{stack.Prometheus.GetEndpoint("http")}/api/v1/write"))
+                    .WithEnvironment("K6_PROMETHEUS_RW_TREND_STATS", "p(50),p(95),p(99),avg,max")
+                    .WithEnvironment("K6_PROMETHEUS_RW_PUSH_INTERVAL", "5s")
+                    .WithEnvironment("K6_PROMETHEUS_RW_STALE_MARKERS", "true")
+                    .WithEnvironment("K6_SYSTEM_TAGS", K6SystemTags)
+                    .WaitFor(stack.Prometheus);
+            }
+
+            if (!autoStart.Contains(name))
+            {
+                k6.WithExplicitStart();
+            }
+        }
+    }
+}

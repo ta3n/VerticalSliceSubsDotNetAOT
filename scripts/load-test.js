@@ -13,12 +13,12 @@ const vus = Number(__ENV.VUS || 50);
 export const options = {
   scenarios: {
     read_plans:   { executor: 'constant-vus', vus, duration: dur, exec: 'readPlans', startTime: '0s' },
-    read_cached:  { executor: 'constant-vus', vus, duration: dur, exec: 'readSubscription', startTime: `${parseInt(dur) + 5}s` },
-    create:       { executor: 'constant-vus', vus, duration: dur, exec: 'createSubscription', startTime: `${(parseInt(dur) + 5) * 2}s` },
-    lifecycle:    { executor: 'constant-vus', vus: Math.ceil(vus / 2), duration: dur, exec: 'fullLifecycle', startTime: `${(parseInt(dur) + 5) * 3}s` },
-    search:       { executor: 'constant-vus', vus, duration: dur, exec: 'search', startTime: `${(parseInt(dur) + 5) * 4}s` },
+    read_cached:  { executor: 'constant-vus', vus, duration: dur, exec: 'readSubscription', startTime: `${Number.parseInt(dur) + 5}s` },
+    create:       { executor: 'constant-vus', vus, duration: dur, exec: 'createSubscription', startTime: `${(Number.parseInt(dur) + 5) * 2}s` },
+    lifecycle:    { executor: 'constant-vus', vus: Math.ceil(vus / 2), duration: dur, exec: 'fullLifecycle', startTime: `${(Number.parseInt(dur) + 5) * 3}s` },
+    search:       { executor: 'constant-vus', vus, duration: dur, exec: 'search', startTime: `${(Number.parseInt(dur) + 5) * 4}s` },
     spike:        { executor: 'ramping-vus', stages: [{ duration: '5s', target: vus * 4 }, { duration: '10s', target: vus * 4 }, { duration: '5s', target: 0 }],
-                    exec: 'readPlans', startTime: `${(parseInt(dur) + 5) * 5}s` },
+                    exec: 'readPlans', startTime: `${(Number.parseInt(dur) + 5) * 5}s` },
   },
   thresholds: {
     http_req_failed: ['rate<0.01'],

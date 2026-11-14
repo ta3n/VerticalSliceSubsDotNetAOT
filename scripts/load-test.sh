@@ -12,6 +12,8 @@ engine=${CONTAINER_ENGINE:-podman}
 base=${BASE_URL:-http://localhost:8080}
 curl -fsS "$base/health" >/dev/null || { echo "API not reachable at $base - start the stack (task up / podman compose up -d --build) or check BASE_URL in ${ENV_FILE:-scripts/.env}" >&2; exit 1; }
 mkdir -p "$root/artifacts"
+mapfile -t rw_env < <(k6_prometheus_args)
+mapfile -t rw_out < <(k6_output_args load)
 "$engine" run --rm --user "$(container_user)" --network host -v "$root/scripts:/scripts:ro,z" -v "$root/artifacts:/out:z" \
-  -e BASE_URL="$base" -e VUS="${VUS:-50}" -e DURATION="${DURATION:-20s}" \
-  docker.io/grafana/k6:latest run --summary-export=/out/load-test-summary.json /scripts/load-test.js
+  -e BASE_URL="$base" -e VUS="${VUS:-50}" -e DURATION="${DURATION:-20s}" "${rw_env[@]}" \
+  docker.io/grafana/k6:latest run "${rw_out[@]}" --summary-export=/out/load-test-summary.json /scripts/load-test.js

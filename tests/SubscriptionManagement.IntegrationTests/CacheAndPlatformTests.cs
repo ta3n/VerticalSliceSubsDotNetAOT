@@ -234,7 +234,8 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         var applied = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => MigrationRunner.RunAsync(builder.ConnectionString, logger)));
 
-        Assert.Equal(4, applied.Sum()); // V1..V4, each applied by exactly one runner
+        // Every embedded migration applied by exactly one runner (no hard-coded count: it grows with each V*.sql).
+        Assert.Equal(MigrationRunner.LoadEmbedded().Count, applied.Sum());
     }
 
     [Fact]

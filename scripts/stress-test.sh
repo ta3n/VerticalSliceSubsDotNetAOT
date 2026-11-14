@@ -9,12 +9,14 @@ source "$root/scripts/env.sh"   # scripts/.env (local k8s) unless ENV_FILE says 
 engine=${CONTAINER_ENGINE:-podman}; base=${BASE_URL:-http://localhost:8080}
 curl -fsS "$base/health" >/dev/null || { echo "API not reachable at $base - start the stack (task up / podman compose up -d --build) or check BASE_URL in ${ENV_FILE:-scripts/.env}" >&2; exit 1; }
 mkdir -p "$root/artifacts/stress"
+mapfile -t rw_env < <(k6_prometheus_args)
+mapfile -t rw_out < <(k6_output_args stress)
 levels=${LEVELS:-100 250 500 1000 2000 4000 8000}
 for v in $levels; do
   "$engine" run --rm --user "$(container_user)" --network host --ulimit nofile=$(ulimit -Hn):$(ulimit -Hn) \
     -v "$root/scripts:/scripts:ro,z" -v "$root/artifacts/stress:/out:z" \
-    -e BASE_URL="$base" -e VUS="$v" -e DURATION="${DURATION:-20s}" \
-    docker.io/grafana/k6:latest run --quiet --summary-export="/out/vus-$v.json" /scripts/stress-test.js >"$root/artifacts/stress/k6-$v.log" 2>&1 || true
+    -e BASE_URL="$base" -e VUS="$v" -e DURATION="${DURATION:-20s}" "${rw_env[@]}" \
+    docker.io/grafana/k6:latest run "${rw_out[@]}" --quiet --summary-export="/out/vus-$v.json" /scripts/stress-test.js >"$root/artifacts/stress/k6-$v.log" 2>&1 || true
   sleep 3
 done
 # Only this run's levels: artifacts/stress also keeps results of earlier runs (other levels, other targets).

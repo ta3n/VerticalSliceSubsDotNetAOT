@@ -61,6 +61,6 @@ public static class HealthEndpoints
             writer.WriteEndObject();
         }
 
-        await context.Response.BodyWriter.FlushAsync();
+        await context.Response.BodyWriter.FlushAsync(context.RequestAborted);
     }
 }

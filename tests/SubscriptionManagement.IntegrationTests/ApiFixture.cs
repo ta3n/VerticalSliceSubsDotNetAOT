@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -36,16 +37,27 @@ public sealed class ApiFixture : IAsyncLifetime
         Redis = await ConnectionMultiplexer.ConnectAsync(RedisConnectionString);
     }
 
-    public WebApplicationFactory<Program> CreateFactory(bool redis) =>
+    /// <param name="redis">Use the Redis container (otherwise the in-process cache).</param>
+    /// <param name="postgres">Overrides the PostgreSQL connection string (e.g. an unreachable server or "").</param>
+    /// <param name="settings">Host settings that must be visible while Program.cs builds the app (e.g. OTEL_*).</param>
+    public WebApplicationFactory<Program> CreateFactory(
+        bool redis, string? postgres = null, IReadOnlyDictionary<string, string>? settings = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+            {
+                builder.UseSetting(key, value);
+            }
+
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                var settings = new Dictionary<string, string?> { ["ConnectionStrings:Postgres"] = PostgresConnectionString };
+                var values = new Dictionary<string, string?> { ["ConnectionStrings:Postgres"] = postgres ?? PostgresConnectionString };
                 // Always set explicitly: appsettings.Development.json points at localhost:6379 for local runs.
-                settings["ConnectionStrings:Redis"] = redis ? RedisConnectionString : "";
+                values["ConnectionStrings:Redis"] = redis ? RedisConnectionString : "";
 
-                config.AddInMemoryCollection(settings);
-            }));
+                config.AddInMemoryCollection(values);
+            });
+        });
 
     public async Task<NpgsqlConnection> OpenDbAsync()
     {

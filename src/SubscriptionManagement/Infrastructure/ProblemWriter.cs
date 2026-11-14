@@ -36,7 +36,7 @@ public static class ProblemWriter
             WriteBody(writer, context, timeProvider, status, slug, title, detail, extensions, errors);
         }
 
-        await response.BodyWriter.FlushAsync();
+        await response.BodyWriter.FlushAsync(context.RequestAborted);
     }
 
     private static void WriteBody(

@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" />
     <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj" />
+    <Project Path="src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj" />
     <Project Path="src/SubscriptionManagement/SubscriptionManagement.csproj" />
   </Folder>
   <Folder Name="/tests/">

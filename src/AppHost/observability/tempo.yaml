@@ -1,0 +1,59 @@
+# Tempo (single binary, local storage under /tmp — data lives as long as the container) for the Aspire AppHost.
+# The metrics generator turns spans into RED metrics + a service graph and remote-writes them to Prometheus, which
+# powers Grafana's service map and the traces -> metrics links. Started with -config.expand-env=true.
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  log_level: warn
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+          max_recv_msg_size_mib: 32
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h
+
+metrics_generator:
+  processor:
+    service_graphs:
+      # Load tests open many edges at once; the default (10k) drops spans from the service graph.
+      max_items: 200000
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: ${PROMETHEUS_REMOTE_WRITE_URL}
+        send_exemplars: true
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+
+overrides:
+  defaults:
+    # Defaults are sized for a shared cluster; a local load test easily exceeds them.
+    ingestion:
+      rate_limit_bytes: 100000000
+      burst_size_bytes: 200000000
+      max_traces_per_user: 0
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks]

@@ -594,10 +594,84 @@ tasks:
     cmds:
       - scripts/stress-test.sh
 
+  k6:
+    desc: "Any k6 scenario through Kong: task k6 -- <smoke|load|stress|spike|soak|breakpoint|contention|pagination>"
+    cmds:
+      - scripts/k6-test.sh {{.CLI_ARGS}}
+
   locust-test:
     desc: Locust load test through Kong (scripts/locust-test.sh; WEB=1 for the UI on :8089)
     cmds:
       - scripts/locust-test.sh
+
+  # ---------------------------------------------------------------- aspire (local, no cluster)
+  aspire:
+    desc: "Run the app locally under Aspire + monitoring (Aspire dashboard :15043, Grafana :3000, Prometheus :9190)"
+    cmds:
+      - dotnet run --project src/AppHost --launch-profile http
+
+  aspire:lean:
+    desc: "Run the app locally under Aspire without the Grafana/Prometheus/Tempo/Loki stack"
+    cmds:
+      - dotnet run --project src/AppHost --launch-profile http -- --Observability:Enabled=false
+
+  aspire:k6:
+    desc: "Any k6 scenario against the Aspire-hosted API (results in Grafana): task aspire:k6 -- <smoke|spike|soak|...>"
+    # Task-level dotenv: beats the global scripts/.env (Kong on :9080), still loses to variables set in the shell.
+    dotenv: [scripts/.env.aspire]
+    env: { ENV_FILE: scripts/.env.aspire }
+    cmds:
+      - scripts/k6-test.sh {{.CLI_ARGS}}
+
+  aspire:load-test:
+    desc: "k6 load test against the Aspire-hosted API (results in Grafana: Load test dashboard)"
+    # Task-level dotenv: beats the global scripts/.env (Kong on :9080), still loses to variables set in the shell.
+    dotenv: [scripts/.env.aspire]
+    env: { ENV_FILE: scripts/.env.aspire }
+    cmds:
+      - scripts/load-test.sh
+
+  aspire:stress-test:
+    desc: "k6 VU ladder against the Aspire-hosted API (results in Grafana: Load test dashboard)"
+    # Task-level dotenv: beats the global scripts/.env (Kong on :9080), still loses to variables set in the shell.
+    dotenv: [scripts/.env.aspire]
+    env: { ENV_FILE: scripts/.env.aspire }
+    cmds:
+      - scripts/stress-test.sh
+
+  # ---------------------------------------------------------------- code quality (SonarQube on Docker)
+  sonar:up:
+    desc: "Start SonarQube (http://localhost:9000) and set up admin password, project and token (stored in .sonar/)"
+    cmds:
+      - scripts/sonar.sh up
+
+  sonar:scan:
+    desc: "Build + unit/integration tests with coverage + SonarQube analysis, then print gate, measures and issues"
+    deps: [sonar:up]
+    cmds:
+      - scripts/sonar.sh scan
+
+  sonar:report:
+    desc: "Print the quality gate, measures, open issues and per-file coverage of the last analysis"
+    cmds:
+      - scripts/sonar.sh report
+
+  sonar:open:
+    desc: "Print the SonarQube URL and the admin credentials"
+    silent: true
+    cmds:
+      - 'echo "SonarQube: http://localhost:9000/dashboard?id=subscription-management   (admin / $(cat .sonar/admin-password))"'
+
+  sonar:down:
+    desc: "Stop SonarQube (data kept)"
+    cmds:
+      - scripts/sonar.sh down
+
+  sonar:purge:
+    desc: "Stop SonarQube and delete its data and the local credentials"
+    prompt: Delete all SonarQube data?
+    cmds:
+      - scripts/sonar.sh purge
 
   # ---------------------------------------------------------------- end to end
   up:

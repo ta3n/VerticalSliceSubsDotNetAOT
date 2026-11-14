@@ -3,9 +3,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using SubscriptionManagement.Features.Invoices.GetInvoice;
 using SubscriptionManagement.Features.Invoices.ListInvoicesBySubscription;
@@ -68,15 +65,9 @@ builder.Services.AddSingleton<IDistributedCache>(sp =>
 });
 builder.Services.AddSingleton<SubscriptionCache>();
 
-// Telemetry is exported only when an OTLP endpoint is configured (OTEL_EXPORTER_OTLP_ENDPOINT); the exporter reads
-// the standard OTEL_* environment variables itself.
-if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
-{
-    builder.Services.AddOpenTelemetry()
-        .ConfigureResource(r => r.AddService("subscription-management"))
-        .WithTracing(t => t.AddAspNetCoreInstrumentation().AddNpgsql().AddOtlpExporter())
-        .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddNpgsqlInstrumentation().AddOtlpExporter());
-}
+// OpenTelemetry (logs, traces, metrics) over OTLP when OTEL_EXPORTER_OTLP_ENDPOINT is set — by the Aspire AppHost,
+// compose or Helm. See SubscriptionManagement.ServiceDefaults.
+builder.AddServiceDefaults("subscription-management");
 
 // API description + Scalar UI; off unless OpenApi:Enabled=true (enabled in appsettings.Development.json).
 var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
@@ -140,8 +131,5 @@ if (openApiEnabled)
     app.MapScalarApiReference();      // /scalar
 }
 
-app.Run();
+await app.RunAsync();
 return 0;
-
-/// <summary>Exposed for <c>WebApplicationFactory&lt;Program&gt;</c> in the integration tests.</summary>
-public partial class Program;

@@ -91,11 +91,11 @@ public static partial class MigrationRunner
                 }
 
                 await tx.CommitAsync(ct);
-                logger.LogInformation("Applied migration V{Version} {Description}", migration.Version, migration.Description);
+                LogApplied(logger, migration.Version, migration.Description);
                 count++;
             }
 
-            logger.LogInformation("Schema is up to date ({Applied} applied, {Total} total)", count, migrations.Count);
+            LogUpToDate(logger, count, migrations.Count);
             return count;
         }
         finally
@@ -103,6 +103,12 @@ public static partial class MigrationRunner
             await ExecuteAsync(connection, $"SELECT pg_advisory_unlock({AdvisoryLockKey})", CancellationToken.None);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Applied migration V{Version} {Description}")]
+    private static partial void LogApplied(ILogger logger, int version, string description);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Schema is up to date ({Applied} applied, {Total} total)")]
+    private static partial void LogUpToDate(ILogger logger, int applied, int total);
 
     private static async Task<Dictionary<int, string>> LoadAppliedAsync(NpgsqlConnection connection, CancellationToken ct)
     {

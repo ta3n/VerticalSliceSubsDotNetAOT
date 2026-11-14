@@ -1,0 +1,60 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Npgsql;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
+namespace Microsoft.Extensions.Hosting;
+
+/// <summary>
+/// Service defaults shared by every service in the solution. Under the Aspire AppHost the OTEL_* variables are
+/// injected automatically, so logs, traces and metrics show up in the Aspire dashboard; in Docker/Kubernetes the same
+/// variables come from compose/Helm.
+/// </summary>
+public static class ServiceDefaultsExtensions
+{
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, string serviceName)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.ConfigureOpenTelemetry(serviceName);
+        return builder;
+    }
+
+    /// <summary>
+    /// Telemetry is exported only when an OTLP endpoint is configured (OTEL_EXPORTER_OTLP_ENDPOINT); the exporter
+    /// reads the standard OTEL_* variables itself. OTEL_SERVICE_NAME wins over <paramref name="serviceName"/>.
+    /// </summary>
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, string serviceName)
+        where TBuilder : IHostApplicationBuilder
+    {
+        if (string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            return builder;
+        }
+
+        var configuredName = builder.Configuration["OTEL_SERVICE_NAME"];
+
+        builder.Logging.AddOpenTelemetry(o =>
+        {
+            o.IncludeFormattedMessage = true;
+            o.IncludeScopes = true;
+        });
+
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(r => r.AddService(string.IsNullOrWhiteSpace(configuredName) ? serviceName : configuredName))
+            .WithTracing(t => t
+                // Health probes (Kubernetes, the Aspire dashboard) would otherwise drown out real traffic.
+                .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health"))
+                .AddNpgsql())
+            .WithMetrics(m => m
+                .AddAspNetCoreInstrumentation()
+                .AddNpgsqlInstrumentation()
+                .AddMeter("System.Runtime"))
+            .UseOtlpExporter();
+
+        return builder;
+    }
+}
