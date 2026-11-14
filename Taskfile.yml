@@ -595,7 +595,7 @@ tasks:
       - scripts/stress-test.sh
 
   k6:
-    desc: "Any k6 scenario through Kong: task k6 -- <smoke|load|stress|spike|soak|breakpoint|contention|pagination>"
+    desc: "Any k6 scenario through Kong: task k6 -- <smoke|load|stress|spike|soak|rampup|breakpoint|contention|pagination>"
     cmds:
       - scripts/k6-test.sh {{.CLI_ARGS}}
 

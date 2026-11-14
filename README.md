@@ -40,7 +40,7 @@ Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisi
 | API docs | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11 |
 | Telemetry | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter) |
 | Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
-| Load tests | k6 (smoke, load, stress, spike, soak, breakpoint, contention, pagination), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
+| Load tests | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
 
 Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
@@ -100,7 +100,21 @@ unchanged. Startup order: Postgres → `migrator` (must exit 0) + Redis → `sub
 `/health/ready`). Postgres data survives restarts in a Docker volume; its generated password is kept in the AppHost's
 user secrets. The AppHost lives in `src/AppHost/AppHost.cs`; the OpenTelemetry setup shared with
 compose/Kubernetes lives in `src/SubscriptionManagement.ServiceDefaults`. Under Aspire the API's pool is capped at
-`Maximum Pool Size=50` (as in compose): Npgsql's default of 100 alone exhausts Postgres' `max_connections` under load.
+`Maximum Pool Size=900` (as in compose) and Postgres runs with `max_connections=1000`: the pool must stay below
+`max_connections`, leaving room for the reserved slots, the migrator and the exporter.
+
+The AppHost's operational settings live in `src/AppHost/appsettings.json`; override any of them with
+`--Section:Key=value`, an environment variable (`Section__Key`) or user secrets:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Postgres:MaxConnections` | 1000 | PostgreSQL `max_connections` |
+| `Api:PostgresMaxPoolSize` | 900 | Npgsql `Maximum Pool Size` of the API; startup fails unless it is below `MaxConnections` − 3 |
+| `Observability:Enabled` | true | Prometheus/Tempo/Loki/Grafana stack next to the Aspire dashboard |
+| `Observability:GrafanaPort` / `PrometheusPort` | 3000 / 9190 | Fixed host ports (`scripts/.env.aspire` points k6 at the Prometheus one) |
+| `Observability:PrometheusRetention` | 7d | Prometheus TSDB retention |
+| `LoadTest:AutoStart` | (empty) | Comma-separated k6 scenarios to start with the app |
+| `LoadTest:<name>:<KNOB>` | `load`/`stress`: 2000 VUs | Knobs of a k6 scenario (see each script's header) |
 
 #### Monitoring and load testing (Grafana)
 
@@ -154,15 +168,16 @@ the same files run as Aspire resources, from the host and against compose/Kubern
 | Scenario | Question it answers | Shape (defaults) | Passes when |
 |---|---|---|---|
 | `smoke` | Is the stack sane? Every endpoint and the whole error contract | 1 VU × 3 iterations | every check passes, no unexpected failure |
-| `load` | How does each endpoint behave under normal load? | 6 scenarios in sequence, 50 VUs × 20 s | <1% failures, p95 < 100–200 ms per scenario |
-| `stress` | What happens at one high, constant load? | 500 VUs × 60 s, mixed workload | (no thresholds; `stress-test.sh` runs the VU ladder) |
+| `load` | How does each endpoint behave under normal load? | 6 scenarios in sequence, 2000 VUs × 20 s | <1% failures, p95 < 100–200 ms per scenario |
+| `stress` | What happens at one high, constant load? | 2000 VUs × 60 s, mixed workload | (no thresholds; `stress-test.sh` runs the VU ladder) |
 | `spike` | Does it survive a burst, and what do regular users feel meanwhile? | 20 steady VUs + two bursts of 400 VUs | <1% failures, steady users p95 < 500 ms |
 | `soak` | Does anything degrade over time (memory, GC, pools, Redis)? | 100 iterations/s for 10 min (use 1 h+) | <0.5% failures, p95 < 300 ms, <1% dropped |
+| `rampup` | How do latency and throughput change as users build up gradually? | VUs ramp 50 → 2000 over 5 min, hold 1 min | <1% failures, p95 < 1 s |
 | `breakpoint` | Where is the limit? | rate ramps 50 → 3000/s over 5 min | **aborts** at the limit (exit 99 is the result) |
 | `contention` | Is it still correct when clients race the same row? | 8 racers per pay / cancel / create-plan | exactly one winner, always |
 | `pagination` | Does keyset paging stay consistent and flat under writes? | 20 readers walking 10 pages + 2 writers | no duplicate/out-of-order row, deep page p95 < 200 ms |
 
-Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `BP_MAX_RATE`, …). Three ways to run one:
+Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, …). Three ways to run one:
 
 * **From the Aspire dashboard**: resources `k6-<scenario>` ([Community Toolkit k6 integration](https://aspire.dev/integrations/devtools/k6/k6-get-started/),
   `src/AppHost/LoadTests.cs`) sit under the API and are not started with the app; press ▶ (again for every run) and

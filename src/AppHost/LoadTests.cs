@@ -10,7 +10,8 @@ namespace AppHost;
 /// <para>
 /// A test does not start with the app: press ▶ on <c>k6-&lt;name&gt;</c> in the dashboard (again for every run), or
 /// pass <c>--LoadTest:AutoStart=smoke</c> (comma-separated names). Knobs documented in each script's header are set
-/// with <c>--LoadTest:&lt;name&gt;:&lt;KNOB&gt;=value</c>, e.g. <c>--LoadTest:spike:SPIKE_VUS=800</c>. A resource
+/// under <c>LoadTest:&lt;name&gt;</c> in <c>appsettings.json</c> (sizes that differ from the script defaults live
+/// there) or with <c>--LoadTest:&lt;name&gt;:&lt;KNOB&gt;=value</c>, e.g. <c>--LoadTest:spike:SPIKE_VUS=800</c>. A resource
 /// that ends in a non-zero exit code failed its thresholds (99) — for <c>breakpoint</c> that is the expected end.
 /// </para>
 /// </summary>
@@ -22,17 +23,18 @@ internal static class LoadTests
     // request with the route template (`endpoint`) instead.
     private const string K6SystemTags = "scenario,status,method,expected_response,check,error_code,group";
 
-    /// <summary>Name → what it answers, plus the sizes that suit a single local instance (script defaults otherwise).</summary>
-    private static readonly (string Name, string Purpose, (string Knob, string Value)[] Defaults)[] Suite =
+    /// <summary>Name → what it answers.</summary>
+    private static readonly (string Name, string Purpose)[] Suite =
     [
-        ("smoke", "every endpoint + error contract, a few iterations", []),
-        ("load", "per-endpoint load: plans, cached reads, creates, lifecycle, search, burst", [("VUS", "50"), ("DURATION", "20s")]),
-        ("stress", "one constant-VU step of the mixed workload", [("VUS", "500"), ("DURATION", "60s")]),
-        ("spike", "steady users + two sudden bursts, and the recovery in between", []),
-        ("soak", "constant request rate over a long time (leaks, GC, pools)", []),
-        ("breakpoint", "ramp the request rate until thresholds abort the run", []),
-        ("contention", "races on the same row: exactly one winner", []),
-        ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency", []),
+        ("smoke", "every endpoint + error contract, a few iterations"),
+        ("load", "per-endpoint load: plans, cached reads, creates, lifecycle, search, burst"),
+        ("stress", "one constant-VU step of the mixed workload"),
+        ("spike", "steady users + two sudden bursts, and the recovery in between"),
+        ("soak", "constant request rate over a long time (leaks, GC, pools)"),
+        ("rampup", "VUs grow linearly from 50 to 2000, hold, then leave"),
+        ("breakpoint", "ramp the request rate until thresholds abort the run"),
+        ("contention", "races on the same row: exactly one winner"),
+        ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency"),
     ];
 
     public static void AddK6Suite(
@@ -45,7 +47,7 @@ internal static class LoadTests
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (name, purpose, defaults) in Suite)
+        foreach (var (name, purpose) in Suite)
         {
             // WithScript's virtualUsers/duration map to --vus/--duration, which would REPLACE the scenarios a script
             // declares; sizes therefore travel as environment variables the scripts read.
@@ -64,15 +66,9 @@ internal static class LoadTests
                     url.DisplayLocation = UrlDisplayLocation.DetailsOnly;
                 });
 
-            var knobs = defaults.ToDictionary(d => d.Knob, d => d.Value, StringComparer.OrdinalIgnoreCase);
-            foreach (var overridden in settings.GetSection(name).GetChildren())
+            foreach (var knob in settings.GetSection(name).GetChildren())
             {
-                knobs[overridden.Key.ToUpperInvariant()] = overridden.Value ?? "";
-            }
-
-            foreach (var (knob, value) in knobs)
-            {
-                k6.WithEnvironment(knob, value);
+                k6.WithEnvironment(knob.Key.ToUpperInvariant(), knob.Value ?? "");
             }
 
             if (stack is not null)

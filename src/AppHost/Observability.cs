@@ -9,10 +9,6 @@ namespace AppHost;
 /// </summary>
 internal static class Observability
 {
-    // Fixed host ports so bookmarks and the k6 scripts on the host keep working (9090 is often taken).
-    public const int GrafanaPort = 3000;
-    public const int PrometheusPort = 9190;
-
     private const string ConfigDir = "observability";
 
     public static ObservabilityStack AddObservabilityStack(
@@ -20,16 +16,21 @@ internal static class Observability
         IResourceBuilder<PostgresServerResource> postgres,
         IResourceBuilder<RedisResource> redis)
     {
+        // Fixed host ports so bookmarks and the k6 scripts on the host (scripts/.env.aspire) keep working.
+        var settings = builder.Configuration.GetSection("Observability");
+        var grafanaPort = settings.Required<int>("GrafanaPort");
+        var prometheusPort = settings.Required<int>("PrometheusPort");
+
         var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.16.0")
             .WithBindMount($"{ConfigDir}/prometheus.yml", "/etc/prometheus/prometheus.yml", isReadOnly: true)
             .WithArgs(
                 "--config.file=/etc/prometheus/prometheus.yml",
                 "--storage.tsdb.path=/prometheus",
-                "--storage.tsdb.retention.time=7d",
+                $"--storage.tsdb.retention.time={settings.Required<string>("PrometheusRetention")}",
                 "--web.enable-otlp-receiver",
                 "--web.enable-remote-write-receiver",
                 "--enable-feature=exemplar-storage")
-            .WithHttpEndpoint(port: PrometheusPort, targetPort: 9090)
+            .WithHttpEndpoint(port: prometheusPort, targetPort: 9090)
             .WithHttpHealthCheck("/-/ready")
             .WithIconName("ChartMultiple");
         var prometheusHttp = prometheus.GetEndpoint("http");
@@ -112,7 +113,7 @@ internal static class Observability
             .WithEnvironment("GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH", "/var/lib/grafana/dashboards/service-overview.json")
             .WithEnvironment("GF_RENDERING_SERVER_URL", ReferenceExpression.Create($"{renderer.GetEndpoint("http")}/render"))
             .WithEnvironment("GF_RENDERING_RENDERER_TOKEN", rendererToken)
-            .WithHttpEndpoint(port: GrafanaPort, targetPort: 3000)
+            .WithHttpEndpoint(port: grafanaPort, targetPort: 3000)
             .WithHttpHealthCheck("/api/health")
             .WithUrlForEndpoint("http", u => u.DisplayText = "Grafana")
             .WaitFor(prometheus)

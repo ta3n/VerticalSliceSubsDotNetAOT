@@ -5,15 +5,19 @@
 //   dotnet run --project src/AppHost      # or: aspire run
 //   dotnet run --project src/AppHost -- --Observability:Enabled=false   # lean: Aspire dashboard only
 //   dotnet run --project src/AppHost -- --LoadTest:AutoStart=smoke      # run a k6 scenario right after startup
+//
+// Operational settings (connection limits, ports, load-test sizes) live in appsettings.json; see Settings.cs.
 
 using AppHost;
-using Microsoft.Extensions.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
+var (maxConnections, apiPoolSize) = builder.Configuration.PostgresConnectionLimits();
 
 // Image tags match compose.yaml / the integration tests; the data volume keeps data across AppHost restarts.
+// Postgres:MaxConnections replaces the image default (100) so the API pool below fits; keep in step with compose.yaml.
 var postgres = builder.AddPostgres("postgres")
     .WithImageTag("17")
+    .WithArgs("-c", $"max_connections={maxConnections}")
     .WithDataVolume();
 var database = postgres.AddDatabase("subscriptions");
 
@@ -25,9 +29,10 @@ var migrator = builder.AddProject<Projects.SubscriptionManagement_Migrator>("mig
     .WithReference(database, "Postgres")
     .WaitFor(database);
 
-// Pool capped like compose.yaml: Npgsql's default (100) alone exhausts Postgres' max_connections (100) under load and
-// requests fail with 53300 "too many clients already".
-var apiPostgres = ReferenceExpression.Create($"{database.Resource.ConnectionStringExpression};Maximum Pool Size=50");
+// Pool capped (Api:PostgresMaxPoolSize) like compose.yaml, below Postgres' max_connections: the remaining slots cover
+// the superuser-reserved ones, the migrator, postgres-exporter and ad-hoc psql sessions.
+var apiPostgres = ReferenceExpression.Create(
+    $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}");
 
 var api = builder.AddProject<Projects.SubscriptionManagement>("subscription-management")
     .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
@@ -44,7 +49,7 @@ var api = builder.AddProject<Projects.SubscriptionManagement>("subscription-mana
 
 // Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry.
 ObservabilityStack? stack = null;
-if (builder.Configuration.GetValue("Observability:Enabled", true))
+if (builder.Configuration.Required<bool>("Observability:Enabled"))
 {
     stack = builder.AddObservabilityStack(postgres, redis);
     api.WaitFor(stack.Collector);

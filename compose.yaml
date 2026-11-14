@@ -10,6 +10,7 @@ name: subscription-management
 services:
   postgres:
     image: docker.io/library/postgres:17   # pinned major: a stateful volume must not follow "latest" across a major upgrade
+    command: ["postgres", "-c", "max_connections=1000"]   # image default is 100; the API pool (900) must stay below this
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-subscriptions}
       POSTGRES_USER: ${POSTGRES_USER:-subs}
@@ -49,7 +50,7 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
     environment:
-      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only};Maximum Pool Size=50
+      ConnectionStrings__Postgres: Host=postgres;Database=${POSTGRES_DB:-subscriptions};Username=${POSTGRES_USER:-subs};Password=${POSTGRES_PASSWORD:-subs-dev-only};Maximum Pool Size=900
       ConnectionStrings__Redis: redis:6379
       OpenApi__Enabled: ${OPENAPI_ENABLED:-false}
     depends_on:
