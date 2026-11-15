@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\SubscriptionManagement\SubscriptionManagement.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj"/>
         <ProjectReference Include="..\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj"/>
         <ProjectReference Include="..\SubscriptionManagement.Billing\SubscriptionManagement.Billing.csproj"/>
         <ProjectReference Include="..\SubscriptionManagement.Payments\SubscriptionManagement.Payments.csproj"/>

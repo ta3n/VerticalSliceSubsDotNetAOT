@@ -16,15 +16,15 @@ RUN case "$(dpkg --print-architecture)" in arm64) echo linux-arm64 ;; *) echo li
 
 # Restore first so this layer is cached until a project file changes.
 COPY Directory.Build.props ./
-COPY src/SubscriptionManagement/SubscriptionManagement.csproj src/SubscriptionManagement/
+COPY src/SubscriptionManagement.Api/SubscriptionManagement.Api.csproj src/SubscriptionManagement.Api/
 COPY src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj src/SubscriptionManagement.ServiceDefaults/
 COPY src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj src/SubscriptionManagement.Migrator/
 COPY src/SubscriptionManagement.Contracts/SubscriptionManagement.Contracts.csproj src/SubscriptionManagement.Contracts/
-RUN dotnet restore src/SubscriptionManagement -r "$(cat /rid)" \
+RUN dotnet restore src/SubscriptionManagement.Api -r "$(cat /rid)" \
  && dotnet restore src/SubscriptionManagement.Migrator -r "$(cat /rid)"
 
 COPY src/ src/
-RUN dotnet publish src/SubscriptionManagement -c Release -r "$(cat /rid)" --no-restore -o /out/api \
+RUN dotnet publish src/SubscriptionManagement.Api -c Release -r "$(cat /rid)" --no-restore -o /out/api \
  && dotnet publish src/SubscriptionManagement.Migrator -c Release -r "$(cat /rid)" --no-restore -o /out/migrator
 
 # ---- runtime base: chiseled Ubuntu (no shell, no package manager, no .NET runtime); runs as the non-root `app` user ----
@@ -39,7 +39,7 @@ ENTRYPOINT ["./SubscriptionManagement.Migrator"]
 FROM runtime-base AS api
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
-COPY --from=build /out/api/SubscriptionManagement /out/api/appsettings.json ./
+COPY --from=build /out/api/SubscriptionManagement.Api /out/api/appsettings.json ./
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["./SubscriptionManagement", "healthcheck"]
-ENTRYPOINT ["./SubscriptionManagement"]
+  CMD ["./SubscriptionManagement.Api", "healthcheck"]
+ENTRYPOINT ["./SubscriptionManagement.Api"]

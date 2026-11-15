@@ -7,7 +7,7 @@
 // http_req_failed.
 import http from 'k6/http';
 import { check } from 'k6';
-import { Trend } from 'k6/metrics';
+import { Counter, Trend } from 'k6/metrics';
 
 function withoutTrailingSlashes(url) {
   let end = url.length;
@@ -47,6 +47,9 @@ export const api = {
   getInvoice: (id, expect) => http.get(`${BASE}/invoices/${id}`, params('GET /invoices/{id}', expect)),
   getInvoiceRenewal: (id, expect) => http.get(`${BASE}/invoices/${id}/renewal`, params('GET /invoices/{id}/renewal', expect)),
   payInvoice: (id, expect) => http.post(`${BASE}/invoices/${id}/pay`, null, params('POST /invoices/{id}/pay', expect)),
+  /** Internal endpoints the Relay calls for the renewal saga; `body` is the request object (e.g. { paymentId }). */
+  settleInvoice: (id, body, expect) => http.post(`${BASE}/invoices/${id}/settle`, json(body), params('POST /invoices/{id}/settle', expect)),
+  voidInvoice: (id, expect) => http.post(`${BASE}/invoices/${id}/void`, null, params('POST /invoices/{id}/void', expect)),
   getPayment: (id, expect) => http.get(`${PAYMENTS}/payments/${id}`, params('GET /payments/{id}', expect)),
   getPaymentEvents: (id, expect) => http.get(`${PAYMENTS}/payments/${id}/events`, params('GET /payments/{id}/events', expect)),
   listCreditNotes: (subscriptionId, expect) => http.get(`${BILLING}/credit-notes?subscriptionId=${subscriptionId}`, params('GET /credit-notes', expect)),
@@ -56,6 +59,23 @@ export const api = {
   /** kind: 'live' | 'ready' | '' (everything). */
   health: (kind) => http.get(`${BASE}/health${kind ? `/${kind}` : ''}`, params(`GET /health${kind ? `/${kind}` : ''}`)),
 };
+
+/**
+ * Counts every call of every `api` function in its own metric (`calls_<name>`), so a test can fail when an endpoint got
+ * no traffic at all (threshold `calls_<name>: ['count>0']`). Init context only; call it once. Returns the names.
+ */
+export function trackCalls() {
+  const names = Object.keys(api);
+  for (const name of names) {
+    const counter = new Counter(`calls_${name.toLowerCase()}`);
+    const call = api[name];
+    api[name] = (...args) => {
+      counter.add(1);
+      return call(...args);
+    };
+  }
+  return names;
+}
 
 /** `count` identical requests for http.batch (used to race the same operation). */
 export function race(count, method, path, endpoint, expected, body) {

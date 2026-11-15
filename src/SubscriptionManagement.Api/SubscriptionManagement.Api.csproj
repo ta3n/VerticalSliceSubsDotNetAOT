@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
+        <!-- The project is named .Api next to Billing/Payments/Relay; the code keeps the SubscriptionManagement namespace. -->
+        <RootNamespace>SubscriptionManagement</RootNamespace>
         <PublishAot>true</PublishAot>
         <!-- Analyzers run on every build, not only on publish. -->
         <EnableAotAnalyzer>true</EnableAotAnalyzer>
@@ -10,6 +12,17 @@
              (-p:PublishAot=false) runs exactly the same reflection-free code as the native build. -->
         <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
     </PropertyGroup>
+
+    <!-- Native AOT toolchain version. The SDK restores the ILCompiler + NativeAOT runtime packs at its bundled runtime version;
+         SDK 10.0.401 bundles 10.0.12, which NuGet audit flags (CVE-2026-111497, NU1903 -> error under TreatWarningsAsErrors).
+         Point both packs at the patched 10.0.14 through the SDK's own known-pack tables (so they always match), only while the
+         SDK is older. Never add an explicit Microsoft.DotNet.ILCompiler PackageReference: it diverges from the runtime pack
+         (warning + the 'PrivateSdkAssemblies ItemGroup is required' publish error) once the SDK moves past it, as 10.0.404 did.
+         Does not touch RuntimeFrameworkVersion, so framework-dependent builds/tests still run on the installed shared runtime. -->
+    <ItemGroup Condition="$([MSBuild]::VersionLessThan('$(BundledNETCoreAppPackageVersion)', '10.0.14'))">
+        <KnownRuntimePack Update="Microsoft.NETCore.App" LatestRuntimeFrameworkVersion="10.0.14"/>
+        <KnownILCompilerPack Update="Microsoft.DotNet.ILCompiler" ILCompilerPackVersion="10.0.14"/>
+    </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="SubscriptionManagement.UnitTests"/>
@@ -30,7 +43,6 @@
         <PackageReference Include="Grpc.Net.ClientFactory" Version="2.85.0"/>
         <PackageReference Include="Grpc.Tools" Version="2.85.0" PrivateAssets="all"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12"/>
-        <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="10.0.14"/>
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12"/>
         <PackageReference Include="Npgsql" Version="10.0.3"/>
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.11"/>

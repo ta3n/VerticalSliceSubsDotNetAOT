@@ -46,7 +46,7 @@ Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisi
 | Cache | Redis 7 via Microsoft.Extensions.Caching.StackExchangeRedis 10.0.12 (in-process fallback) |
 | API docs | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11 |
 | Telemetry | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter) |
-| Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
+| Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis, RabbitMQ), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
 | Load tests | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination, saga), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
 
 Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
@@ -77,7 +77,7 @@ Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 docker compose up -d postgres redis                                   # backing services (localhost:5432 / :6379)
 dotnet run --project src/SubscriptionManagement.Migrator -- \
   "Host=localhost;Database=subscriptions;Username=subs;Password=subs-dev-only"   # create/upgrade the schema
-dotnet run --project src/SubscriptionManagement --launch-profile http # API on http://localhost:5127 (Scalar UI at /scalar)
+dotnet run --project src/SubscriptionManagement.Api --launch-profile http # API on http://localhost:5127 (Scalar UI at /scalar)
 ```
 
 Try the API with [SubscriptionManagement.http](SubscriptionManagement.http) (VS Code REST Client / Visual Studio).
@@ -205,7 +205,7 @@ messaging edges in the service graph. Error/dead-letter panels require failing t
 
 The scenarios live in `scripts/*-test.js` (shared helpers in `scripts/lib/api.js`) and are the single source of truth:
 the same files run as Aspire resources or from the host. The existing API scenarios also run against compose/Kubernetes;
-`saga` requires the s2s services, currently wired by Aspire.
+`saga` and the s2s part of `endpoints` (`S2S=true`) require the s2s services, currently wired by Aspire.
 
 | Scenario | Question it answers | Shape (defaults) | Passes when |
 |---|---|---|---|
@@ -219,8 +219,9 @@ the same files run as Aspire resources or from the host. The existing API scenar
 | `contention` | Is it still correct when clients race the same row? | 8 racers per pay / cancel / create-plan | exactly one winner, always |
 | `pagination` | Does keyset paging stay consistent and flat under writes? | 20 readers walking 10 pages + 2 writers | no duplicate/out-of-order row, deep page p95 < 200 ms |
 | `saga` | Do renewal orchestration and cancel/refund choreography settle correctly? | 1 VU × 3 iterations, prices 10 / 6000 / 9500 | checks >99%, zero unexpected HTTP errors or saga failures; records `saga_settle_ms` |
+| `endpoints` | Does every route hold up when all of them are used at once, and is any route missing from the load tests? | 7 parallel flows (catalog, reads, lifecycle, invoices incl. the Relay's settle/void, errors, health, + saga with `S2S=true`), 40 VUs × 1 min | checks >99%, <1% failures, p95 < 1 s, **every route called at least once** (`calls_<name>` metric per route), zero saga failures |
 
-Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, …). Three ways to run one:
+Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, `ENDPOINTS_VUS`, …). Three ways to run one:
 
 * **From the Aspire dashboard**: resources `k6-<scenario>` ([Community Toolkit k6 integration](https://aspire.dev/integrations/devtools/k6/k6-get-started/),
   `src/AppHost/LoadTests.cs`) sit under the API and are not started with the app; press ▶ (again for every run) and
@@ -321,8 +322,9 @@ environment variables or your secret store. Without `POSTGRES_PASSWORD` set, com
 ## Database
 
 Schema changes are versioned SQL files embedded in `src/SubscriptionManagement.Migrator/Migrations` (`V{n}__{description}.sql`, the Java-compatible baseline plus .NET extensions).
-The migrator applies pending files in order, records `version`/`checksum` in `schema_migrations`, refuses to run if an applied file was edited, and takes a PostgreSQL
-advisory lock so concurrent runs are safe. The API never migrates on startup. In compose it runs as a one-shot service that the API waits for.
+The migrator is [DbUp](https://github.com/dbup/dbup) (Native AOT compatible) with two additions it lacks: a journal over `schema_migrations` that records `version`/`checksum`
+in the script's own transaction and refuses to run if an applied file was edited, and a PostgreSQL advisory lock so concurrent runs are safe. Files are ordered by
+version number (V10 after V2), and databases migrated before DbUp keep their history. The API never migrates on startup. In compose it runs as a one-shot service that the API waits for.
 V6 adds `outbox_messages` (payload/type/traceparent/time) and nullable `invoices.payment_id`.
 To add a migration, add the next version (currently `V7__what.sql`); never edit an applied one. Do not point this app at a database managed by the Java app's Flyway (different history table).
 
@@ -429,6 +431,7 @@ dotnet test tests/SubscriptionManagement.IntegrationTests    # real PostgreSQL 1
 dotnet test tests/SubscriptionManagement.Billing.Tests        # quote/gRPC, saga transitions + durable transaction, credit notes
 dotnet test tests/SubscriptionManagement.Payments.Tests       # event deciders, stream/snapshot + transactional messaging
 dotnet test tests/SubscriptionManagement.Relay.Tests          # atomic outbox transfer + HTTP command handling
+dotnet test tests/SubscriptionManagement.SystemTests          # all four services + PostgreSQL + RabbitMQ (Testcontainers), saga and choreography end to end
 ./scripts/aot-smoke.sh                                       # publish natively, run the native binaries, exercise the API
 ```
 
@@ -441,7 +444,13 @@ name, `/health*` not traced) and the migrator's exit codes (2 usage, 1 failure, 
 
 The three service suites use real Testcontainers PostgreSQL and Wolverine message tracking with external transports
 disabled. They cover duplicate delivery, timeout/reply races, cancel-before-charge, double refunds and transaction rollback.
-`scripts/saga-test.js` covers the four live flows through Aspire; it adds data on every run and does not reset databases.
+`SubscriptionManagement.SystemTests` is the layer above: the API, Billing, Payments and Relay run in one process on a real PostgreSQL 17 (one database
+per service, as under Aspire) and a real RabbitMQ 4, wired exactly like their `Program.cs` files. It plays the renewal saga (captured, declined, silent
+gateway → timeout), six renewals at once, the cancel → refund → credit note choreography, the outbox's durability (the Relay stopped while a renewal or
+a cancellation happens, started again afterwards) and checks that one renewal request is **one trace** across HTTP, gRPC, outbox relay, broker and handlers.
+The API → Billing gRPC hop and the Relay → API hop use the in-memory test server instead of sockets (a handler adds `traceparent`, which only
+the socket stack does by itself). Redis is not part of it. `scripts/saga-test.js` and `scripts/endpoints-test.js` cover the live flows through Aspire;
+they add data on every run and do not reset databases.
 
 ### Code quality: SonarQube
 
@@ -471,7 +480,7 @@ in-cluster service URLs of the local kind platform.
 * Analyzer warnings IL2026/IL2057/IL2067/IL2070/IL3050 are build errors; there are no suppressions.
 
 ```bash
-dotnet publish src/SubscriptionManagement -c Release -r linux-x64 -o artifacts/api        # add -p:CppCompilerAndLinker=gcc if clang is absent
+dotnet publish src/SubscriptionManagement.Api -c Release -r linux-x64 -o artifacts/api        # add -p:CppCompilerAndLinker=gcc if clang is absent
 dotnet publish src/SubscriptionManagement.Migrator -c Release -r linux-x64 -o artifacts/migrator
 ConnectionStrings__Postgres="Host=...;..." ./artifacts/api/SubscriptionManagement
 ./artifacts/api/SubscriptionManagement healthcheck            # exit 0/1; used by the container HEALTHCHECK
@@ -665,7 +674,7 @@ are dropped before Loki (they are already counted and traced); 4xx/5xx and gatew
 ## Project structure
 
 ```
-src/SubscriptionManagement/            API: Program.cs, Features/{Subscriptions,Plans,Invoices}, Infrastructure/
+src/SubscriptionManagement.Api/        API: Program.cs, Features/{Subscriptions,Plans,Invoices}, Infrastructure/
 src/SubscriptionManagement.Migrator/   SQL migration runner + embedded V*.sql
 src/SubscriptionManagement.Contracts/  AOT-compatible message records + billing.proto (no runtime package dependencies)
 src/SubscriptionManagement.Billing/    JIT gRPC quotes/status, EF Core renewal saga + credit notes
@@ -677,6 +686,7 @@ src/SubscriptionManagement.ServiceDefaults/  shared OpenTelemetry defaults (logs
 tests/SubscriptionManagement.UnitTests/         domain, validators, cursor codec, problem writer
 tests/SubscriptionManagement.IntegrationTests/  Testcontainers + WebApplicationFactory
 tests/SubscriptionManagement.{Billing,Payments,Relay}.Tests/  service state/transaction/message tests
+tests/SubscriptionManagement.SystemTests/       the four services on real PostgreSQL + RabbitMQ: saga, choreography, outbox, trace continuity
 scripts/                               aot-smoke.sh, measure-startup.sh, k6 scenarios (*-test.js, lib/api.js, k6-test.sh) + Locust, sonar.sh, .env (k8s) / .env.compose / .env.aspire
 deploy/helm/subscription-management/   Helm chart (API/Rollout, migrator, PostgreSQL, Redis, Kong plugins, monitoring, canary analysis)
 deploy/kind/ · kong/ · registry/       kind cluster config, Kong values, local registry setup

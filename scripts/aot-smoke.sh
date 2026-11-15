@@ -33,14 +33,14 @@ json() { python3 -c "import json,sys; d=json.load(open('$out/body.json')); print
 mkdir -p "$out"
 if [[ -z "${SKIP_PUBLISH:-}" ]]; then
   echo "== publishing (linker: $linker)"
-  for p in SubscriptionManagement SubscriptionManagement.Migrator; do
+  for p in SubscriptionManagement.Api SubscriptionManagement.Migrator; do
     log="$out/publish-$p.log"
     dotnet publish "$root/src/$p" -c Release -r "$rid" -p:CppCompilerAndLinker="$linker" -o "$out/${p##*.}" >"$log" 2>&1 \
       || { tail -20 "$log" >&2; fail "publish of $p failed"; }
     if grep -E "warning|error" "$log" >&2; then fail "publish of $p produced warnings/errors"; fi
   done
 fi
-api_bin="$out/SubscriptionManagement/SubscriptionManagement"
+api_bin="$out/Api/SubscriptionManagement.Api"
 mig_bin="$out/Migrator/SubscriptionManagement.Migrator"
 file "$api_bin" | grep -q ELF || fail "API is not a native executable"
 

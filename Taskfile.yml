@@ -53,6 +53,9 @@ vars:
   KONG_HTTP_PORT: 9080
   KONG_URL: http://127.0.0.1:{{.KONG_HTTP_PORT}}
   API_HOST: subs.localhost
+  # Trivy (task trivy:*): findings at or above this severity fail the task; TRIVY_EXIT_CODE=0 reports without failing.
+  TRIVY_SEVERITY: HIGH,CRITICAL
+  TRIVY_EXIT_CODE: 1
 
 tasks:
   default:
@@ -672,6 +675,33 @@ tasks:
     prompt: Delete all SonarQube data?
     cmds:
       - scripts/sonar.sh purge
+
+  # ---------------------------------------------------------------- security (Trivy)
+  # Needs trivy on the PATH (brew install trivy); its vulnerability database is downloaded on first use. Override per call,
+  # e.g. `task trivy:scan TRIVY_SEVERITY=MEDIUM,HIGH,CRITICAL` or `task trivy:fs TRIVY_EXIT_CODE=0`.
+  trivy:fs:
+    desc: "Trivy on the repository: vulnerable NuGet packages (deps.json of a Release build), secrets, Dockerfile/Helm/compose misconfigurations"
+    # The deps.json files are what Trivy reads for .NET (there are no lock files), so build the solution first.
+    cmds:
+      - dotnet build SubscriptionManagement.slnx -c Release
+      # Runtime-specific outputs (osx-*, linux-*, win-*) and Debug builds are leftovers of local publishes, not what ships.
+      - >-
+        trivy fs --scanners vuln,secret,misconfig --severity {{.TRIVY_SEVERITY}} --exit-code {{.TRIVY_EXIT_CODE}}
+        --skip-dirs ".git,.sonar,.sonarqube,.claude,graphify-out,graft,artifacts,node_modules,**/obj,**/Debug,**/osx-*,**/linux-*,**/win-*"
+        --skip-files "**/*.drawio" .
+
+  trivy:image:
+    desc: "Trivy on the Native AOT API and migrator images ({{.TAG}}): OS packages and bundled libraries (images are built first)"
+    deps: [image:build]
+    cmds:
+      - trivy image --severity {{.TRIVY_SEVERITY}} --exit-code {{.TRIVY_EXIT_CODE}} {{.API_IMAGE}}:{{.TAG}}
+      - trivy image --severity {{.TRIVY_SEVERITY}} --exit-code {{.TRIVY_EXIT_CODE}} {{.MIGRATOR_IMAGE}}:{{.TAG}}
+
+  trivy:scan:
+    desc: "Both Trivy scans: the repository and the images"
+    cmds:
+      - task: trivy:fs
+      - task: trivy:image
 
   # ---------------------------------------------------------------- end to end
   up:

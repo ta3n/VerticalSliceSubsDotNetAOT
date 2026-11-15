@@ -19,7 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\SubscriptionManagement\SubscriptionManagement.csproj"/>
+        <ProjectReference Include="..\..\src\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj"/>
     </ItemGroup>
 
 </Project>

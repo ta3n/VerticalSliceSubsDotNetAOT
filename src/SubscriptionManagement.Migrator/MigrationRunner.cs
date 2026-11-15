@@ -1,15 +1,17 @@
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using DbUp;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace SubscriptionManagement.Migrator;
 
 /// <summary>
-/// Applies the embedded <c>V{n}__{description}.sql</c> files in version order. Applied versions and
-/// their checksums are recorded in <c>schema_migrations</c>; a changed checksum is a hard failure.
-/// A session-level advisory lock serialises concurrent runners.
+/// Applies the embedded <c>V{n}__{description}.sql</c> files in version order with DbUp. Applied versions and
+/// their checksums are recorded in <c>schema_migrations</c> (<see cref="SchemaMigrationsJournal"/>); a changed
+/// checksum is a hard failure. A session-level advisory lock serialises concurrent runners.
 /// </summary>
 public static partial class MigrationRunner
 {
@@ -59,63 +61,48 @@ public static partial class MigrationRunner
     {
         var migrations = LoadEmbedded();
         await using var dataSource = NpgsqlDataSource.Create(connectionString);
-        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        await using var lockConnection = await dataSource.OpenConnectionAsync(ct);
 
-        await ExecuteAsync(connection, $"SELECT pg_advisory_lock({AdvisoryLockKey})", ct);
+        // DbUp has no lock of its own: this session holds it while DbUp works on connections of its own.
+        await ExecuteAsync(lockConnection, $"SELECT pg_advisory_lock({AdvisoryLockKey})", ct);
         try
         {
-            await ExecuteAsync(
-                connection,
-                """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    version     INTEGER      NOT NULL PRIMARY KEY,
-                    description VARCHAR(200) NOT NULL,
-                    checksum    CHAR(64)     NOT NULL,
-                    applied_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
-                )
-                """,
-                ct
-            );
+            var engine = DeployChanges.To.PostgresqlDatabase(connectionString)
+                .WithScripts(new EmbeddedScripts(migrations))
+                .WithScriptNameComparer(new VersionOrder())
+                .JournalTo(new SchemaMigrationsJournal(connectionString, migrations))
+                // The journal row is written in the script's own transaction, as it always was.
+                .WithTransactionPerScript()
+                // The scripts are plain SQL: no $variable$ substitution over them.
+                .WithVariablesDisabled()
+                .LogToNowhere()
+                .Build();
 
-            var applied = await LoadAppliedAsync(connection, ct);
-            var count = 0;
-            foreach (var migration in migrations)
+            var result = await Task.Run(engine.PerformUpgrade, ct);
+            if (!result.Successful) ExceptionDispatchInfo.Capture(result.Error).Throw();
+
+            foreach (var script in result.Scripts)
             {
-                if (applied.TryGetValue(migration.Version, out var recorded))
-                {
-                    if (!string.Equals(recorded, migration.Checksum, StringComparison.Ordinal))
-                        throw new InvalidOperationException(
-                            $"Migration V{migration.Version} ({migration.Description}) was modified after it was applied."
-                        );
-
-                    continue;
-                }
-
-                await using var tx = await connection.BeginTransactionAsync(ct);
-                await ExecuteAsync(connection, migration.Sql, ct);
-                await using (var insert = new NpgsqlCommand(
-                        "INSERT INTO schema_migrations (version, description, checksum) VALUES ($1, $2, $3)",
-                        connection
-                    ))
-                {
-                    insert.Parameters.AddWithValue(migration.Version);
-                    insert.Parameters.AddWithValue(migration.Description);
-                    insert.Parameters.AddWithValue(migration.Checksum);
-                    await insert.ExecuteNonQueryAsync(ct);
-                }
-
-                await tx.CommitAsync(ct);
+                var migration = migrations.Single(m => ScriptName(m) == script.Name);
                 LogApplied(logger, migration.Version, migration.Description);
-                count++;
             }
 
+            var count = result.Scripts.Count();
             LogUpToDate(logger, count, migrations.Count);
             return count;
         }
         finally
         {
-            await ExecuteAsync(connection, $"SELECT pg_advisory_unlock({AdvisoryLockKey})", CancellationToken.None);
+            await ExecuteAsync(lockConnection, $"SELECT pg_advisory_unlock({AdvisoryLockKey})", CancellationToken.None);
         }
+    }
+
+    /// <summary>The name a migration has inside DbUp and its journal.</summary>
+    internal static string ScriptName(
+        Migration migration
+    )
+    {
+        return $"V{migration.Version}__{migration.Description}";
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Applied migration V{Version} {Description}")]
@@ -132,19 +119,6 @@ public static partial class MigrationRunner
         int total
     );
 
-    private static async Task<Dictionary<int, string>> LoadAppliedAsync(
-        NpgsqlConnection connection,
-        CancellationToken ct
-    )
-    {
-        var applied = new Dictionary<int, string>();
-        await using var command = new NpgsqlCommand("SELECT version, checksum FROM schema_migrations", connection);
-        await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct)) applied[reader.GetInt32(0)] = reader.GetString(1);
-
-        return applied;
-    }
-
     private static async Task ExecuteAsync(
         NpgsqlConnection connection,
         string sql,
@@ -155,7 +129,7 @@ public static partial class MigrationRunner
         await command.ExecuteNonQueryAsync(ct);
     }
 
-    private static string Checksum(
+    internal static string Checksum(
         string sql
     )
     {

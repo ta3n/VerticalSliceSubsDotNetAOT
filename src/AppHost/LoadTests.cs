@@ -32,7 +32,8 @@ internal static class LoadTests
         ("breakpoint", "ramp the request rate until thresholds abort the run"),
         ("contention", "races on the same row: exactly one winner"),
         ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency"),
-        ("saga", "s2s: renewal saga (success, decline, timeout) + cancel/refund choreography")
+        ("saga", "s2s: renewal saga (success, decline, timeout) + cancel/refund choreography"),
+        ("endpoints", "every route of the API, Billing and Payments in parallel flows, a coverage threshold per route")
     ];
 
     public static void AddK6Suite(
@@ -72,12 +73,17 @@ internal static class LoadTests
             foreach (var knob in settings.GetSection(name).GetChildren())
                 k6.WithEnvironment(knob.Key.ToUpperInvariant(), knob.Value ?? "");
 
-            if (name == "saga")
+            if (name is "saga" or "endpoints")
+            {
+                // The endpoints suite also drives the s2s routes; its knobs are under LoadTest:endpoints.
+                if (name == "endpoints") k6.WithEnvironment("S2S", "true");
+
                 k6.WithEnvironment("BILLING_URL", services.Billing.GetEndpoint("http"))
                     .WithEnvironment("PAYMENTS_URL", services.Payments.GetEndpoint("http"))
                     .WaitFor(services.Billing)
                     .WaitFor(services.Payments)
                     .WaitFor(services.Relay);
+            }
 
             if (stack is not null)
                 // Client-side metrics → Prometheus remote write → Grafana "Load test (k6)" dashboard.

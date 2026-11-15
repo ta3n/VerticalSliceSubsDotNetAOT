@@ -1,71 +1,70 @@
-<?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="draw.io" version="24.7.17">
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36" pages="6">
   <diagram id="page-1" name="01 · Kiến trúc hệ thống">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1753" dy="1253" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="2" value="01 · Kiến trúc hệ thống" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1710" height="40" as="geometry" />
+        <mxCell id="2" parent="1" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" value="01 · Kiến trúc hệ thống" vertex="1">
+          <mxGeometry height="40" width="1710" x="40" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Topology đầy đủ khi chạy bằng Aspire; các mũi tên chỉ giao tiếp hoặc quyền sở hữu dữ liệu." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="40" y="65" width="1710" height="30" as="geometry" />
+        <mxCell id="3" parent="1" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" value="Topology đầy đủ khi chạy bằng Aspire; các mũi tên chỉ giao tiếp hoặc quyền sở hữu dữ liệu." vertex="1">
+          <mxGeometry height="30" width="1710" x="40" y="65" as="geometry" />
         </mxCell>
-        <mxCell id="4" value="Nguồn: src/AppHost/AppHost.cs, Services.cs, Observability.cs; src/SubscriptionManagement/Program.cs; docs/technical-design.md" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
+        <mxCell id="4" parent="1" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" value="Nguồn: src/AppHost/AppHost.cs, Services.cs, Observability.cs; src/SubscriptionManagement/Program.cs; docs/technical-design.md" vertex="1">
+          <mxGeometry height="42" width="1710" x="40" y="1040" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="CLIENT&#10;HTTP / JSON" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="40" y="260" width="185" height="90" as="geometry" />
+        <mxCell id="5" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="CLIENT&#xa;HTTP / JSON" vertex="1">
+          <mxGeometry height="90" width="185" x="40" y="260" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="SUBSCRIPTION API · hỗ trợ Native AOT&#10;Minimal API → Handler → Npgsql SQL&#10;Chủ sở hữu subscription, invoice, plan" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="310" y="245" width="285" height="120" as="geometry" />
+        <mxCell id="6" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="SUBSCRIPTION API · hỗ trợ Native AOT&#xa;Minimal API → Handler → Npgsql SQL&#xa;Chủ sở hữu subscription, invoice, plan" vertex="1">
+          <mxGeometry height="120" width="285" x="310" y="245" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="Redis / bộ nhớ tiến trình&#10;Cache-aside" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="40" y="500" width="205" height="95" as="geometry" />
+        <mxCell id="7" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="Redis / bộ nhớ tiến trình&#xa;Cache-aside" vertex="1">
+          <mxGeometry height="95" width="205" x="40" y="500" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="PostgreSQL · subscriptions&#10;Business tables + outbox_messages" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="310" y="500" width="285" height="105" as="geometry" />
+        <mxCell id="8" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="PostgreSQL · subscriptions&#xa;Business tables + outbox_messages" vertex="1">
+          <mxGeometry height="105" width="285" x="310" y="500" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="BILLING · JIT&#10;gRPC quote/status&#10;RenewalSaga + credit notes" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="725" y="205" width="245" height="120" as="geometry" />
+        <mxCell id="9" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="BILLING · JIT&#xa;gRPC quote/status&#xa;RenewalSaga + credit notes" vertex="1">
+          <mxGeometry height="120" width="245" x="725" y="205" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="PostgreSQL · billing&#10;Saga + credit notes + envelopes" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="725" y="380" width="245" height="100" as="geometry" />
+        <mxCell id="10" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="PostgreSQL · billing&#xa;Saga + credit notes + envelopes" vertex="1">
+          <mxGeometry height="100" width="245" x="725" y="380" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="RELAY · JIT&#10;Outbox drain + HTTP adapter&#10;Wolverine durable envelopes" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="725" y="570" width="245" height="125" as="geometry" />
+        <mxCell id="11" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="RELAY · JIT&#xa;Outbox drain + HTTP adapter&#xa;Wolverine durable envelopes" vertex="1">
+          <mxGeometry height="125" width="245" x="725" y="570" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="RabbitMQ&#10;Wolverine durable messaging" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="1055" y="400" width="220" height="100" as="geometry" />
+        <mxCell id="12" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="RabbitMQ&#xa;Wolverine durable messaging" vertex="1">
+          <mxGeometry height="100" width="220" x="1055" y="400" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="PAYMENTS · JIT&#10;Marten event streams&#10;Inline payment snapshots" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="1410" y="390" width="265" height="120" as="geometry" />
+        <mxCell id="13" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="PAYMENTS · JIT&#xa;Marten event streams&#xa;Inline payment snapshots" vertex="1">
+          <mxGeometry height="120" width="265" x="1410" y="390" as="geometry" />
         </mxCell>
-        <mxCell id="14" value="PostgreSQL · payments&#10;Events + snapshots + envelopes" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="1410" y="595" width="265" height="105" as="geometry" />
+        <mxCell id="14" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="PostgreSQL · payments&#xa;Events + snapshots + envelopes" vertex="1">
+          <mxGeometry height="105" width="265" x="1410" y="595" as="geometry" />
         </mxCell>
-        <mxCell id="15" value="Aspire Dashboard / OTLP Collector&#10;Tùy chọn: Prometheus · Tempo · Loki → Grafana" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="690" y="835" width="620" height="85" as="geometry" />
+        <mxCell id="15" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" value="Aspire Dashboard / OTLP Collector&#xa;Tùy chọn: Prometheus · Tempo · Loki → Grafana" vertex="1">
+          <mxGeometry height="85" width="620" x="690" y="835" as="geometry" />
         </mxCell>
-        <mxCell id="16" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="6">
+        <mxCell id="16" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" target="6" value="HTTP">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="17" value="SQL + outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="6" target="8">
+        <mxCell id="17" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="8" value="SQL + outbox">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="18" value="cache" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0;exitY=0.85;entryX=0.5;entryY=0;" edge="1" parent="1" source="6" target="7">
+        <mxCell id="18" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0;exitY=0.85;entryX=0.5;entryY=0;" target="7" value="cache">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="19" value="gRPC: quote / status" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="6" target="9">
+        <mxCell id="19" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" target="9" value="gRPC: quote / status">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="20" value="EF Core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="9" target="10">
+        <mxCell id="20" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="10" value="EF Core">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="21" value="claim outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=1;exitY=0.7;entryX=0;entryY=0.4;" edge="1" parent="1" source="8" target="11">
+        <mxCell id="21" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=1;exitY=0.7;entryX=0;entryY=0.4;" target="11" value="claim outbox">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="22" value="HTTP: settle / void / pause" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" edge="1" parent="1" source="11" target="6">
+        <mxCell id="22" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" target="6" value="HTTP: settle / void / pause">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="650" y="735" />
@@ -73,188 +72,188 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="23" value="publish / consume" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;exitX=1;exitY=0.35;entryX=0;entryY=0.8;" edge="1" parent="1" source="11" target="12">
+        <mxCell id="23" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;exitX=1;exitY=0.35;entryX=0;entryY=0.8;" target="12" value="publish / consume">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="24" value="publish / consume" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="9" target="12">
+        <mxCell id="24" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" target="12" value="publish / consume">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="25" value="publish / consume" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;" edge="1" parent="1" source="12" target="13">
+        <mxCell id="25" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;" target="13" value="publish / consume">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="26" value="Marten" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="13" target="14">
+        <mxCell id="26" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="14" value="Marten">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="27" value="OTLP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;dashed=1;exitX=0.5;exitY=1;entryX=0.2;entryY=0;" edge="1" parent="1" source="11" target="15">
+        <mxCell id="27" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;dashed=1;exitX=0.5;exitY=1;entryX=0.2;entryY=0;" target="15" value="OTLP">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="28" value="Aspire chạy các project từ source (JIT); API cũng có thể publish Native AOT. Các service phát telemetry khi OTLP được cấu hình.&#10;Compose và Helm chỉ triển khai API + migrator + PostgreSQL + Redis, không bao gồm topology S2S." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="55" y="945" width="1640" height="55" as="geometry" />
+        <mxCell id="28" parent="1" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" value="Aspire chạy các project từ source (JIT); API cũng có thể publish Native AOT. Các service phát telemetry khi OTLP được cấu hình.&#xa;Compose và Helm chỉ triển khai API + migrator + PostgreSQL + Redis, không bao gồm topology S2S." vertex="1">
+          <mxGeometry height="55" width="1640" x="55" y="945" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="page-2" name="02 · HTTP API và vertical slice">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1362" dy="1004" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="2" value="02 · HTTP API và vertical slice" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="2" value="02 · HTTP API và vertical slice" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="20" width="1710" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Đường đi chung và danh mục endpoint; các bước transaction/cache là quy tắc theo từng handler, không phải middleware toàn cục." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="3" value="Đường đi chung và danh mục endpoint; các bước transaction/cache là quy tắc theo từng handler, không phải middleware toàn cục." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="65" width="1710" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="4" value="Nguồn: src/SubscriptionManagement/Program.cs; Features/Subscriptions, Features/Invoices, Features/Plans; Infrastructure/ApiExceptionHandler.cs" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="4" value="Nguồn: src/SubscriptionManagement/Program.cs; Features/Subscriptions, Features/Invoices, Features/Plans; Infrastructure/ApiExceptionHandler.cs" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="HTTP request&#10;Client" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="5" value="HTTP request&#xa;Client" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="40" y="140" width="180" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="CorrelationMiddleware&#10;Exception handler&#10;Status code pages" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="6" value="CorrelationMiddleware&#xa;Exception handler&#xa;Status code pages" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="270" y="140" width="250" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="Minimal API endpoint&#10;Binding + validation" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="7" value="Minimal API endpoint&#xa;Binding + validation" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="570" y="140" width="235" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="Feature handler&#10;Domain rules" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="8" value="Feature handler&#xa;Domain rules" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="855" y="140" width="210" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="Store / Npgsql&#10;SQL + transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="9" value="Store / Npgsql&#xa;SQL + transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1115" y="140" width="230" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="HTTP response&#10;JSON / problem+json" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="10" value="HTTP response&#xa;JSON / problem+json" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1395" y="140" width="260" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="6">
+        <mxCell id="11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="5" target="6" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="6" target="7">
+        <mxCell id="12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="6" target="7" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="7" target="8">
+        <mxCell id="13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="7" target="8" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="8" target="9">
+        <mxCell id="14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="8" target="9" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="9" target="10">
+        <mxCell id="15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="9" target="10" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="16" value="SUBSCRIPTION" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="16" value="SUBSCRIPTION" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="55" y="285" width="380" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="17" value="INVOICE" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="17" value="INVOICE" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="615" y="285" width="300" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="18" value="PLAN &amp; HEALTH" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="18" value="PLAN &amp; HEALTH" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=17;fontColor=#203247;fontStyle=1;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="1170" y="285" width="300" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="19" value="POST /subscriptions&#10;GET /subscriptions/{id}&#10;DELETE /subscriptions/{id}&#10;POST /subscriptions/{id}/pause&#10;POST /subscriptions/{id}/resume&#10;POST /subscriptions/{id}/renew&#10;POST /subscriptions/{id}/renewals&#10;POST /subscriptions/search" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="19" value="POST /subscriptions&#xa;GET /subscriptions/{id}&#xa;DELETE /subscriptions/{id}&#xa;POST /subscriptions/{id}/pause&#xa;POST /subscriptions/{id}/resume&#xa;POST /subscriptions/{id}/renew&#xa;POST /subscriptions/{id}/renewals&#xa;POST /subscriptions/search" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="40" y="325" width="505" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="20" value="GET /subscriptions/{id}/invoices&#10;GET /invoices/{id}&#10;POST /invoices/{id}/pay&#10;POST /invoices/{id}/settle&#10;POST /invoices/{id}/void&#10;GET /invoices/{id}/renewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="20" value="GET /subscriptions/{id}/invoices&#xa;GET /invoices/{id}&#xa;POST /invoices/{id}/pay&#xa;POST /invoices/{id}/settle&#xa;POST /invoices/{id}/void&#xa;GET /invoices/{id}/renewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="600" y="325" width="505" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="21" value="POST /plans&#10;GET /plans/{code}&#10;GET /plans&#10;&#10;/health/live · /health/ready · /health&#10;OpenAPI / Scalar nếu bật cấu hình" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="21" value="POST /plans&#xa;GET /plans/{code}&#xa;GET /plans&#xa;&#xa;/health/live · /health/ready · /health&#xa;OpenAPI / Scalar nếu bật cấu hình" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1160" y="325" width="505" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="22" value="ĐỌC / TÌM KIẾM&#10;GET subscription: cache hit → trả về; miss → DB → cache. Không cache 404.&#10;Search dùng keyset (start_date, id) DESC + limit+1; cursor / status sai → 400." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="22" value="ĐỌC / TÌM KIẾM&#xa;GET subscription: cache hit → trả về; miss → DB → cache. Không cache 404.&#xa;Search dùng keyset (start_date, id) DESC + limit+1; cursor / status sai → 400." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="40" y="640" width="505" height="175" as="geometry" />
         </mxCell>
-        <mxCell id="23" value="THAY ĐỔI&#10;Pause / resume / cancel / renew: SELECT FOR UPDATE, kiểm tra trạng thái, ghi DB và commit; cập nhật / xóa cache sau commit.&#10;/renew là đồng bộ, không phát InvoiceIssued." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="23" value="THAY ĐỔI&#xa;Pause / resume / cancel / renew: SELECT FOR UPDATE, kiểm tra trạng thái, ghi DB và commit; cập nhật / xóa cache sau commit.&#xa;/renew là đồng bộ, không phát InvoiceIssued." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="600" y="640" width="505" height="175" as="geometry" />
         </mxCell>
-        <mxCell id="24" value="LỖI &amp; CẤU HÌNH&#10;400 validation / malformed; 404 không tìm thấy; 409 chuyển trạng thái không hợp lệ; 500 lỗi nội bộ.&#10;/renewals cần outbox + Billing: thiếu cấu hình hoặc quote lỗi → 503." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="24" value="LỖI &amp; CẤU HÌNH&#xa;400 validation / malformed; 404 không tìm thấy; 409 chuyển trạng thái không hợp lệ; 500 lỗi nội bộ.&#xa;/renewals cần outbox + Billing: thiếu cấu hình hoặc quote lỗi → 503." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1160" y="640" width="505" height="175" as="geometry" />
         </mxCell>
-        <mxCell id="25" value="Subscription: Active → Paused → Active; có thể hủy nếu chưa Canceled. Mặc định cache TTL 5 phút; Redis không cấu hình → cache bộ nhớ tiến trình." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="25" value="Subscription: Active → Paused → Active; có thể hủy nếu chưa Canceled. Mặc định cache TTL 5 phút; Redis không cấu hình → cache bộ nhớ tiến trình." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="45" y="865" width="1620" height="55" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="page-3" name="03 · Bắt đầu gia hạn tự động">
-    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1362" dy="1004" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="2" value="03 · Bắt đầu gia hạn tự động" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="2" value="03 · Bắt đầu gia hạn tự động" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=28;fontColor=#17365a;fontStyle=1;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="20" width="1710" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Từ HTTP 202 đến lúc Billing gửi lệnh thu tiền; transaction và durable delivery là các ranh giới riêng biệt." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="3" value="Từ HTTP 202 đến lúc Billing gửi lệnh thu tiền; transaction và durable delivery là các ranh giới riêng biệt." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#52677d;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="65" width="1710" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="4" value="Nguồn: src/SubscriptionManagement/Features/Subscriptions/StartRenewal/; src/SubscriptionManagement.Relay/Features/Outbox/; src/SubscriptionManagement.Billing/Features/Renewals/; src/SubscriptionManagement.Payments/Features/Payments/" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="4" value="Nguồn: src/SubscriptionManagement/Features/Subscriptions/StartRenewal/; src/SubscriptionManagement.Relay/Features/Outbox/; src/SubscriptionManagement.Billing/Features/Renewals/; src/SubscriptionManagement.Payments/Features/Payments/" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="1 · CLIENT&#10;POST /subscriptions/{id}/renewals" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="5" value="1 · CLIENT&#xa;POST /subscriptions/{id}/renewals" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="40" y="165" width="235" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="2 · API&#10;Outbox bật? Subscription Active?&#10;gRPC lấy quote trước transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="6" value="2 · API&#xa;Outbox bật? Subscription Active?&#xa;gRPC lấy quote trước transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="325" y="165" width="250" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="3 · API TRANSACTION&#10;Khóa + kiểm tra lại Active&#10;Gia hạn kỳ + invoice + InvoiceIssued&#10;Commit → HTTP 202 + Location" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="7" value="3 · API TRANSACTION&#xa;Khóa + kiểm tra lại Active&#xa;Gia hạn kỳ + invoice + InvoiceIssued&#xa;Commit → HTTP 202 + Location" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="625" y="155" width="290" height="125" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="4 · RELAY&#10;Claim type đã biết&#10;FOR UPDATE SKIP LOCKED" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="8" value="4 · RELAY&#xa;Claim type đã biết&#xa;FOR UPDATE SKIP LOCKED" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="965" y="165" width="250" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="5 · RELAY TRANSACTION&#10;Xóa raw rows + lưu Wolverine&#10;durable envelopes cùng commit" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="9" value="5 · RELAY TRANSACTION&#xa;Xóa raw rows + lưu Wolverine&#xa;durable envelopes cùng commit" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1265" y="165" width="265" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="6">
+        <mxCell id="10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="5" target="6" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="6" target="7">
+        <mxCell id="11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="6" target="7" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="7" target="8">
+        <mxCell id="12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="7" target="8" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="8" target="9">
+        <mxCell id="13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="8" target="9" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="14" value="6 · RabbitMQ&#10;InvoiceIssued" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="14" value="6 · RabbitMQ&#xa;InvoiceIssued" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1270" y="390" width="255" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="15" value="7 · BILLING&#10;Saga Id = InvoiceId&#10;AwaitingPayment + PaymentId&#10;Lên lịch RenewalTimeout" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="15" value="7 · BILLING&#xa;Saga Id = InvoiceId&#xa;AwaitingPayment + PaymentId&#xa;Lên lịch RenewalTimeout" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="925" y="380" width="275" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="16" value="8 · PAYMENTS&#10;ChargePayment → Marten stream&#10;Append event + inline snapshot&#10;+ reply trong transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="16" value="8 · PAYMENTS&#xa;ChargePayment → Marten stream&#xa;Append event + inline snapshot&#xa;+ reply trong transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="575" y="380" width="280" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="17" value="9 · CỔNG MÔ PHỎNG&#10;Dựa trên tổng tiền đã tính thuế&#10;Ngưỡng có thể cấu hình" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="17" value="9 · CỔNG MÔ PHỎNG&#xa;Dựa trên tổng tiền đã tính thuế&#xa;Ngưỡng có thể cấu hình" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="225" y="390" width="280" height="95" as="geometry" />
         </mxCell>
-        <mxCell id="18" value="durable publish" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="9" target="14">
+        <mxCell id="18" value="durable publish" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="9" target="14" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="19" value="InvoiceIssued" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="14" target="15">
+        <mxCell id="19" value="InvoiceIssued" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="14" target="15" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="20" value="ChargePayment qua RabbitMQ" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="15" target="16">
+        <mxCell id="20" value="ChargePayment qua RabbitMQ" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="15" target="16" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="21" value="quyết định" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="16" target="17">
+        <mxCell id="21" value="quyết định" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" parent="1" source="16" target="17" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="22" value="THÀNH CÔNG&#10;&lt; 5000 mặc định&#10;ChargeRequested + ChargeCaptured&#10;→ PaymentSucceeded" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="22" value="THÀNH CÔNG&#xa;&lt; 5000 mặc định&#xa;ChargeRequested + ChargeCaptured&#xa;→ PaymentSucceeded" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="225" y="600" width="280" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="23" value="TỪ CHỐI&#10;5000 ≤ amount &lt; 9000 mặc định&#10;ChargeRequested + ChargeDeclined&#10;→ PaymentFailed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="23" value="TỪ CHỐI&#xa;5000 ≤ amount &lt; 9000 mặc định&#xa;ChargeRequested + ChargeDeclined&#xa;→ PaymentFailed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="575" y="600" width="280" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="24" value="KHÔNG TRẢ LỜI&#10;≥ 9000 mặc định&#10;Chỉ ChargeRequested&#10;→ đợi durable timeout" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="24" value="KHÔNG TRẢ LỜI&#xa;≥ 9000 mặc định&#xa;Chỉ ChargeRequested&#xa;→ đợi durable timeout" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="925" y="600" width="275" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="25" value="THEO DÕI&#10;GET /invoices/{id}/renewal&#10;Có thể 404 trước khi saga được tạo.&#10;GET /payments/{id} hoặc /payments/{id}/events" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="25" value="THEO DÕI&#xa;GET /invoices/{id}/renewal&#xa;Có thể 404 trước khi saga được tạo.&#xa;GET /payments/{id} hoặc /payments/{id}/events" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="1270" y="600" width="300" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="1" source="17" target="22">
+        <mxCell id="26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;entryX=0.25;entryY=0;" parent="1" source="17" target="22" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="17" target="23">
+        <mxCell id="27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="17" target="23" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="365" y="530" />
@@ -262,7 +261,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.75;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="17" target="24">
+        <mxCell id="28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.75;exitY=1;entryX=0.5;entryY=0;" parent="1" source="17" target="24" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="435" y="555" />
@@ -270,7 +269,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="29" value="Relay có thể xử lý ngay sau commit, không cần đợi client nhận 202. Mặc định batch 100, poll 250 ms khi chưa đầy.&#10;Unknown type giữ lại; payload type đã biết bị hỏng → rollback cả batch, thử lại sau 5 giây. At-least-once, không phải exactly-once; không có payment provider thật." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="29" value="Relay có thể xử lý ngay sau commit, không cần đợi client nhận 202. Mặc định batch 100, poll 250 ms khi chưa đầy.&#xa;Unknown type giữ lại; payload type đã biết bị hỏng → rollback cả batch, thử lại sau 5 giây. At-least-once, không phải exactly-once; không có payment provider thật." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" parent="1" vertex="1">
           <mxGeometry x="45" y="825" width="1600" height="70" as="geometry" />
         </mxCell>
       </root>
@@ -290,31 +289,31 @@
         <mxCell id="4" value="Nguồn: src/SubscriptionManagement.Billing/Features/Renewals/; src/SubscriptionManagement.Relay/Features/Invoices/Settle/ và Features/Renewals/Cancel/; src/SubscriptionManagement.Payments/Features/Payments/" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="AWAITING PAYMENT&#10;InvoiceIssued → ChargePayment&#10;+ RenewalTimeout (mặc định 30s)" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="5" value="AWAITING PAYMENT&#xa;InvoiceIssued → ChargePayment&#xa;+ RenewalTimeout (mặc định 30s)" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="45" y="360" width="265" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="SETTLING&#10;PaymentSucceeded&#10;→ gửi SettleInvoice" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="6" value="SETTLING&#xa;PaymentSucceeded&#xa;→ gửi SettleInvoice" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="405" y="175" width="260" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="RELAY → API&#10;POST /invoices/{id}/settle&#10;Cùng paymentId lặp lại: no-op" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="7" value="RELAY → API&#xa;POST /invoices/{id}/settle&#xa;Cùng paymentId lặp lại: no-op" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="750" y="175" width="300" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="COMPLETED&#10;InvoiceSettled" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="8" value="COMPLETED&#xa;InvoiceSettled" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1180" y="125" width="280" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="COMPENSATED&#10;InvoiceSettlementRejected&#10;→ CancelPayment" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="9" value="COMPENSATED&#xa;InvoiceSettlementRejected&#xa;→ CancelPayment" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1180" y="260" width="280" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="DECLINED&#10;PaymentFailed&#10;→ CancelRenewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="10" value="DECLINED&#xa;PaymentFailed&#xa;→ CancelRenewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffeded;strokeColor=#c75050;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="405" y="415" width="260" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="TIMED OUT&#10;RenewalTimeout&#10;→ CancelPayment + CancelRenewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="11" value="TIMED OUT&#xa;RenewalTimeout&#xa;→ CancelPayment + CancelRenewal" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="405" y="585" width="260" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="RELAY · CancelRenewal&#10;Void invoice qua API; chỉ pause&#10;subscription khi void trả 200.&#10;404 / 409 → không pause." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="12" value="RELAY · CancelRenewal&#xa;Void invoice qua API; chỉ pause&#xa;subscription khi void trả 200.&#xa;404 / 409 → không pause." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="750" y="500" width="300" height="145" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="PAYMENTS · CancelPayment&#10;Chưa có stream / đang chờ → ChargeCanceled;&#10;đã capture → ChargeRefunded&#10;+ PaymentRefunded; trạng thái cuối → no-op." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="13" value="PAYMENTS · CancelPayment&#xa;Chưa có stream / đang chờ → ChargeCanceled;&#xa;đã capture → ChargeRefunded&#xa;+ PaymentRefunded; trạng thái cuối → no-op." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1180" y="550" width="280" height="135" as="geometry" />
         </mxCell>
         <mxCell id="14" value="PaymentSucceeded" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" edge="1" parent="1" source="5" target="6">
@@ -352,7 +351,7 @@
         <mxCell id="23" value="CancelPayment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="9" target="13">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="24" value="LỖI TẠM THỜI&#10;Lỗi HTTP / database được cấu hình sẽ retry; không biến thành rejection nghiệp vụ. Sau retry có thể vào dead letter. Timeout chỉ xử lý AwaitingPayment, không bù trừ Settling: có thể cần operator replay." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="24" value="LỖI TẠM THỜI&#xa;Lỗi HTTP / database được cấu hình sẽ retry; không biến thành rejection nghiệp vụ. Sau retry có thể vào dead letter. Timeout chỉ xử lý AwaitingPayment, không bù trừ Settling: có thể cần operator replay." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="45" y="845" width="1600" height="100" as="geometry" />
         </mxCell>
       </root>
@@ -372,16 +371,16 @@
         <mxCell id="4" value="Nguồn: src/SubscriptionManagement/Features/Subscriptions/CancelSubscriptions/ và Features/Invoices/SettleInvoice/; src/SubscriptionManagement.Relay/Features/Outbox/; src/SubscriptionManagement.Payments/Features/Payments/; src/SubscriptionManagement.Billing/Features/CreditNotes/" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="1 · DELETE /subscriptions/{id}&#10;Khóa subscription, chuyển Canceled" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="5" value="1 · DELETE /subscriptions/{id}&#xa;Khóa subscription, chuyển Canceled" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="170" width="285" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="6" value="2 · CÓ PAYMENT ĐÃ THU?&#10;Outbox bật và invoice có payment_id&#10;→ SubscriptionCanceled cùng transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="6" value="2 · CÓ PAYMENT ĐÃ THU?&#xa;Outbox bật và invoice có payment_id&#xa;→ SubscriptionCanceled cùng transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="390" y="170" width="315" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="3 · RELAY + RabbitMQ&#10;Publish SubscriptionCanceled&#10;qua durable envelope" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="7" value="3 · RELAY + RabbitMQ&#xa;Publish SubscriptionCanceled&#xa;qua durable envelope" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="770" y="170" width="295" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="4 · PAYMENTS&#10;Tìm snapshot theo subscription;&#10;chọn Captured và PeriodEnd &gt; CanceledOn" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="8" value="4 · PAYMENTS&#xa;Tìm snapshot theo subscription;&#xa;chọn Captured và PeriodEnd &gt; CanceledOn" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1130" y="160" width="335" height="125" as="geometry" />
         </mxCell>
         <mxCell id="9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="6">
@@ -393,10 +392,10 @@
         <mxCell id="11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="7" target="8">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="5 · MARTEN TRANSACTION&#10;Append ChargeRefunded toàn bộ amount&#10;+ cập nhật snapshot + PaymentRefunded" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="12" value="5 · MARTEN TRANSACTION&#xa;Append ChargeRefunded toàn bộ amount&#xa;+ cập nhật snapshot + PaymentRefunded" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1130" y="385" width="335" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="6 · BILLING&#10;Nhận PaymentRefunded&#10;Tạo credit note; unique payment_id&#10;ON CONFLICT DO NOTHING" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="13" value="6 · BILLING&#xa;Nhận PaymentRefunded&#xa;Tạo credit note; unique payment_id&#xa;ON CONFLICT DO NOTHING" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="770" y="385" width="295" height="120" as="geometry" />
         </mxCell>
         <mxCell id="14" value="mỗi payment đủ điều kiện" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="8" target="12">
@@ -405,10 +404,10 @@
         <mxCell id="15" value="PaymentRefunded qua RabbitMQ" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="12" target="13">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="16" value="RACE: SETTLEMENT ĐẾN MUỘN&#10;Nếu chưa có payment_id khi hủy thì không phát fact ngay. Nếu đã cancel trước settlement, lần settlement thành công đầu tiên cũng ghi SubscriptionCanceled trong transaction. CanceledOn trong fact này là ngày settlement, không phải ngày hủy gốc; settlement lặp lại không ghi fact lần nữa." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="16" value="RACE: SETTLEMENT ĐẾN MUỘN&#xa;Nếu chưa có payment_id khi hủy thì không phát fact ngay. Nếu đã cancel trước settlement, lần settlement thành công đầu tiên cũng ghi SubscriptionCanceled trong transaction. CanceledOn trong fact này là ngày settlement, không phải ngày hủy gốc; settlement lặp lại không ghi fact lần nữa." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="590" width="695" height="155" as="geometry" />
         </mxCell>
-        <mxCell id="17" value="IDEMPOTENCY &amp; PHẠM VI&#10;Charge lặp cho stream đã tồn tại là no-op; cancel trước charge có thể tạo stream ChargeCanceled để ngăn thu sau đó. Không refund theo tỷ lệ; /pay thủ công không tự tham gia choreography này." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="17" value="IDEMPOTENCY &amp; PHẠM VI&#xa;Charge lặp cho stream đã tồn tại là no-op; cancel trước charge có thể tạo stream ChargeCanceled để ngăn thu sau đó. Không refund theo tỷ lệ; /pay thủ công không tự tham gia choreography này." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="770" y="590" width="695" height="155" as="geometry" />
         </mxCell>
         <mxCell id="18" value="Không có coordinator hoàn tiền riêng; PaymentRefunded cũng có thể xuất hiện từ CancelPayment trong luồng bù trừ saga. Xem credit note qua GET /credit-notes?subscriptionId=… của Billing." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=15;fontColor=#203247;fontStyle=0;spacing=0;" vertex="1" parent="1">
@@ -431,28 +430,28 @@
         <mxCell id="4" value="Nguồn: src/AppHost/AppHost.cs, Services.cs, Observability.cs, appsettings.json; compose.yaml; Migrator/MigrationRunner.cs; ServiceDefaults/Extensions.cs" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#52677d;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="1040" width="1710" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="5" value="PostgreSQL 17&#10;subscriptions + billing + payments" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="5" value="PostgreSQL 17&#xa;subscriptions + billing + payments" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="160" width="280" height="95" as="geometry" />
         </mxCell>
         <mxCell id="6" value="Redis 7" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#e5f5ec;strokeColor=#31865c;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="340" width="280" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="RabbitMQ&#10;volume bền vững" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="7" value="RabbitMQ&#xa;volume bền vững" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="510" width="280" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="8" value="MIGRATOR&#10;Advisory lock; V1–V6 theo thứ tự&#10;Kiểm tra checksum; mỗi migration transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="8" value="MIGRATOR&#xa;Advisory lock; V1–V6 theo thứ tự&#xa;Kiểm tra checksum; mỗi migration transaction" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f3f5f8;strokeColor=#8291a3;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="390" y="155" width="320" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="9" value="BILLING&#10;Chờ billing DB + RabbitMQ&#10;Khởi tạo schema riêng" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="9" value="BILLING&#xa;Chờ billing DB + RabbitMQ&#xa;Khởi tạo schema riêng" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="390" y="350" width="320" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="10" value="PAYMENTS&#10;Chờ payments DB + RabbitMQ&#10;Khởi tạo schema riêng" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="10" value="PAYMENTS&#xa;Chờ payments DB + RabbitMQ&#xa;Khởi tạo schema riêng" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#f0eafa;strokeColor=#8055a6;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="390" y="520" width="320" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="API&#10;Chờ DB, Redis, migrator hoàn tất&#10;và Billing; cấu hình gRPC + outbox" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="11" value="API&#xa;Chờ DB, Redis, migrator hoàn tất&#xa;và Billing; cấu hình gRPC + outbox" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3973b7;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="800" y="215" width="320" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="RELAY&#10;Chờ DB, RabbitMQ, migrator và API&#10;Dùng subscriptions DB" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="12" value="RELAY&#xa;Chờ DB, RabbitMQ, migrator và API&#xa;Dùng subscriptions DB" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#fff1dd;strokeColor=#cc8122;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1220" y="300" width="325" height="110" as="geometry" />
         </mxCell>
         <mxCell id="13" value="chờ DB" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#52677d;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#203247;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="8">
@@ -486,10 +485,10 @@
         <mxCell id="21" value="Payments cũng chờ payments DB. Relay chờ DB, migrator và RabbitMQ; mũi tên trên chỉ nhấn mạnh đường khởi động chính." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=14;fontColor=#203247;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="45" y="650" width="1550" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="22" value="OBSERVABILITY&#10;OTLP chỉ xuất khi cấu hình endpoint. Aspire có dashboard; tùy chọn Collector → Prometheus / Tempo / Loki → Grafana. API: live = process, ready = database, /health = database + cache." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="22" value="OBSERVABILITY&#xa;OTLP chỉ xuất khi cấu hình endpoint. Aspire có dashboard; tùy chọn Collector → Prometheus / Tempo / Loki → Grafana. API: live = process, ready = database, /health = database + cache." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="40" y="725" width="710" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="23" value="DEPLOY &amp; GIỚI HẠN&#10;Compose / Helm: API + migrator + PostgreSQL + Redis; không có Billing / Payments / Relay. Endpoint chưa có authentication/authorization; topology này dành cho môi trường tin cậy, không phải cấu hình production hoàn chỉnh." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="23" value="DEPLOY &amp; GIỚI HẠN&#xa;Compose / Helm: API + migrator + PostgreSQL + Redis; không có Billing / Payments / Relay. Endpoint chưa có authentication/authorization; topology này dành cho môi trường tin cậy, không phải cấu hình production hoàn chỉnh." style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#a5b2c2;strokeWidth=2;fontColor=#203247;fontFamily=Helvetica;fontSize=15;spacing=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="800" y="725" width="745" height="150" as="geometry" />
         </mxCell>
       </root>

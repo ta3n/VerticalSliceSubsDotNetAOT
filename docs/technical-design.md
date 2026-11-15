@@ -161,7 +161,10 @@ Unit tests cover domain/validator/cursor rules. API integration tests use the re
 Redis and WebApplicationFactory; a programmable gateway isolates Billing, and a real gRPC host tests client behaviour.
 Service tests use Testcontainers PostgreSQL, Wolverine tracking and disabled external transports: saga transitions and
 races, atomic database/envelope commits, payment stream/snapshot contents, credit-note idempotency and Relay HTTP outcomes.
-The live k6 saga scenario creates fresh dated subscriptions and checks Completed/Declined/TimedOut and cancellation/refund;
+`SubscriptionManagement.SystemTests` runs the four services in one process on Testcontainers PostgreSQL (a database per service) and RabbitMQ:
+the three saga outcomes, concurrent renewals, the cancel/refund choreography, outbox durability with the Relay stopped, and trace continuity
+(one `ActivityListener` must see the inbound trace id on the API, gRPC client, Relay, broker publish/consume and Wolverine spans).
+The live k6 `endpoints` scenario drives every route in parallel flows and fails when a route gets no traffic; the live k6 saga scenario creates fresh dated subscriptions and checks Completed/Declined/TimedOut and cancellation/refund;
 it does not reset the databases. Settlement-rejected compensation is tested in the service suite, not deterministically in k6.
 Two consecutive live saga runs on the same persistent databases each completed 3/3 iterations with 99/99 checks.
 Commands and knobs are in the [README](../README.md#running-tests). These results do not imply complete panel/fault

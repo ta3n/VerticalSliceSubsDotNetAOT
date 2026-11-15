@@ -6,12 +6,23 @@
         <StripSymbols>true</StripSymbols>
     </PropertyGroup>
 
+    <!-- Native AOT toolchain version. The SDK restores the ILCompiler + NativeAOT runtime packs at its bundled runtime version;
+         SDK 10.0.401 bundles 10.0.12, which NuGet audit flags (CVE-2026-111497, NU1903 -> error under TreatWarningsAsErrors).
+         Point both packs at the patched 10.0.14 through the SDK's own known-pack tables (so they always match), only while the
+         SDK is older. Never add an explicit Microsoft.DotNet.ILCompiler PackageReference: it diverges from the runtime pack
+         (warning + the 'PrivateSdkAssemblies ItemGroup is required' publish error) once the SDK moves past it, as 10.0.404 did.
+         Does not touch RuntimeFrameworkVersion, so framework-dependent builds/tests still run on the installed shared runtime. -->
+    <ItemGroup Condition="$([MSBuild]::VersionLessThan('$(BundledNETCoreAppPackageVersion)', '10.0.14'))">
+        <KnownRuntimePack Update="Microsoft.NETCore.App" LatestRuntimeFrameworkVersion="10.0.14"/>
+        <KnownILCompilerPack Update="Microsoft.DotNet.ILCompiler" ILCompilerPackVersion="10.0.14"/>
+    </ItemGroup>
+
     <ItemGroup>
         <EmbeddedResource Include="Migrations\*.sql"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="10.0.14"/>
+        <PackageReference Include="dbup-postgresql" Version="7.0.1"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12"/>
         <PackageReference Include="Npgsql" Version="10.0.3"/>
     </ItemGroup>

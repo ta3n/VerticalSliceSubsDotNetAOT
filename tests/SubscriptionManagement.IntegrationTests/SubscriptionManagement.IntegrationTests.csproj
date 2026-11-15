@@ -22,7 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\SubscriptionManagement\SubscriptionManagement.csproj"/>
+        <ProjectReference Include="..\..\src\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj"/>
         <ProjectReference Include="..\..\src\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj"/>
     </ItemGroup>
 

@@ -35,7 +35,7 @@ var apiPostgres = ReferenceExpression.Create(
     $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}"
 );
 
-var api = builder.AddProject<Projects.SubscriptionManagement>("subscription-management")
+var api = builder.AddProject<Projects.SubscriptionManagement_Api>("subscription-management")
     .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
     .WithReferenceRelationship(database)
     .WaitFor(database)

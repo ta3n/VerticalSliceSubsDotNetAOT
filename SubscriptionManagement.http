@@ -1,7 +1,7 @@
 # Run the stack:  docker compose up --build            (API on :8080)
 #   or locally:   docker compose up -d postgres redis && dotnet run --project src/SubscriptionManagement.Migrator -- \
 #                   "Host=localhost;Database=subscriptions;Username=subs;Password=subs-dev-only" \
-#                 && dotnet run --project src/SubscriptionManagement --launch-profile http   (API on :5127)
+#                 && dotnet run --project src/SubscriptionManagement.Api --launch-profile http   (API on :5127)
 # Use REST Client (VS Code) or the Visual Studio HTTP client. Run requests 1-5 in order; the rest are independent.
 @baseUrl = http://localhost:5127
 @subscriptionId = {{createSubscription.response.body.$.id}}

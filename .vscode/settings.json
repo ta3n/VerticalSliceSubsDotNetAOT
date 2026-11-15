@@ -1,3 +1,7 @@
 {
-    "lmstudioCode.minContextLength": 262144
+    "lmstudioCode.minContextLength": 262144,
+    "python.terminal.useEnvFile": true,
+    "cSpell.words": [
+        "Npgsql"
+    ]
 }

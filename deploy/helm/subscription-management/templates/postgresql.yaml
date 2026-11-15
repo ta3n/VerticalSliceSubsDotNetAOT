@@ -73,6 +73,8 @@ spec:
           args: ["-c", "max_connections={{ $pg.maxConnections }}"]
           securityContext:
             allowPrivilegeEscalation: false
+            # Everything postgres writes is on a volume: data, the unix socket (run) and shared memory (dshm).
+            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           ports:
