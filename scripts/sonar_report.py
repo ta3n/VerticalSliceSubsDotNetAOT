@@ -13,9 +13,19 @@ url, key, credentials = sys.argv[1:4]
 auth = "Basic " + base64.b64encode(credentials.encode()).decode()
 
 
+# Only http(s): urlopen also serves file:// and ftp://, and the URL comes from the command line.
+if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+    sys.exit(f"sonar url must start with http:// or https://, got: {url}")
+opener = urllib.request.OpenerDirector()
+opener.add_handler(urllib.request.HTTPHandler())
+opener.add_handler(urllib.request.HTTPSHandler())
+opener.add_handler(urllib.request.HTTPDefaultErrorHandler())
+opener.add_handler(urllib.request.HTTPErrorProcessor())
+
+
 def get(path, **params):
     req = urllib.request.Request(f"{url}{path}?{urllib.parse.urlencode(params)}", headers={"Authorization": auth})
-    with urllib.request.urlopen(req) as r:
+    with opener.open(req) as r:
         return json.load(r)
 
 
