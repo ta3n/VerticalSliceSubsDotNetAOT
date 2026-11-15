@@ -1,5 +1,5 @@
-// Local orchestration with Aspire: the same topology as compose.yaml (PostgreSQL + Redis + one-shot migrator + API),
-// but the two .NET projects run from source (JIT, debuggable) and all telemetry lands in the Aspire dashboard — and,
+// Local orchestration with Aspire: PostgreSQL + Redis + RabbitMQ + migrator + API + billing/payments/relay.
+// The .NET projects run from source (JIT, debuggable) and all telemetry lands in the Aspire dashboard — and,
 // unless Observability:Enabled=false, also in Prometheus/Tempo/Loki behind Grafana (see Observability.cs).
 //
 //   dotnet run --project src/AppHost      # or: aspire run
@@ -11,7 +11,7 @@
 using AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
-var (maxConnections, apiPoolSize) = builder.Configuration.PostgresConnectionLimits();
+var (maxConnections, apiPoolSize, servicePoolSize) = builder.Configuration.PostgresConnectionLimits();
 
 // Image tags match compose.yaml / the integration tests; the data volume keeps data across AppHost restarts.
 // Postgres:MaxConnections replaces the image default (100) so the API pool below fits; keep in step with compose.yaml.
@@ -32,7 +32,8 @@ var migrator = builder.AddProject<Projects.SubscriptionManagement_Migrator>("mig
 // Pool capped (Api:PostgresMaxPoolSize) like compose.yaml, below Postgres' max_connections: the remaining slots cover
 // the superuser-reserved ones, the migrator, postgres-exporter and ad-hoc psql sessions.
 var apiPostgres = ReferenceExpression.Create(
-    $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}");
+    $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}"
+);
 
 var api = builder.AddProject<Projects.SubscriptionManagement>("subscription-management")
     .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
@@ -47,15 +48,23 @@ var api = builder.AddProject<Projects.SubscriptionManagement>("subscription-mana
     .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
     .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "Scalar API reference" });
 
+var services = builder.AddS2SServices(postgres, database, migrator, api, servicePoolSize);
+api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc"))
+    .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
+    .WaitFor(services.Billing);
+
 // Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry.
 ObservabilityStack? stack = null;
 if (builder.Configuration.Required<bool>("Observability:Enabled"))
 {
     stack = builder.AddObservabilityStack(postgres, redis);
     api.WaitFor(stack.Collector);
+    services.Billing.WaitFor(stack.Collector);
+    services.Payments.WaitFor(stack.Collector);
+    services.Relay.WaitFor(stack.Collector);
 }
 
 // k6 scenarios from scripts/*-test.js as on-demand resources (▶ in the dashboard); see LoadTests.cs.
-builder.AddK6Suite(api, stack);
+builder.AddK6Suite(api, stack, services);
 
 await builder.Build().RunAsync();

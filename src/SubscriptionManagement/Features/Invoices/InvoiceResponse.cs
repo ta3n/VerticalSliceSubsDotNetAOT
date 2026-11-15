@@ -10,11 +10,28 @@ public sealed record InvoiceResponse(
     int Status,
     string StatusLabel,
     DateTime IssuedAt,
-    DateTime? PaidAt)
+    DateTime? PaidAt
+)
 {
-    public static InvoiceResponse From(Invoice i) => new(
-        i.Id, i.SubscriptionId, i.Amount, i.Currency, i.PeriodStart, i.PeriodEnd,
-        (int)i.Status, i.Status.ToDb(), i.IssuedAt, i.PaidAt);
+    public static InvoiceResponse From(
+        Invoice i
+    )
+    {
+        return new InvoiceResponse(
+            i.Id,
+            i.SubscriptionId,
+            i.Amount,
+            i.Currency,
+            i.PeriodStart,
+            i.PeriodEnd,
+            (int)i.Status,
+            i.Status.ToDb(),
+            i.IssuedAt,
+            i.PaidAt
+        );
+    }
 }
 
-public sealed record InvoiceList(IReadOnlyList<InvoiceResponse> Items);
+public sealed record InvoiceList(
+    IReadOnlyList<InvoiceResponse> Items
+);

@@ -2,7 +2,9 @@ namespace SubscriptionManagement.Infrastructure;
 
 public static class HealthProbe
 {
-    public static async Task<int> RunAsync(string[] args)
+    public static async Task<int> RunAsync(
+        string[] args
+    )
     {
         var url = args.Length > 1 ? args[1] : DefaultUrl();
         try

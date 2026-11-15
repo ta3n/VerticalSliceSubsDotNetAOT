@@ -4,7 +4,9 @@ using System.Text;
 
 namespace SubscriptionManagement.IntegrationTests;
 
-public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixture)
+public sealed class SubscriptionApiTests(
+    ApiFixture fixture
+) : ApiTestBase(fixture)
 {
     [Fact]
     public async Task Create_returns_201_with_location_and_the_original_contract_then_get_returns_the_same()
@@ -29,7 +31,9 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [Fact]
     public async Task Create_accepts_missing_and_explicit_null_trial_and_a_100_char_name()
     {
-        var noTrial = await CreateSubscriptionAsync(new { serviceName = new string('n', 100), price = 1, startDate = "2026-09-05" });
+        var noTrial = await CreateSubscriptionAsync(
+            new { serviceName = new string('n', 100), price = 1, startDate = "2026-09-05" }
+        );
         Assert.Equal(System.Text.Json.JsonValueKind.Null, noTrial.GetProperty("trialEndsAt").ValueKind);
 
         var nullTrial = await CreateSubscriptionAsync(NewSubscription(trial: null));
@@ -41,7 +45,9 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     {
         var body = new StringContent(
             """{"serviceName":"x'); DROP TABLE subscriptions;--","price":0.0000000000000000000000000001,"startDate":"2026-09-05"}""",
-            Encoding.UTF8, "application/json");
+            Encoding.UTF8,
+            "application/json"
+        );
         var response = await Client.PostAsync("/subscriptions", body);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var id = Id(await ReadAsync(response));
@@ -59,11 +65,23 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [InlineData("""{"serviceName":"Netflix","price":-5,"startDate":"2026-09-05"}""", "price")]
     [InlineData("""{"serviceName":"Netflix","startDate":"2026-09-05"}""", "price")]
     [InlineData("""{"serviceName":"Netflix","price":1}""", "startDate")]
-    [InlineData("""{"serviceName":"Netflix","price":1,"startDate":"2026-09-05","trialEndsAt":"2026-09-05"}""", "trialEndsAt")]
-    [InlineData("""{"serviceName":"Netflix","price":1,"startDate":"2026-09-05","trialEndsAt":"2026-09-01"}""", "trialEndsAt")]
-    public async Task Create_rejects_invalid_fields_with_a_problem_naming_the_field(string json, string field)
+    [InlineData(
+        """{"serviceName":"Netflix","price":1,"startDate":"2026-09-05","trialEndsAt":"2026-09-05"}""",
+        "trialEndsAt"
+    )]
+    [InlineData(
+        """{"serviceName":"Netflix","price":1,"startDate":"2026-09-05","trialEndsAt":"2026-09-01"}""",
+        "trialEndsAt"
+    )]
+    public async Task Create_rejects_invalid_fields_with_a_problem_naming_the_field(
+        string json,
+        string field
+    )
     {
-        var response = await Client.PostAsync("/subscriptions", new StringContent(json, Encoding.UTF8, "application/json"));
+        var response = await Client.PostAsync(
+            "/subscriptions",
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
 
         var problem = await AssertProblemAsync(response, HttpStatusCode.BadRequest, "validation", "/subscriptions");
         Assert.True(problem.GetProperty("errors").TryGetProperty(field, out var messages));
@@ -73,7 +91,7 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [Fact]
     public async Task Create_rejects_a_name_over_100_chars()
     {
-        var response = await Client.PostAsJsonAsync("/subscriptions", NewSubscription(name: new string('x', 101)));
+        var response = await Client.PostAsJsonAsync("/subscriptions", NewSubscription(new string('x', 101)));
         var problem = await AssertProblemAsync(response, HttpStatusCode.BadRequest, "validation");
         Assert.True(problem.GetProperty("errors").TryGetProperty("serviceName", out _));
     }
@@ -84,9 +102,14 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [InlineData("""{"serviceName":"a","price":1,"startDate":"05/09/2026"}""")]
     [InlineData("""{"serviceName":"a","price":1,"startDate":"2026-02-30"}""")]
     [InlineData("")]
-    public async Task Create_rejects_malformed_bodies_with_400_problem(string json)
+    public async Task Create_rejects_malformed_bodies_with_400_problem(
+        string json
+    )
     {
-        var response = await Client.PostAsync("/subscriptions", new StringContent(json, Encoding.UTF8, "application/json"));
+        var response = await Client.PostAsync(
+            "/subscriptions",
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
         await AssertProblemAsync(response, HttpStatusCode.BadRequest, "malformed-request");
     }
 
@@ -101,8 +124,12 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     public async Task Get_unknown_subscription_is_a_404_problem_carrying_the_id()
     {
         var id = Guid.NewGuid();
-        var problem = await AssertProblemAsync(await Client.GetAsync($"/subscriptions/{id}"),
-            HttpStatusCode.NotFound, "subscription-not-found", $"/subscriptions/{id}");
+        var problem = await AssertProblemAsync(
+            await Client.GetAsync($"/subscriptions/{id}"),
+            HttpStatusCode.NotFound,
+            "subscription-not-found",
+            $"/subscriptions/{id}"
+        );
         Assert.Equal(id.ToString(), problem.GetProperty("subscriptionId").GetString());
     }
 
@@ -110,7 +137,10 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [InlineData("GET", "/subscriptions/not-a-guid")]
     [InlineData("DELETE", "/subscriptions/not-a-guid")]
     [InlineData("POST", "/subscriptions/not-a-guid/pause")]
-    public async Task Malformed_ids_are_400_problems(string method, string url)
+    public async Task Malformed_ids_are_400_problems(
+        string method,
+        string url
+    )
     {
         var response = await Client.SendAsync(new HttpRequestMessage(new HttpMethod(method), url));
         await AssertProblemAsync(response, HttpStatusCode.BadRequest, "malformed-request");
@@ -127,8 +157,11 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
         var fetched = await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"));
         Assert.Equal(2, fetched.GetProperty("status").GetInt32());
 
-        var second = await AssertProblemAsync(await Client.DeleteAsync($"/subscriptions/{id}"),
-            HttpStatusCode.BadRequest, "subscription-already-canceled");
+        var second = await AssertProblemAsync(
+            await Client.DeleteAsync($"/subscriptions/{id}"),
+            HttpStatusCode.BadRequest,
+            "subscription-already-canceled"
+        );
         Assert.Equal("Subscription already canceled.", second.GetProperty("detail").GetString());
         Assert.Equal("Subscription already canceled.", second.GetProperty("error").GetString());
     }
@@ -136,8 +169,11 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     [Fact]
     public async Task Cancel_unknown_subscription_is_404()
     {
-        await AssertProblemAsync(await Client.DeleteAsync($"/subscriptions/{Guid.NewGuid()}"),
-            HttpStatusCode.NotFound, "subscription-not-found");
+        await AssertProblemAsync(
+            await Client.DeleteAsync($"/subscriptions/{Guid.NewGuid()}"),
+            HttpStatusCode.NotFound,
+            "subscription-not-found"
+        );
     }
 
     [Fact]
@@ -145,7 +181,8 @@ public sealed class SubscriptionApiTests(ApiFixture fixture) : ApiTestBase(fixtu
     {
         var id = Id(await CreateSubscriptionAsync());
 
-        var responses = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => Client.DeleteAsync($"/subscriptions/{id}")));
+        var responses =
+            await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => Client.DeleteAsync($"/subscriptions/{id}")));
 
         Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.NoContent));
         Assert.Equal(11, responses.Count(r => r.StatusCode == HttpStatusCode.BadRequest));

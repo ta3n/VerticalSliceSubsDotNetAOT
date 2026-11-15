@@ -19,6 +19,7 @@ COPY Directory.Build.props ./
 COPY src/SubscriptionManagement/SubscriptionManagement.csproj src/SubscriptionManagement/
 COPY src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj src/SubscriptionManagement.ServiceDefaults/
 COPY src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj src/SubscriptionManagement.Migrator/
+COPY src/SubscriptionManagement.Contracts/SubscriptionManagement.Contracts.csproj src/SubscriptionManagement.Contracts/
 RUN dotnet restore src/SubscriptionManagement -r "$(cat /rid)" \
  && dotnet restore src/SubscriptionManagement.Migrator -r "$(cat /rid)"
 

@@ -141,6 +141,13 @@
       "keepTime": true
     },
     {
+      "title": "Request flow",
+      "type": "link",
+      "url": "/d/subs-aspire-request-flow",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
       "title": "Explore traces",
       "type": "link",
       "url": "/a/grafana-exploretraces-app/explore",

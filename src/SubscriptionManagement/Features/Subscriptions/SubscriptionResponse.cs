@@ -7,8 +7,13 @@ public sealed record SubscriptionResponse(
     decimal Price,
     DateOnly StartDate,
     DateOnly? TrialEndsAt,
-    int Status)
+    int Status
+)
 {
-    public static SubscriptionResponse From(Subscription s) =>
-        new(s.Id, s.ServiceName, s.Price, s.StartDate, s.TrialEndsAt, (int)s.Status);
+    public static SubscriptionResponse From(
+        Subscription s
+    )
+    {
+        return new SubscriptionResponse(s.Id, s.ServiceName, s.Price, s.StartDate, s.TrialEndsAt, (int)s.Status);
+    }
 }

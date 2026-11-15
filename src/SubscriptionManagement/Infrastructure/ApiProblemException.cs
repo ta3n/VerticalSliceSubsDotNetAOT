@@ -10,7 +10,8 @@ public sealed class ApiProblemException(
     string title,
     string detail,
     IReadOnlyDictionary<string, object>? extensions = null,
-    IReadOnlyDictionary<string, string[]>? errors = null) : Exception(detail)
+    IReadOnlyDictionary<string, string[]>? errors = null
+) : Exception(detail)
 {
     public int Status { get; } = status;
     public string Slug { get; } = slug;
@@ -19,7 +20,16 @@ public sealed class ApiProblemException(
     public IReadOnlyDictionary<string, object>? Extensions { get; } = extensions;
     public IReadOnlyDictionary<string, string[]>? Errors { get; } = errors;
 
-    public static ApiProblemException Validation(IReadOnlyDictionary<string, string[]> errors) =>
-        new(StatusCodes.Status400BadRequest, "validation", "One or more validation errors occurred.",
-            "One or more validation errors occurred.", errors: errors);
+    public static ApiProblemException Validation(
+        IReadOnlyDictionary<string, string[]> errors
+    )
+    {
+        return new ApiProblemException(
+            StatusCodes.Status400BadRequest,
+            "validation",
+            "One or more validation errors occurred.",
+            "One or more validation errors occurred.",
+            errors: errors
+        );
+    }
 }

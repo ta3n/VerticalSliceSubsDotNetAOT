@@ -18,7 +18,12 @@ public static partial class MigrationRunner
     [GeneratedRegex(@"(?:^|\.)V(?<version>\d+)__(?<description>[^.]+)\.sql$")]
     private static partial Regex FileNamePattern();
 
-    public sealed record Migration(int Version, string Description, string Sql, string Checksum);
+    public sealed record Migration(
+        int Version,
+        string Description,
+        string Sql,
+        string Checksum
+    );
 
     public static IReadOnlyList<Migration> LoadEmbedded()
     {
@@ -27,26 +32,30 @@ public static partial class MigrationRunner
         foreach (var name in assembly.GetManifestResourceNames())
         {
             var match = FileNamePattern().Match(name);
-            if (!match.Success)
-            {
-                continue;
-            }
+            if (!match.Success) continue;
 
             using var stream = assembly.GetManifestResourceStream(name)!;
             using var reader = new StreamReader(stream, Encoding.UTF8);
             var sql = reader.ReadToEnd();
-            migrations.Add(new Migration(
-                int.Parse(match.Groups["version"].Value),
-                match.Groups["description"].Value,
-                sql,
-                Checksum(sql)));
+            migrations.Add(
+                new Migration(
+                    int.Parse(match.Groups["version"].Value),
+                    match.Groups["description"].Value,
+                    sql,
+                    Checksum(sql)
+                )
+            );
         }
 
         return migrations.OrderBy(m => m.Version).ToList();
     }
 
     /// <summary>Returns the number of migrations applied by this run.</summary>
-    public static async Task<int> RunAsync(string connectionString, ILogger logger, CancellationToken ct = default)
+    public static async Task<int> RunAsync(
+        string connectionString,
+        ILogger logger,
+        CancellationToken ct = default
+    )
     {
         var migrations = LoadEmbedded();
         await using var dataSource = NpgsqlDataSource.Create(connectionString);
@@ -55,14 +64,18 @@ public static partial class MigrationRunner
         await ExecuteAsync(connection, $"SELECT pg_advisory_lock({AdvisoryLockKey})", ct);
         try
         {
-            await ExecuteAsync(connection, """
+            await ExecuteAsync(
+                connection,
+                """
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     version     INTEGER      NOT NULL PRIMARY KEY,
                     description VARCHAR(200) NOT NULL,
                     checksum    CHAR(64)     NOT NULL,
                     applied_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
                 )
-                """, ct);
+                """,
+                ct
+            );
 
             var applied = await LoadAppliedAsync(connection, ct);
             var count = 0;
@@ -71,10 +84,9 @@ public static partial class MigrationRunner
                 if (applied.TryGetValue(migration.Version, out var recorded))
                 {
                     if (!string.Equals(recorded, migration.Checksum, StringComparison.Ordinal))
-                    {
                         throw new InvalidOperationException(
-                            $"Migration V{migration.Version} ({migration.Description}) was modified after it was applied.");
-                    }
+                            $"Migration V{migration.Version} ({migration.Description}) was modified after it was applied."
+                        );
 
                     continue;
                 }
@@ -82,7 +94,9 @@ public static partial class MigrationRunner
                 await using var tx = await connection.BeginTransactionAsync(ct);
                 await ExecuteAsync(connection, migration.Sql, ct);
                 await using (var insert = new NpgsqlCommand(
-                    "INSERT INTO schema_migrations (version, description, checksum) VALUES ($1, $2, $3)", connection))
+                        "INSERT INTO schema_migrations (version, description, checksum) VALUES ($1, $2, $3)",
+                        connection
+                    ))
                 {
                     insert.Parameters.AddWithValue(migration.Version);
                     insert.Parameters.AddWithValue(migration.Description);
@@ -105,31 +119,45 @@ public static partial class MigrationRunner
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Applied migration V{Version} {Description}")]
-    private static partial void LogApplied(ILogger logger, int version, string description);
+    private static partial void LogApplied(
+        ILogger logger,
+        int version,
+        string description
+    );
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Schema is up to date ({Applied} applied, {Total} total)")]
-    private static partial void LogUpToDate(ILogger logger, int applied, int total);
+    private static partial void LogUpToDate(
+        ILogger logger,
+        int applied,
+        int total
+    );
 
-    private static async Task<Dictionary<int, string>> LoadAppliedAsync(NpgsqlConnection connection, CancellationToken ct)
+    private static async Task<Dictionary<int, string>> LoadAppliedAsync(
+        NpgsqlConnection connection,
+        CancellationToken ct
+    )
     {
         var applied = new Dictionary<int, string>();
         await using var command = new NpgsqlCommand("SELECT version, checksum FROM schema_migrations", connection);
         await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            applied[reader.GetInt32(0)] = reader.GetString(1);
-        }
+        while (await reader.ReadAsync(ct)) applied[reader.GetInt32(0)] = reader.GetString(1);
 
         return applied;
     }
 
-    private static async Task ExecuteAsync(NpgsqlConnection connection, string sql, CancellationToken ct)
+    private static async Task ExecuteAsync(
+        NpgsqlConnection connection,
+        string sql,
+        CancellationToken ct
+    )
     {
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(ct);
     }
 
-    private static string Checksum(string sql)
+    private static string Checksum(
+        string sql
+    )
     {
         var normalized = sql.Replace("\r\n", "\n", StringComparison.Ordinal);
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));

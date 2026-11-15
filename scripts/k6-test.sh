@@ -9,6 +9,7 @@
 #   scripts/k6-test.sh breakpoint                 # ramp the rate until it breaks (exit 99 = breaking point found)
 #   scripts/k6-test.sh contention                 # races on the same row: exactly one winner
 #   scripts/k6-test.sh pagination                 # keyset paging: no duplicates, stable order, flat latency
+#   scripts/k6-test.sh saga                       # renewal success, decline, timeout + cancel/refund
 # Settings: scripts/.env (local k8s), ENV_FILE=scripts/.env.compose or ENV_FILE=scripts/.env.aspire; explicit variables
 # win. Each script documents its own knobs in its header. Extra arguments go to `k6 run`.
 set -euo pipefail
@@ -28,7 +29,7 @@ mkdir -p "$root/artifacts/k6"
 
 # Forward BASE_URL plus every knob the scenarios read (only the ones that are set).
 knobs=(-e "BASE_URL=$base")
-for var in VUS DURATION HTTP_TIMEOUT $(compgen -v | grep -E '^(SMOKE|SPIKE|SOAK|RAMPUP|BP|CONTENTION|PAGINATION)_' || true); do
+for var in VUS DURATION HTTP_TIMEOUT ITERATIONS RENEWAL_TIMEOUT_S BILLING_URL PAYMENTS_URL $(compgen -v | grep -E '^(SMOKE|SPIKE|SOAK|RAMPUP|BP|CONTENTION|PAGINATION)_' || true); do
   [[ -n ${!var+x} ]] && knobs+=(-e "$var=${!var}")
 done
 mapfile -t rw_env < <(k6_prometheus_args)

@@ -33,15 +33,22 @@ public sealed class HealthProbeTests : IAsyncLifetime
         _baseUri = new Uri(_server.Urls.First());
     }
 
-    public async Task DisposeAsync() => await _server.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        await _server.DisposeAsync();
+    }
 
     [Fact]
-    public async Task Healthy_endpoint_exits_0() =>
+    public async Task Healthy_endpoint_exits_0()
+    {
         Assert.Equal(0, await HealthProbe.RunAsync(["healthcheck", new Uri(_baseUri, "/health/live").ToString()]));
+    }
 
     [Fact]
-    public async Task Unhealthy_status_exits_1() =>
+    public async Task Unhealthy_status_exits_1()
+    {
         Assert.Equal(1, await HealthProbe.RunAsync(["healthcheck", new Uri(_baseUri, "/down").ToString()]));
+    }
 
     [Fact]
     public async Task Unreachable_endpoint_exits_1()

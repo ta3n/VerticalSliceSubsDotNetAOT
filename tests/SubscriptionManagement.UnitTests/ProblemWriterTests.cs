@@ -6,14 +6,18 @@ namespace SubscriptionManagement.UnitTests;
 
 public class ProblemWriterTests
 {
-    private static DefaultHttpContext NewContext() =>
-        new() { RequestServices = new ServiceCollection().BuildServiceProvider() };
+    private static DefaultHttpContext NewContext()
+    {
+        return new DefaultHttpContext { RequestServices = new ServiceCollection().BuildServiceProvider() };
+    }
 
     [Theory]
     [InlineData("status")]
     [InlineData("type")]
     [InlineData("traceId")]
-    public async Task Extensions_cannot_redefine_standard_members(string key)
+    public async Task Extensions_cannot_redefine_standard_members(
+        string key
+    )
     {
         var context = NewContext();
         context.Response.Body = new MemoryStream();
@@ -29,9 +33,14 @@ public class ProblemWriterTests
         context.TraceIdentifier = "trace-1";
         context.Request.Path = "/subscriptions";
         context.Response.Body = new MemoryStream();
-        var problem = new ApiProblemException(400, "validation", "Bad", "Detail",
+        var problem = new ApiProblemException(
+            400,
+            "validation",
+            "Bad",
+            "Detail",
             new Dictionary<string, object> { ["n"] = 3, ["ok"] = true, ["id"] = Guid.Empty },
-            new Dictionary<string, string[]> { ["price"] = ["must be greater than 0"] });
+            new Dictionary<string, string[]> { ["price"] = ["must be greater than 0"] }
+        );
 
         await ProblemWriter.WriteAsync(context, problem);
 

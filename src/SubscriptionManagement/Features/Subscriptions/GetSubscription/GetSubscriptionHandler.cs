@@ -3,7 +3,9 @@ using SubscriptionManagement.Infrastructure;
 
 namespace SubscriptionManagement.Features.Subscriptions.GetSubscription;
 
-public sealed record GetSubscriptionQuery(Guid Id);
+public sealed record GetSubscriptionQuery(
+    Guid Id
+);
 
 public static class GetSubscriptionHandler
 {
@@ -12,15 +14,15 @@ public static class GetSubscriptionHandler
         GetSubscriptionQuery query,
         NpgsqlDataSource db,
         SubscriptionCache cache,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
-        if (await cache.GetAsync(query.Id, ct) is { } cached)
-        {
-            return cached;
-        }
+        if (await cache.GetAsync(query.Id, ct) is { } cached) return cached;
 
         var subscription = await db.WithConnectionAsync(
-            (connection, token) => SubscriptionStore.FindAsync(connection, query.Id, token), ct)
+                (connection, token) => SubscriptionStore.FindAsync(connection, query.Id, token),
+                ct
+            )
             ?? throw SubscriptionProblems.NotFound(query.Id);
 
         var response = SubscriptionResponse.From(subscription);

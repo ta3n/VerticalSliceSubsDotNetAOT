@@ -4,10 +4,15 @@ using SubscriptionManagement.Infrastructure;
 
 namespace SubscriptionManagement.Features.Subscriptions.RenewSubscription;
 
-public sealed record RenewSubscriptionCommand(Guid Id);
+public sealed record RenewSubscriptionCommand(
+    Guid Id
+);
 
 /// <summary>The renewed subscription plus the invoice issued for the period just entered.</summary>
-public sealed record RenewSubscriptionResult(SubscriptionResponse Subscription, InvoiceResponse Invoice);
+public sealed record RenewSubscriptionResult(
+    SubscriptionResponse Subscription,
+    InvoiceResponse Invoice
+);
 
 public static class RenewSubscriptionHandler
 {
@@ -19,19 +24,32 @@ public static class RenewSubscriptionHandler
         NpgsqlDataSource db,
         SubscriptionCache cache,
         TimeProvider time,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         // Period advance and invoice insert commit together or not at all.
-        var result = await db.InTransactionAsync(async (connection, token) =>
-        {
-            var subscription = await SubscriptionStore.FindForUpdateAsync(connection, command.Id, token)
-                ?? throw SubscriptionProblems.NotFound(command.Id);
-            var period = subscription.Renew();
-            var invoice = Invoice.Issue(subscription.Id, subscription.Price, Currency, period, time.GetUtcNow().UtcDateTime);
-            await SubscriptionStore.SaveStateAsync(connection, subscription, token);
-            await InvoiceStore.InsertAsync(connection, invoice, token);
-            return new RenewSubscriptionResult(SubscriptionResponse.From(subscription), InvoiceResponse.From(invoice));
-        }, ct);
+        var result = await db.InTransactionAsync(
+            async (connection, token) =>
+            {
+                var subscription = await SubscriptionStore.FindForUpdateAsync(connection, command.Id, token)
+                    ?? throw SubscriptionProblems.NotFound(command.Id);
+                var period = subscription.Renew();
+                var invoice = Invoice.Issue(
+                    subscription.Id,
+                    subscription.Price,
+                    Currency,
+                    period,
+                    time.GetUtcNow().UtcDateTime
+                );
+                await SubscriptionStore.SaveStateAsync(connection, subscription, token);
+                await InvoiceStore.InsertAsync(connection, invoice, token);
+                return new RenewSubscriptionResult(
+                    SubscriptionResponse.From(subscription),
+                    InvoiceResponse.From(invoice)
+                );
+            },
+            ct
+        );
 
         await cache.PutAsync(result.Subscription, CancellationToken.None);
         return result;

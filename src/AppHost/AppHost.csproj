@@ -1,23 +1,27 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <!-- Generated Postgres password for the persistent data volume lives here (dotnet user-secrets). -->
-    <UserSecretsId>09d37b0f-e408-407b-9d93-8a58c4dea4d7</UserSecretsId>
-    <!-- Runs with the DCP/dashboard from NuGet (plain `dotnet run`), no Aspire CLI bundle required. -->
-    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- Generated Postgres password for the persistent data volume lives here (dotnet user-secrets). -->
+        <UserSecretsId>09d37b0f-e408-407b-9d93-8a58c4dea4d7</UserSecretsId>
+        <!-- Runs with the DCP/dashboard from NuGet (plain `dotnet run`), no Aspire CLI bundle required. -->
+        <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\SubscriptionManagement\SubscriptionManagement.csproj" />
-    <ProjectReference Include="..\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\SubscriptionManagement\SubscriptionManagement.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Billing\SubscriptionManagement.Billing.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Payments\SubscriptionManagement.Payments.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Relay\SubscriptionManagement.Relay.csproj"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
-    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.5" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.k6" Version="13.6.1" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.OpenTelemetryCollector" Version="13.6.1" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.5"/>
+        <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.5"/>
+        <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.6.5"/>
+        <PackageReference Include="CommunityToolkit.Aspire.Hosting.k6" Version="13.6.1"/>
+        <PackageReference Include="CommunityToolkit.Aspire.Hosting.OpenTelemetryCollector" Version="13.6.1"/>
+    </ItemGroup>
 
 </Project>

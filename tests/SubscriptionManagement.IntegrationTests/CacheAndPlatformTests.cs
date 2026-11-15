@@ -6,9 +6,16 @@ using SubscriptionManagement.Migrator;
 
 namespace SubscriptionManagement.IntegrationTests;
 
-public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
+public sealed class CacheTests(
+    ApiFixture fixture
+) : ApiTestBase(fixture)
 {
-    private static string Key(string id) => $"subs:subscriptions:{id}";
+    private static string Key(
+        string id
+    )
+    {
+        return $"subs:subscriptions:{id}";
+    }
 
     [Fact]
     public async Task Create_warms_the_cache_with_a_bounded_ttl_and_repeat_reads_skip_the_database()
@@ -21,12 +28,21 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
         Assert.InRange(ttl!.Value.TotalSeconds, 250, 300);
 
         // Change the row behind the API's back: a cache hit still returns the old value.
-        await Fixture.ExecuteAsync("UPDATE subscriptions SET service_name = 'Changed' WHERE id = @id", ("id", Guid.Parse(id)));
-        Assert.Equal("Original", (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("serviceName").GetString());
+        await Fixture.ExecuteAsync(
+            "UPDATE subscriptions SET service_name = 'Changed' WHERE id = @id",
+            ("id", Guid.Parse(id))
+        );
+        Assert.Equal(
+            "Original",
+            (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("serviceName").GetString()
+        );
 
         // After the entry disappears the next read reloads from PostgreSQL and repopulates.
         await db.KeyDeleteAsync(Key(id));
-        Assert.Equal("Changed", (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("serviceName").GetString());
+        Assert.Equal(
+            "Changed",
+            (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("serviceName").GetString()
+        );
         Assert.True(await db.KeyExistsAsync(Key(id)));
     }
 
@@ -40,7 +56,10 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
         await Client.DeleteAsync($"/subscriptions/{id}");
         Assert.False(await db.KeyExistsAsync(Key(id)));
 
-        Assert.Equal(2, (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32());
+        Assert.Equal(
+            2,
+            (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32()
+        );
     }
 
     [Fact]
@@ -67,7 +86,7 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
     [Fact]
     public async Task Without_redis_the_api_falls_back_to_an_in_process_cache_and_still_works()
     {
-        await using var factory = Fixture.CreateFactory(redis: false);
+        await using var factory = Fixture.CreateFactory(false);
         using var client = factory.CreateClient();
 
         var created = await client.PostAsJsonAsync("/subscriptions", NewSubscription());
@@ -76,18 +95,29 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/subscriptions/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/subscriptions/{id}")).StatusCode);
-        Assert.Equal(2, (await ReadAsync(await client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32());
+        Assert.Equal(
+            2,
+            (await ReadAsync(await client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32()
+        );
     }
 
     [Fact]
     public async Task An_unreachable_redis_degrades_to_database_reads_instead_of_failing_requests()
     {
-        await using var factory = new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>().WithWebHostBuilder(b =>
-            b.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Postgres"] = Fixture.PostgresConnectionString,
-                ["ConnectionStrings:Redis"] = "127.0.0.1:1,abortConnect=false,connectTimeout=200,syncTimeout=200,asyncTimeout=200",
-            })));
+        await using var factory =
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>().WithWebHostBuilder(
+                b =>
+                    b.ConfigureAppConfiguration(
+                        (_, config) => config.AddInMemoryCollection(
+                            new Dictionary<string, string?>
+                            {
+                                ["ConnectionStrings:Postgres"] = Fixture.PostgresConnectionString,
+                                ["ConnectionStrings:Redis"] =
+                                    "127.0.0.1:1,abortConnect=false,connectTimeout=200,syncTimeout=200,asyncTimeout=200"
+                            }
+                        )
+                    )
+            );
         using var client = factory.CreateClient();
 
         var created = await client.PostAsJsonAsync("/subscriptions", NewSubscription());
@@ -100,7 +130,9 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/health")).StatusCode);
     }
 
-    private async Task<int> CachedStatusAsync(string id)
+    private async Task<int> CachedStatusAsync(
+        string id
+    )
     {
         // RedisCache stores each entry as a hash; the payload lives in the "data" field.
         var value = await Fixture.Redis.GetDatabase().HashGetAsync(Key(id), "data");
@@ -110,7 +142,9 @@ public sealed class CacheTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 }
 
-public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
+public sealed class PlatformTests(
+    ApiFixture fixture
+) : ApiTestBase(fixture)
 {
     [Fact]
     public async Task An_inbound_trace_id_is_echoed_and_appears_in_problems()
@@ -138,7 +172,9 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
     [Theory]
     [InlineData("has space")]
     [InlineData("tab\there")]
-    public async Task Unsafe_inbound_trace_ids_are_replaced(string value)
+    public async Task Unsafe_inbound_trace_ids_are_replaced(
+        string value
+    )
     {
         var request = new HttpRequestMessage(HttpMethod.Get, "/plans");
         request.Headers.TryAddWithoutValidation("X-Trace-Id", value);
@@ -160,7 +196,11 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
     public async Task Unknown_routes_and_wrong_methods_are_problems()
     {
         await AssertProblemAsync(await Client.GetAsync("/nope"), HttpStatusCode.NotFound, "not-found", "/nope");
-        await AssertProblemAsync(await Client.PutAsync("/plans", null), HttpStatusCode.MethodNotAllowed, "method-not-allowed");
+        await AssertProblemAsync(
+            await Client.PutAsync("/plans", null),
+            HttpStatusCode.MethodNotAllowed,
+            "method-not-allowed"
+        );
     }
 
     [Fact]
@@ -194,7 +234,8 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
     public async Task OpenApi_is_not_exposed_unless_enabled()
     {
         // UseSetting (not ConfigureAppConfiguration): Program reads this flag while building, before later overrides apply.
-        await using var factory = Fixture.CreateFactory(redis: false).WithWebHostBuilder(b => b.UseSetting("OpenApi:Enabled", "false"));
+        await using var factory = Fixture.CreateFactory(false)
+            .WithWebHostBuilder(b => b.UseSetting("OpenApi:Enabled", "false"));
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/openapi/v1.json")).StatusCode);
@@ -212,7 +253,8 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
         try
         {
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => MigrationRunner.RunAsync(Fixture.PostgresConnectionString, logger));
+                () => MigrationRunner.RunAsync(Fixture.PostgresConnectionString, logger)
+            );
             Assert.Contains("V2", ex.Message);
         }
         finally
@@ -232,7 +274,9 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
         var builder = new NpgsqlConnectionStringBuilder(Fixture.PostgresConnectionString) { Database = name };
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
-        var applied = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => MigrationRunner.RunAsync(builder.ConnectionString, logger)));
+        var applied = await Task.WhenAll(
+            Enumerable.Range(0, 4).Select(_ => MigrationRunner.RunAsync(builder.ConnectionString, logger))
+        );
 
         // Every embedded migration applied by exactly one runner (no hard-coded count: it grows with each V*.sql).
         Assert.Equal(MigrationRunner.LoadEmbedded().Count, applied.Sum());
@@ -243,14 +287,19 @@ public sealed class PlatformTests(ApiFixture fixture) : ApiTestBase(fixture)
     {
         await using var connection = await Fixture.OpenDbAsync();
         await using var command = new NpgsqlCommand(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = 'subscriptions' ORDER BY ordinal_position", connection);
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'subscriptions' ORDER BY ordinal_position",
+            connection
+        );
         var columns = new List<string>();
         await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            columns.Add(reader.GetString(0));
-        }
+        while (await reader.ReadAsync()) columns.Add(reader.GetString(0));
 
-        Assert.Equal(["id", "service_name", "price", "start_date", "trial_ends_at", "status", "current_period_start", "current_period_end"], columns);
+        Assert.Equal(
+            [
+                "id", "service_name", "price", "start_date", "trial_ends_at", "status", "current_period_start",
+                "current_period_end"
+            ],
+            columns
+        );
     }
 }

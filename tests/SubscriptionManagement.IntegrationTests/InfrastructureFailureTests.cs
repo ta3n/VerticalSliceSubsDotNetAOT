@@ -9,15 +9,18 @@ namespace SubscriptionManagement.IntegrationTests;
 /// Behaviour when the platform around the API misbehaves: an unreachable or missing database, the telemetry
 /// pipeline's health-probe filter, and the migrator's command-line contract (exit codes used by compose/Kubernetes).
 /// </summary>
-public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase(fixture)
+public sealed class InfrastructureFailureTests(
+    ApiFixture fixture
+) : ApiTestBase(fixture)
 {
     // Port 1 on loopback: nothing listens there, so connects fail immediately.
-    private const string UnreachablePostgres = "Host=127.0.0.1;Port=1;Database=subscriptions;Username=x;Password=x;Timeout=2";
+    private const string UnreachablePostgres =
+        "Host=127.0.0.1;Port=1;Database=subscriptions;Username=x;Password=x;Timeout=2";
 
     [Fact]
     public async Task An_unreachable_database_gives_an_opaque_500_and_takes_the_instance_out_of_rotation()
     {
-        await using var factory = Fixture.CreateFactory(redis: false, postgres: UnreachablePostgres);
+        await using var factory = Fixture.CreateFactory(false, UnreachablePostgres);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/plans");
@@ -35,7 +38,7 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public void A_missing_database_connection_string_fails_at_startup()
     {
-        using var factory = Fixture.CreateFactory(redis: false, postgres: "");
+        using var factory = Fixture.CreateFactory(false, "");
 
         var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
 
@@ -45,11 +48,14 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task With_telemetry_enabled_health_probes_are_not_traced_but_api_requests_are()
     {
-        await using var factory = Fixture.CreateFactory(redis: false, settings: new Dictionary<string, string>
-        {
-            // Nothing listens there; the exporter just drops the batches. Only the recording decision matters here.
-            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://127.0.0.1:1",
-        });
+        await using var factory = Fixture.CreateFactory(
+            false,
+            settings: new Dictionary<string, string>
+            {
+                // Nothing listens there; the exporter just drops the batches. Only the recording decision matters here.
+                ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://127.0.0.1:1"
+            }
+        );
         using var client = factory.CreateClient();
         var recorded = new Dictionary<ActivityTraceId, bool>();
         using var listener = new ActivityListener
@@ -63,7 +69,7 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
                 {
                     recorded[activity.TraceId] = activity.Recorded;
                 }
-            },
+            }
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -94,12 +100,12 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
         try
         {
             Environment.SetEnvironmentVariable("ConnectionStrings__Postgres", null);
-            Assert.Equal(2, RunMigrator());                                   // no connection string at all
-            Assert.Equal(1, RunMigrator(UnreachablePostgres));                // migration failed
-            Assert.Equal(0, RunMigrator(Fixture.PostgresConnectionString));   // schema up to date
+            Assert.Equal(2, RunMigrator()); // no connection string at all
+            Assert.Equal(1, RunMigrator(UnreachablePostgres)); // migration failed
+            Assert.Equal(0, RunMigrator(Fixture.PostgresConnectionString)); // schema up to date
 
             Environment.SetEnvironmentVariable("ConnectionStrings__Postgres", Fixture.PostgresConnectionString);
-            Assert.Equal(0, RunMigrator());                                   // from the environment (compose/Helm)
+            Assert.Equal(0, RunMigrator()); // from the environment (compose/Helm)
         }
         finally
         {
@@ -110,11 +116,18 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
         Assert.Equal(0, await MigrationRunner.RunAsync(Fixture.PostgresConnectionString, NullLogger.Instance));
     }
 
-    private static int RunMigrator(params string[] args) =>
-        (int)typeof(MigrationRunner).Assembly.EntryPoint!.Invoke(null, [args])!;
+    private static int RunMigrator(
+        params string[] args
+    )
+    {
+        return (int)typeof(MigrationRunner).Assembly.EntryPoint!.Invoke(null, [args])!;
+    }
 
     /// <summary>Sends a request as part of a fresh W3C trace, so the server activity can be found by its trace id.</summary>
-    private static async Task<ActivityTraceId> GetWithTraceAsync(HttpClient client, string path)
+    private static async Task<ActivityTraceId> GetWithTraceAsync(
+        HttpClient client,
+        string path
+    )
     {
         var traceId = ActivityTraceId.CreateRandom();
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
@@ -124,21 +137,23 @@ public sealed class InfrastructureFailureTests(ApiFixture fixture) : ApiTestBase
         return traceId;
     }
 
-    private static string Flatten(Exception error) =>
-        string.Join(" | ", Enumerate(error).Select(e => e.Message));
+    private static string Flatten(
+        Exception error
+    )
+    {
+        return string.Join(" | ", Enumerate(error).Select(e => e.Message));
+    }
 
-    private static IEnumerable<Exception> Enumerate(Exception error)
+    private static IEnumerable<Exception> Enumerate(
+        Exception error
+    )
     {
         for (var e = error; e is not null; e = e.InnerException)
         {
             yield return e;
             if (e is AggregateException aggregate)
-            {
                 foreach (var inner in aggregate.InnerExceptions.SelectMany(Enumerate))
-                {
                     yield return inner;
-                }
-            }
         }
     }
 }

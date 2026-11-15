@@ -29,7 +29,20 @@ metrics_generator:
     service_graphs:
       # Load tests open many edges at once; the default (10k) drops spans from the service graph.
       max_items: 200000
+      # Time a message spent in RabbitMQ (publish span end -> consume span start), per producer -> consumer edge.
+      # Needs the RabbitMQ.Client spans: Wolverine's own send/receive spans are siblings and never pair.
+      enable_messaging_system_latency_histogram: true
+      # The default buckets start at 100 ms, which reports the same p95 for every local hop (a few ms each).
+      histogram_buckets: [ 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30 ]
+      # shortcut: virtual-node labels trigger processor rebuilds in Tempo 2.10.10; enable after upgrading past the fix.
+    span_metrics:
+      # Extra labels on traces_spanmetrics_*: the route for server spans, the message type (Wolverine) and the
+      # exchange/queue (RabbitMQ.Client) for producer/consumer spans.
+      dimensions: [ http.route, messaging.message_type, messaging.destination.name ]
   registry:
+    # Same cadence as the Prometheus scrapes. The dashboards' $__rate_interval is 4 x 5 s; with the default (15 s)
+    # most windows hold a single sample and the generated metrics plot as isolated dots.
+    collection_interval: 5s
     external_labels:
       source: tempo
   storage:
@@ -56,4 +69,6 @@ overrides:
       burst_size_bytes: 200000000
       max_traces_per_user: 0
     metrics_generator:
-      processors: [service-graphs, span-metrics, local-blocks]
+      processors: [ service-graphs, span-metrics, local-blocks ]
+      # Exemplars carry the trace id under the label the Prometheus datasource links to Tempo (default: traceID).
+      trace_id_label_name: trace_id

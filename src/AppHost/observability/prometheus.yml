@@ -1,7 +1,7 @@
 # Prometheus for the Aspire AppHost. Three ways in:
 #   * OTLP push from the OpenTelemetry Collector (--web.enable-otlp-receiver): API + migrator metrics
 #   * remote write (--web.enable-remote-write-receiver): k6 load-test metrics and Tempo's span/service-graph metrics
-#   * scrapes below: PostgreSQL / Redis exporters and the collector's own metrics
+#   * scrapes below: PostgreSQL / Redis exporters, RabbitMQ, and the collector's and Tempo's own metrics
 # Scrape targets use the Aspire container-network aliases (= resource names).
 global:
   scrape_interval: 5s
@@ -19,13 +19,21 @@ storage:
 scrape_configs:
   - job_name: prometheus
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: [ "localhost:9090" ]
   - job_name: otel-collector
     static_configs:
-      - targets: ["otel-collector:8888"]
+      - targets: [ "otel-collector:8888" ]
+  # Tempo's own metrics: the service graph's unpaired (expired) edges are only exposed here, not remote-written.
+  - job_name: tempo
+    static_configs:
+      - targets: [ "tempo:3200" ]
   - job_name: postgres
     static_configs:
-      - targets: ["postgres-exporter:9187"]
+      - targets: [ "postgres-exporter:9187" ]
   - job_name: redis
     static_configs:
-      - targets: ["redis-exporter:9121"]
+      - targets: [ "redis-exporter:9121" ]
+  # The broker's built-in rabbitmq_prometheus plugin (enabled in the official image), not an exporter container.
+  - job_name: rabbitmq
+    static_configs:
+      - targets: [ "messaging:15692" ]

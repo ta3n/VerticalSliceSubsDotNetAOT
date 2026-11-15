@@ -9,7 +9,9 @@ var connectionString = args.Length > 0
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    await Console.Error.WriteLineAsync("No connection string. Pass it as the first argument or set ConnectionStrings__Postgres.");
+    await Console.Error.WriteLineAsync(
+        "No connection string. Pass it as the first argument or set ConnectionStrings__Postgres."
+    );
     return 2;
 }
 

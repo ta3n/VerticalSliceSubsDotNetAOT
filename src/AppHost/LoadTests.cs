@@ -1,6 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
-using Microsoft.Extensions.Configuration;
-
 namespace AppHost;
 
 /// <summary>
@@ -35,12 +32,15 @@ internal static class LoadTests
         ("breakpoint", "ramp the request rate until thresholds abort the run"),
         ("contention", "races on the same row: exactly one winner"),
         ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency"),
+        ("saga", "s2s: renewal saga (success, decline, timeout) + cancel/refund choreography")
     ];
 
     public static void AddK6Suite(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> api,
-        ObservabilityStack? stack)
+        ObservabilityStack? stack,
+        S2SServices services
+    )
     {
         var settings = builder.Configuration.GetSection("LoadTest");
         var autoStart = (settings["AutoStart"] ?? "")
@@ -52,41 +52,47 @@ internal static class LoadTests
             // WithScript's virtualUsers/duration map to --vus/--duration, which would REPLACE the scenarios a script
             // declares; sizes therefore travel as environment variables the scripts read.
             var k6 = builder.AddK6($"k6-{name}")
-                .WithBindMount(ScriptsDir, "/scripts", isReadOnly: true)
+                .WithBindMount(ScriptsDir, "/scripts", true)
                 .WithScript($"/scripts/{name}-test.js")
                 .WithArgs("--tag", $"testid={name}")
                 .WithReference(api)
                 .WithEnvironment("BASE_URL", api.GetEndpoint("http"))
                 .WithParentRelationship(api)
                 .WaitFor(api)
-                .WithUrlForEndpoint("http", url =>
-                {
-                    url.Url = "/v1/status";
-                    url.DisplayText = $"k6 status ({purpose})";
-                    url.DisplayLocation = UrlDisplayLocation.DetailsOnly;
-                });
+                .WithUrlForEndpoint(
+                    "http",
+                    url =>
+                    {
+                        url.Url = "/v1/status";
+                        url.DisplayText = $"k6 status ({purpose})";
+                        url.DisplayLocation = UrlDisplayLocation.DetailsOnly;
+                    }
+                );
 
             foreach (var knob in settings.GetSection(name).GetChildren())
-            {
                 k6.WithEnvironment(knob.Key.ToUpperInvariant(), knob.Value ?? "");
-            }
+
+            if (name == "saga")
+                k6.WithEnvironment("BILLING_URL", services.Billing.GetEndpoint("http"))
+                    .WithEnvironment("PAYMENTS_URL", services.Payments.GetEndpoint("http"))
+                    .WaitFor(services.Billing)
+                    .WaitFor(services.Payments)
+                    .WaitFor(services.Relay);
 
             if (stack is not null)
-            {
                 // Client-side metrics → Prometheus remote write → Grafana "Load test (k6)" dashboard.
                 k6.WithEnvironment("K6_OUT", "experimental-prometheus-rw")
-                    .WithEnvironment("K6_PROMETHEUS_RW_SERVER_URL", ReferenceExpression.Create($"{stack.Prometheus.GetEndpoint("http")}/api/v1/write"))
+                    .WithEnvironment(
+                        "K6_PROMETHEUS_RW_SERVER_URL",
+                        ReferenceExpression.Create($"{stack.Prometheus.GetEndpoint("http")}/api/v1/write")
+                    )
                     .WithEnvironment("K6_PROMETHEUS_RW_TREND_STATS", "p(50),p(95),p(99),avg,max")
                     .WithEnvironment("K6_PROMETHEUS_RW_PUSH_INTERVAL", "5s")
                     .WithEnvironment("K6_PROMETHEUS_RW_STALE_MARKERS", "true")
                     .WithEnvironment("K6_SYSTEM_TAGS", K6SystemTags)
                     .WaitFor(stack.Prometheus);
-            }
 
-            if (!autoStart.Contains(name))
-            {
-                k6.WithExplicitStart();
-            }
+            if (!autoStart.Contains(name)) k6.WithExplicitStart();
         }
     }
 }

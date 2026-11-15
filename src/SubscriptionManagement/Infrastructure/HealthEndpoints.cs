@@ -5,9 +5,14 @@ using Npgsql;
 
 namespace SubscriptionManagement.Infrastructure;
 
-public sealed class DatabaseHealthCheck(NpgsqlDataSource dataSource) : IHealthCheck
+public sealed class DatabaseHealthCheck(
+    NpgsqlDataSource dataSource
+) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken ct = default
+    )
     {
         try
         {
@@ -22,9 +27,14 @@ public sealed class DatabaseHealthCheck(NpgsqlDataSource dataSource) : IHealthCh
     }
 }
 
-public sealed class CacheHealthCheck(IDistributedCache cache) : IHealthCheck
+public sealed class CacheHealthCheck(
+    IDistributedCache cache
+) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken ct = default
+    )
     {
         try
         {
@@ -44,14 +54,22 @@ public static class HealthEndpoints
     /// <c>/health/live</c>: process is up. <c>/health/ready</c>: database only (Redis is optional and must
     /// not take the instance out of rotation, as in the Java reference). <c>/health</c>: all components.
     /// </summary>
-    public static void MapHealth(this IEndpointRouteBuilder app)
+    public static void MapHealth(
+        this IEndpointRouteBuilder app
+    )
     {
         app.MapHealthChecks("/health/live", new() { Predicate = _ => false, ResponseWriter = Write });
-        app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write });
+        app.MapHealthChecks(
+            "/health/ready",
+            new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write }
+        );
         app.MapHealthChecks("/health", new() { ResponseWriter = Write });
     }
 
-    private static async Task Write(HttpContext context, HealthReport report)
+    private static async Task Write(
+        HttpContext context,
+        HealthReport report
+    )
     {
         context.Response.ContentType = "application/json";
         await using (var writer = new Utf8JsonWriter(context.Response.BodyWriter))

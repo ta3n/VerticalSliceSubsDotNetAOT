@@ -4,6 +4,8 @@ A subscription-billing API built with **Vertical Slice Architecture** on ASP.NET
 It started as a three-endpoint sample (create / get / cancel on an in-memory EF Core database) and was extended to feature parity with a
 Spring Boot reference implementation: subscription lifecycle (pause / resume / renew), invoices, a plan catalog, keyset-paginated search,
 RFC 9457 error responses, Redis caching, PostgreSQL persistence with versioned migrations, health probes and OpenTelemetry.
+Aspire also runs three JIT services: Billing (gRPC and renewal orchestration), Payments (event-sourced payments), and Relay
+(transactional outbox and API commands), connected through RabbitMQ with Wolverine.
 
 It also ships a complete **local Kubernetes platform** (kind): Helm chart behind a Kong gateway, a local image registry, Grafana/Prometheus/Loki/Tempo
 monitoring, and GitOps with Argo CD plus canary releases through Argo Rollouts — all driven by [Taskfile.yml](Taskfile.yml) (`task up`).
@@ -13,19 +15,21 @@ See [Kubernetes](#kubernetes-kind--kong--helm).
 
 ```mermaid
 flowchart LR
-  C[Client] --> K[Kestrel HTTP]
-  K --> M[Correlation + exception handling]
-  M --> S["Slices: Subscriptions · Plans · Invoices"]
-  S --> ST["Stores (Npgsql, explicit SQL)"]
-  S --> CA[SubscriptionCache]
-  ST --> PG[(PostgreSQL 17)]
-  CA --> R[(Redis 7 / in-process fallback)]
-  MG["Migrator (one-shot job; init container on k8s)"] --> PG
-  K --> H["/health/live · /health/ready · /health"]
-  K -.OTLP when configured.-> OT[(Collector)]
+  C[Client] --> API["Subscription API · Native AOT"]
+  API --> DB[("subscriptions DB<br/>business tables + raw SQL outbox")]
+  API --> Cache[("Redis / in-process cache")]
+  API -- "gRPC: quote + status" --> B["Billing · JIT<br/>RenewalSaga + credit notes"]
+  B --> BDB[(billing DB)]
+  DB -- "claim outbox rows" --> R["Relay · JIT"]
+  R -- "settle / void / pause over HTTP" --> API
+  R <--> MQ[RabbitMQ]
+  B <--> MQ
+  MQ <--> P["Payments · JIT<br/>Marten events + inline snapshot"]
+  P --> PDB[(payments DB)]
+  API & B & R & P -. OTLP .-> OT["Collector → Aspire / Grafana stack"]
 ```
 
-Each feature is a folder holding an `*Endpoint.cs` (route + binding) and an `*Handler.cs` (command/query record + logic). There is no mediator and no generic
+In the API, each feature is a folder holding an `*Endpoint.cs` (route + binding) and an `*Handler.cs` (command/query record + logic). There is no mediator and no generic
 repository: domain rules live in plain classes (`Subscription`, `Invoice`) and SQL lives in one `*Store` per table.
 Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisions: [docs/adr](docs/adr).
 
@@ -33,14 +37,17 @@ Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisi
 
 | | Version |
 |---|---|
-| .NET SDK / runtime | 10.0.201 (pinned in `global.json`, `rollForward: latestFeature`) |
+| .NET target | `net10.0` (`global.json` is currently absent; use a .NET 10 SDK) |
 | ASP.NET Core | 10.0 — Minimal APIs, `CreateSlimBuilder`, source-generated JSON |
-| PostgreSQL / driver | 17 / Npgsql 10.0.3 (no ORM) |
+| PostgreSQL / driver | 17 / Npgsql 10.0.3 (explicit SQL in the API) |
+| Service messaging / persistence | RabbitMQ 4.3-management, Wolverine 6.64.0, EF Core PostgreSQL provider 10.0.3 (Billing/Relay), Marten 9.59.0 (Payments) |
+| Service contracts | gRPC 2.85.0, Google.Protobuf 3.36.2; generated client in API, server in Billing |
+| Local orchestration | Aspire 13.6.5 |
 | Cache | Redis 7 via Microsoft.Extensions.Caching.StackExchangeRedis 10.0.12 (in-process fallback) |
 | API docs | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11 |
 | Telemetry | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter) |
 | Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
-| Load tests | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
+| Load tests | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination, saga), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
 
 Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
@@ -57,7 +64,7 @@ Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
 ## Prerequisites
 
-* .NET SDK 10.0.201+ (`dotnet --version`)
+* .NET 10 SDK (`dotnet --version`; local service verification used 10.0.401)
 * Docker (integration tests, the AOT smoke test and `docker compose`)
 * For Native AOT publishing on Linux: `clang` and `zlib1g-dev` (`sudo apt-get install clang zlib1g-dev`).
   If you only have `gcc`, add `-p:CppCompilerAndLinker=gcc`.
@@ -77,9 +84,9 @@ Try the API with [SubscriptionManagement.http](SubscriptionManagement.http) (VS 
 
 ### With Aspire (one command, dashboard included)
 
-[Aspire](https://aspire.dev) 13 orchestrates the same topology as `compose.yaml` — PostgreSQL 17 + Redis 7 containers,
-the migrator as a one-shot job, then the API — with the two .NET projects running from source and every log, trace and
-metric in the Aspire dashboard. Only Docker (or Podman) is needed; the dashboard and orchestrator come from NuGet.
+[Aspire](https://aspire.dev) 13.6.5 runs PostgreSQL 17, Redis 7, RabbitMQ, the migrator, the API and the three JIT services
+from source. The dashboard and orchestrator come from NuGet; a container engine and the .NET SDK are required.
+The s2s topology is wired here; `compose.yaml` and the Helm chart still run the API/migrator/Postgres/Redis topology.
 
 ```bash
 dotnet run --project src/AppHost                         # http profile (default, no dev cert needed)
@@ -96,12 +103,24 @@ export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:${SSL_CERT_DIR:-/usr/lib/ssl/
 
 The console prints the dashboard login URL (`http://localhost:15043` on the http profile). The API stays on
 `http://localhost:5127` (Scalar at `/scalar`, also linked from the dashboard), so `SubscriptionManagement.http` works
-unchanged. Startup order: Postgres → `migrator` (must exit 0) + Redis → `subscription-management` (health-checked on
-`/health/ready`). Postgres data survives restarts in a Docker volume; its generated password is kept in the AppHost's
-user secrets. The AppHost lives in `src/AppHost/AppHost.cs`; the OpenTelemetry setup shared with
-compose/Kubernetes lives in `src/SubscriptionManagement.ServiceDefaults`. Under Aspire the API's pool is capped at
-`Maximum Pool Size=900` (as in compose) and Postgres runs with `max_connections=1000`: the pool must stay below
-`max_connections`, leaving room for the reserved slots, the migrator and the exporter.
+unchanged. `billing` waits for `billing-db` and `messaging`; `payments` waits for `payments-db` and `messaging`.
+The API waits for Billing, Redis and the successful migrator; `relay` then waits for the API, migrator and broker.
+The long-running projects are health-checked on `/health/ready`; when monitoring is enabled they also wait for the collector.
+
+| Resource | Owns / exposes |
+|---|---|
+| `postgres` → `subscriptions`, `billing-db`, `payments-db` | One PostgreSQL instance; database names `subscriptions`, `billing`, `payments` |
+| `messaging` | RabbitMQ 4.3 with management plugin and a persistent data volume; management URL is in Aspire |
+| `billing` | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128` |
+| `payments` | Payment snapshot and event reads on `http://localhost:5129` |
+| `relay` | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire |
+| `k6-saga` | On-demand s2s scenario; waits for Billing, Payments and Relay |
+
+Postgres and RabbitMQ data survive restarts in volumes; do not delete the volumes to rerun a scenario. Generated
+credentials are managed by Aspire/user secrets. The AppHost lives in `src/AppHost/AppHost.cs` and `Services.cs`;
+shared OpenTelemetry setup lives in `src/SubscriptionManagement.ServiceDefaults`.
+Connection budgets cover the whole PostgreSQL instance: API pool 900 + three service pools × 20 = 960, below
+1000 − 3 reserved slots, with capacity left for migrations, exporters and interactive sessions.
 
 The AppHost's operational settings live in `src/AppHost/appsettings.json`; override any of them with
 `--Section:Key=value`, an environment variable (`Section__Key`) or user secrets:
@@ -109,12 +128,22 @@ The AppHost's operational settings live in `src/AppHost/appsettings.json`; overr
 | Setting | Default | Meaning |
 |---|---|---|
 | `Postgres:MaxConnections` | 1000 | PostgreSQL `max_connections` |
-| `Api:PostgresMaxPoolSize` | 900 | Npgsql `Maximum Pool Size` of the API; startup fails unless it is below `MaxConnections` − 3 |
+| `Api:PostgresMaxPoolSize` | 900 | API pool; startup requires API pool + 3 × service pool < `MaxConnections` − 3 |
+| `Api:OutboxEnabled` | true | Sets the API's `Outbox:Enabled`; enables renewal/cancellation events in Aspire |
+| `Services:PostgresMaxPoolSize` | 20 | Pool per Billing, Payments and Relay; shared with each service's message persistence |
+| `Billing:RenewalTimeoutSeconds` | 30 | Durable local timeout while the saga awaits payment |
+| `Billing:TaxRate` | 0.10 | Quote tax fraction, added to the subscription price (USD) |
+| `Gateway:DeclineAtOrAbove` | 5000 | Simulated gateway declines charged totals at/above this amount |
+| `Gateway:NoReplyAtOrAbove` | 9000 | Simulated gateway records the request but sends no reply; checked before decline |
+| `Relay:PollIntervalMs` | 250 | Delay after a non-full outbox batch |
+| `Relay:BatchSize` | 100 | Maximum raw outbox rows transferred per transaction |
 | `Observability:Enabled` | true | Prometheus/Tempo/Loki/Grafana stack next to the Aspire dashboard |
 | `Observability:GrafanaPort` / `PrometheusPort` | 3000 / 9190 | Fixed host ports (`scripts/.env.aspire` points k6 at the Prometheus one) |
 | `Observability:PrometheusRetention` | 7d | Prometheus TSDB retention |
 | `LoadTest:AutoStart` | (empty) | Comma-separated k6 scenarios to start with the app |
 | `LoadTest:<name>:<KNOB>` | `load`/`stress`: 2000 VUs | Knobs of a k6 scenario (see each script's header) |
+| `LoadTest:saga:ITERATIONS` | 3 | Fresh success/decline/timeout/refund cases per iteration, one VU |
+| `LoadTest:saga:RENEWAL_TIMEOUT_S` | 30 | Must match `Billing:RenewalTimeoutSeconds`; client polling adds 30 s delivery margin |
 
 #### Monitoring and load testing (Grafana)
 
@@ -122,11 +151,11 @@ By default the AppHost also starts a monitoring stack for load tests (`src/AppHo
 `src/AppHost/observability/`):
 
 ```
-API / migrator ──OTLP──► OpenTelemetry Collector ─┬─► Aspire dashboard   (logs, traces, metrics)
+API / migrator / billing / payments / relay ──OTLP──► OpenTelemetry Collector ─┬─► Aspire dashboard   (logs, traces, metrics)
                                                   ├─► Prometheus         (metrics, native OTLP receiver)
                                                   ├─► Tempo              (traces → span metrics + service graph → Prometheus)
                                                   └─► Loki               (logs, native OTLP)
-postgres-exporter, redis-exporter ◄── scraped by Prometheus;  k6 ──remote write──► Prometheus
+postgres-exporter, redis-exporter, RabbitMQ ◄── scraped by Prometheus;  k6 ──remote write──► Prometheus
 Grafana ◄── Prometheus + Tempo + Loki (exemplars → traces, traces → logs/metrics, logs → traces)
 Grafana ──render──► grafana-image-renderer (headless Chromium) ──loads the panel──► Grafana
 ```
@@ -159,11 +188,24 @@ Provisioned dashboards (folder *Subscription Management*), generated from the re
   saturation signals (CPU, GC, in-flight requests, Kestrel and thread-pool queues, Npgsql pool, Postgres connections)
   and the error logs; plus per-endpoint client throughput/p95, dropped iterations (open-model tests), correctness
   violations (contention, pagination) and journey / first-vs-deep-page latency.
+* **Subscription Management — Request flow**: service graph and edge/operation RED metrics, invoice-filtered traces,
+  messaging traffic, RabbitMQ backlog, Wolverine failures/inbox/outbox/scheduled messages and logs.
+
+To follow one renewal, run `k6-saga` and copy `invoiceId` and `traceId` from its JSON console lines. Open
+[Request flow](http://localhost:3000/d/subs-aspire-request-flow), keep **Service = All**, set **Invoice id**, and select
+a time range containing the run. Open the trace returned by **Follow one renewal**; alternatively paste the logged
+`traceId` into Grafana Explore with the Tempo datasource. Inspect the API/gRPC/outbox/handler/HTTP spans, then use the
+trace-to-logs link. `invoice.id` marks the API spans and `wolverine.saga.id` marks the saga handler spans; invoice ids
+are trace attributes, not Prometheus labels. Broker delivery and durable dispatch can add spans at different times,
+so allow the collector and Tempo to ingest them before inspecting the waterfall.
+Live verification found a connected renewal trace across all four services, including the gRPC client span, and five
+messaging edges in the service graph. Error/dead-letter panels require failing traffic; a healthy saga run can leave them empty.
 
 #### k6 scenarios
 
 The scenarios live in `scripts/*-test.js` (shared helpers in `scripts/lib/api.js`) and are the single source of truth:
-the same files run as Aspire resources, from the host and against compose/Kubernetes.
+the same files run as Aspire resources or from the host. The existing API scenarios also run against compose/Kubernetes;
+`saga` requires the s2s services, currently wired by Aspire.
 
 | Scenario | Question it answers | Shape (defaults) | Passes when |
 |---|---|---|---|
@@ -176,6 +218,7 @@ the same files run as Aspire resources, from the host and against compose/Kubern
 | `breakpoint` | Where is the limit? | rate ramps 50 → 3000/s over 5 min | **aborts** at the limit (exit 99 is the result) |
 | `contention` | Is it still correct when clients race the same row? | 8 racers per pay / cancel / create-plan | exactly one winner, always |
 | `pagination` | Does keyset paging stay consistent and flat under writes? | 20 readers walking 10 pages + 2 writers | no duplicate/out-of-order row, deep page p95 < 200 ms |
+| `saga` | Do renewal orchestration and cancel/refund choreography settle correctly? | 1 VU × 3 iterations, prices 10 / 6000 / 9500 | checks >99%, zero unexpected HTTP errors or saga failures; records `saga_settle_ms` |
 
 Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, …). Three ways to run one:
 
@@ -188,6 +231,24 @@ Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RA
   scripts/k6-test.sh spike`), e.g. `SOAK_DURATION=1h task aspire:k6 -- soak`. With `K6_PROMETHEUS_RW_SERVER_URL` set
   (the Aspire env file does) k6 also remote-writes to Prometheus; a JSON summary lands in `artifacts/k6/`.
 * **Against compose or Kubernetes**: `ENV_FILE=scripts/.env.compose scripts/k6-test.sh smoke`, `task k6 -- smoke`.
+
+Run the complete saga suite (including a real timeout) with:
+
+```bash
+dotnet run --project src/AppHost -- --LoadTest:AutoStart=saga
+# A shorter timeout: change both the service and polling settings together.
+dotnet run --project src/AppHost -- --LoadTest:AutoStart=saga --Billing:RenewalTimeoutSeconds=10 --LoadTest:saga:RENEWAL_TIMEOUT_S=10
+# Against an already running AppHost:
+ENV_FILE=scripts/.env.aspire scripts/k6-test.sh saga
+```
+
+The host runner forwards `ITERATIONS`, `RENEWAL_TIMEOUT_S`, `BILLING_URL`, `PAYMENTS_URL`, `BASE_URL` and `HTTP_TIMEOUT`.
+`BILLING_URL` is the HTTP REST port (5128), not gRPC (5138). Aspire injects service URLs into `k6-saga` automatically;
+for a host run, `scripts/.env.aspire` supplies localhost URLs (use `host.docker.internal` with Docker Desktop).
+Every iteration creates fresh subscriptions with current dates, keeps history, then cancels the successfully paid one.
+It checks `Completed` + PAID and `[ChargeRequested, ChargeCaptured]`, `Declined` + VOID + PAUSED, `TimedOut` + VOID + PAUSED
+and a final `ChargeCanceled`, then one credit note and a final `ChargeRefunded`. Settlement-rejected compensation is
+covered by the service tests; the gateway has no deterministic live trigger for it.
 
 k6 metrics drop the `url`/`name` tags (they carry entity ids → one series per request); the scripts tag every request
 with its route template instead (`endpoint`, e.g. `GET /subscriptions/{id}`), which the Load test dashboard uses for
@@ -208,11 +269,27 @@ dashboard only, k6 resources still available): `dotnet run --project src/AppHost
 | DELETE | `/subscriptions/{id}` | 204 (row kept, status = 2) | 400 already canceled, 404 |
 | POST | `/subscriptions/{id}/pause` · `/resume` | 200 | 409 invalid transition, 404 |
 | POST | `/subscriptions/{id}/renew` | 200 `{subscription, invoice}` | 409, 404 |
+| POST | `/subscriptions/{id}/renewals` | 202 `{subscription, invoice}` + `Location: /invoices/{id}/renewal` | 404, 409, 503 billing/outbox unavailable |
+| GET | `/invoices/{id}/renewal` | 200 `{invoiceId, paymentId, state, failureReason, updatedAt}` | 404 until saga consumes the invoice; 503 Billing unavailable |
+| POST | `/invoices/{id}/settle` | 200 invoice; JSON body `{"paymentId":"<uuid>"}` | 400 missing paymentId, 404, 409 conflicting payment/state |
+| POST | `/invoices/{id}/void` | 200 invoice | 404, 409 invoice already paid |
 | POST | `/subscriptions/search` | 200 `{items, nextCursor}` (keyset, default 20, max 100) | 400 bad status/cursor |
 | GET | `/subscriptions/{id}/invoices` | 200 `{items}` newest first | 404 |
 | GET · POST | `/invoices/{id}` · `/invoices/{id}/pay` | 200 | 404, 409 not payable |
 | POST · GET | `/plans` · `/plans/{code}` · `/plans` (list) | 201 / 200 | 409 duplicate, 404 |
 | GET | `/health/live` · `/health/ready` · `/health` | 200 `{"status":"UP"}` | 503 |
+
+Billing also exposes `GET /credit-notes?subscriptionId=<uuid>` → 200 `{items}` (empty until a refund).
+Payments exposes `GET /payments/{id}` → the current snapshot and `GET /payments/{id}/events` → `{items}` in stream order,
+each item carrying `version`, `type`, `data`, `timestamp`; both return 404 before a stream exists.
+All three JIT services expose `/health/live` and `/health/ready`; these use ASP.NET health-check responses rather than
+the API's JSON health body. Billing's `billing.v1.BillingService` has `GetRenewalQuote` and `GetRenewal` RPCs; decimals
+are invariant strings, dates `yyyy-MM-dd`, and API calls have a two-second deadline.
+
+`/renew` and manual `/pay` retain their existing behaviour. `/renewals` quotes before opening the database transaction,
+then advances the period and commits the invoice/outbox row together. Settlement with the same payment id and repeated
+voids are idempotent. The API remains the only writer of subscriptions/invoices; Relay calls these HTTP endpoints.
+These endpoints have no authentication, including settlement and void; use this local sample within a trusted environment.
 
 Subscription `status`: `1` Active, `2` Canceled, `3` Paused. Errors are `application/problem+json` (RFC 9457) with `type`
 (`https://api.demo/errors/<slug>`), `title`, `status`, `detail`, `instance`, `timestamp`, `traceId` and, for validation, an `errors` map keyed by JSON field name.
@@ -227,19 +304,121 @@ Standard ASP.NET Core configuration; environment variables use `__` for nesting.
 | `ConnectionStrings__Postgres` | **Required**; the app fails at startup without it | Development file: local compose DB |
 | `ConnectionStrings__Redis` | Redis endpoint; empty ⇒ in-process cache | Development file: `localhost:6379` |
 | `Cache__SubscriptionTtl` | Cached subscription lifetime | `00:05:00` |
+| `Billing__GrpcAddress` | Optional Billing gRPC HTTP/2 address; absent ⇒ new billing calls return 503 | unset (Aspire injects `http://…:5138`) |
+| `Outbox__Enabled` | Writes InvoiceIssued / eligible SubscriptionCanceled in the business transaction | false (Aspire sets true) |
 | `OpenApi__Enabled` | Serve `/openapi/v1.json` and `/scalar` | `false` (`true` in Development) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` (+ standard `OTEL_*`) | Enables trace/metric export | unset ⇒ telemetry off |
 | `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS` | Listening address (HTTP only) | 5127 (launch profile) / 8080 (container) |
+
+For standalone JIT services, set `ConnectionStrings__Postgres` to their own database (Relay uses `subscriptions`) and
+`ConnectionStrings__messaging` to RabbitMQ. Relay's `Api__BaseUrl` defaults to `http://localhost:5127`.
+Billing/Gateway/Relay knobs have the same names/defaults as the AppHost table above. Billing configures separate
+`Kestrel:Endpoints:http` (HTTP/1.1) and `Kestrel:Endpoints:grpc` (HTTP/2 without TLS); do not combine them on a cleartext port.
 
 The credentials in `appsettings.Development.json` and `compose.yaml` are local-development defaults only. Never reuse them; supply real values through
 environment variables or your secret store. Without `POSTGRES_PASSWORD` set, compose uses the dev default.
 
 ## Database
 
-Schema changes are versioned SQL files embedded in `src/SubscriptionManagement.Migrator/Migrations` (`V{n}__{description}.sql`, same tables as the Java reference).
+Schema changes are versioned SQL files embedded in `src/SubscriptionManagement.Migrator/Migrations` (`V{n}__{description}.sql`, the Java-compatible baseline plus .NET extensions).
 The migrator applies pending files in order, records `version`/`checksum` in `schema_migrations`, refuses to run if an applied file was edited, and takes a PostgreSQL
 advisory lock so concurrent runs are safe. The API never migrates on startup. In compose it runs as a one-shot service that the API waits for.
-To add a migration, add `V5__what.sql`; never edit an applied one. Do not point this app at a database managed by the Java app's Flyway (different history table).
+V6 adds `outbox_messages` (payload/type/traceparent/time) and nullable `invoices.payment_id`.
+To add a migration, add the next version (currently `V7__what.sql`); never edit an applied one. Do not point this app at a database managed by the Java app's Flyway (different history table).
+
+Billing's `renewal_sagas` (invoice id = saga id, retained terminal state, optimistic concurrency) and `credit_notes`
+(unique payment id) live in database `billing`; Wolverine manages their schema at startup. Payments uses Marten's
+`payments` schema in database `payments` for event streams, inline snapshots and durable envelopes. Relay only owns
+the `relay` envelope schema in `subscriptions`; its raw-outbox deletion and Wolverine envelope insertion share one transaction.
+Delivery is at least once; handlers use idempotent state transitions. Unknown outbox types stay queued and produce a
+bounded warning; a corrupt known payload rolls its whole batch back for retry.
+Billing declares and binds the outgoing ChargePayment, CancelPayment, SettleInvoice and CancelRenewal queues at startup;
+Payments does the same for PaymentSucceeded, PaymentFailed and PaymentRefunded. This protects first-start delivery
+when a consumer has not yet provisioned its own queue; the outgoing object collections alone do not expose every type
+to startup discovery.
+
+### Service workflows
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant A as AOT API
+  participant R as Relay
+  participant Q as RabbitMQ
+  participant B as Billing saga
+  participant P as Payments
+  C->>A: POST /subscriptions/{id}/renewals
+  A->>B: gRPC GetRenewalQuote (2 s deadline)
+  B-->>A: Price + tax
+  A->>A: Commit invoice + InvoiceIssued outbox row
+  A-->>C: 202 + invoice id
+  R->>R: Raw outbox → durable envelope in one transaction
+  R->>Q: InvoiceIssued
+  Q->>B: Start AwaitingPayment; schedule durable local timeout
+  B->>Q: ChargePayment
+  Q->>P: ChargePayment
+  alt Captured
+    P->>Q: PaymentSucceeded
+    Q->>B: Move to Settling
+    B->>Q: SettleInvoice
+    Q->>R: SettleInvoice
+    R->>A: POST /invoices/{id}/settle
+    alt Settlement accepted
+      R->>Q: InvoiceSettled
+      Q->>B: Completed (row kept)
+    else Settlement rejected (404/409)
+      R->>Q: InvoiceSettlementRejected
+      Q->>B: Compensated
+      B->>Q: CancelPayment
+      Q->>P: Refund captured payment
+    end
+  else Declined
+    P->>Q: PaymentFailed
+    Q->>B: Declined → CancelRenewal
+    B->>Q: CancelRenewal
+    Q->>R: Void invoice, then pause via API
+    R->>A: POST void, POST pause
+  else No gateway reply
+    B->>B: RenewalTimeout while AwaitingPayment → TimedOut
+    B->>Q: CancelPayment + CancelRenewal
+    Q->>P: Append ChargeCanceled (or refund if captured)
+    Q->>R: Void invoice, then pause via API
+    R->>A: POST void, POST pause
+  end
+```
+
+The timeout acts only in `AwaitingPayment`; a saga in `Settling` relies on Relay retry/dead-letter handling instead.
+A permanent API outage can therefore leave `Settling` for operator recovery. Terminal rows are kept for polling;
+late/duplicate replies do not change them.
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant A as AOT API
+  participant R as Relay
+  participant Q as RabbitMQ
+  participant P as Payments
+  participant B as Billing
+  C->>A: DELETE /subscriptions/{id}
+  A->>A: Commit cancellation + outbox fact if a collected payment exists
+  A-->>C: 204
+  opt Settlement arrives after cancellation
+    R->>A: POST /invoices/{id}/settle
+    A->>A: Lock subscription; commit settlement + SubscriptionCanceled
+  end
+  R->>Q: SubscriptionCanceled (durable handoff)
+  Q->>P: Find captured payments whose period has not ended
+  P->>P: Append ChargeRefunded + update inline snapshot
+  P->>Q: PaymentRefunded (same transaction's outbox)
+  Q->>B: Insert credit note (unique payment id)
+```
+
+With outbox enabled, cancellation emits an event when an invoice collected through `/settle` has a `payment_id`.
+Settlement and cancellation lock the same subscription: if cancellation wins before the invoice is settled, the first
+settlement emits `SubscriptionCanceled` in its own transaction. Thus a late capture still starts the refund flow;
+repeated settlement does not emit it again. Manually paid invoices retain their existing behaviour. Payments refunds
+captured payments only when `PeriodEnd` is later than the fact's `CanceledOn` day; this is why the scenario uses current
+billing dates. No coordinator runs the refund choreography.
 
 ## Running tests
 
@@ -247,15 +426,22 @@ To add a migration, add `V5__what.sql`; never edit an applied one. Do not point 
 dotnet test                                                  # everything (needs Docker)
 dotnet test tests/SubscriptionManagement.UnitTests           # fast, no Docker
 dotnet test tests/SubscriptionManagement.IntegrationTests    # real PostgreSQL 17 + Redis 7 via Testcontainers
+dotnet test tests/SubscriptionManagement.Billing.Tests        # quote/gRPC, saga transitions + durable transaction, credit notes
+dotnet test tests/SubscriptionManagement.Payments.Tests       # event deciders, stream/snapshot + transactional messaging
+dotnet test tests/SubscriptionManagement.Relay.Tests          # atomic outbox transfer + HTTP command handling
 ./scripts/aot-smoke.sh                                       # publish natively, run the native binaries, exercise the API
 ```
 
-Integration tests host the real application with `WebApplicationFactory<Program>`; the schema is created by the real migrator; there is no EF InMemory and no mocking.
+Integration tests host the real application with `WebApplicationFactory<Program>`; the schema is created by the real migrator; there is no EF InMemory. New billing calls use a programmable test gateway in API integration tests; a separate real gRPC host tests the client.
 They cover every endpoint, error shapes, validation and malformed input, cache hits/eviction/TTL against real Redis and a Redis outage, concurrent cancels/payments/duplicate plans
 (row locks), keyset paging with ties, correlation headers, health, OpenAPI on/off and migrator idempotence/tamper detection.
 Failure modes are covered too: an unreachable or unconfigured database (opaque 500, readiness DOWN, liveness still UP,
 startup fail-fast), the `healthcheck` probe mode against a real listener, the OpenTelemetry defaults (opt-in, service
 name, `/health*` not traced) and the migrator's exit codes (2 usage, 1 failure, 0 success).
+
+The three service suites use real Testcontainers PostgreSQL and Wolverine message tracking with external transports
+disabled. They cover duplicate delivery, timeout/reply races, cancel-before-charge, double refunds and transaction rollback.
+`scripts/saga-test.js` covers the four live flows through Aspire; it adds data on every run and does not reset databases.
 
 ### Code quality: SonarQube
 
@@ -279,7 +465,7 @@ in-cluster service URLs of the local kind platform.
 **Why:** ~5× faster start, ~½ the memory and a ~61 MB image with no .NET runtime layer (see [docs/performance.md](docs/performance.md)).
 
 **Constraints we accepted** (details: [docs/migration/native-aot-assessment.md](docs/migration/native-aot-assessment.md)):
-* **EF Core is not used** — Microsoft documents EF Core Native AOT as experimental and advises against production use; data access is Npgsql + explicit SQL (ADR-002).
+* **EF Core is not used in the AOT API** — Microsoft documents EF Core Native AOT as experimental and advises against production use; data access is Npgsql + explicit SQL (ADR-002).
 * No reflection-based libraries (FluentValidation replaced by explicit validators, ADR-004); every wire type is registered in `AppJsonSerializerContext`. **Adding an endpoint type ⇒ add a `[JsonSerializable]`.**
 * Minimal APIs only (MVC is not AOT-compatible); HTTP only (`CreateSlimBuilder`), terminate TLS at the ingress.
 * Analyzer warnings IL2026/IL2057/IL2067/IL2070/IL3050 are build errors; there are no suppressions.
@@ -291,7 +477,18 @@ ConnectionStrings__Postgres="Host=...;..." ./artifacts/api/SubscriptionManagemen
 ./artifacts/api/SubscriptionManagement healthcheck            # exit 0/1; used by the container HEALTHCHECK
 ```
 
+The existing API/migrator compiler pin is `Microsoft.DotNet.ILCompiler` 10.0.14. With SDK 10.0.401 selecting runtime
+pack 10.0.12, a default native publish can fail from that version mismatch. The verification workaround is to append
+`-p:RuntimeFrameworkVersion=10.0.14` to each publish command; the pin itself has not been changed. `global.json` is also
+absent although CI references it. These are existing toolchain limitations, separate from the JIT services.
+Local macOS native publish succeeded with a general ILCompiler warning and no trim/AOT diagnostics. The Docker `api`
+target still fails on the pre-existing pinned-compiler `PrivateSdkAssemblies` issue; the runtime-version workaround
+has not been shown to fix that image build.
+
 For a JIT build of the same code (e.g. to compare): `dotnet publish -p:PublishAot=false -p:EnableAotAnalyzer=false -p:EnableTrimAnalyzer=false`.
+
+Billing, Payments and Relay intentionally use JIT/runtime code generation (Wolverine, EF Core and Marten); they are
+not included in the API's AOT guarantee. See [ADR-005](docs/adr/005-jit-messaging-services.md).
 
 ## Docker
 
@@ -304,6 +501,11 @@ podman compose down -v                 # also removes the database volume
 
 Override host ports/credentials with `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `OPENAPI_ENABLED`.
 The images are multi-stage (`--target api|migrator`), built with clang, run on `runtime-deps:10.0-noble-chiseled` (no shell), as the non-root `app` user (UID 1654).
+
+**Not yet covered:** compose orchestration, Helm/Kubernetes resources and CI service images for Billing, Payments,
+Relay and RabbitMQ are not added. The existing API/migrator images remain the packaged targets. Use Aspire for the
+s2s flows. Authentication/authorization, a real payment provider, cross-service production deployment and operator
+replay tooling are also outside this sample's current scope.
 
 ## Kubernetes (kind + Kong + Helm)
 
@@ -465,11 +667,16 @@ are dropped before Loki (they are already counted and traced); 4xx/5xx and gatew
 ```
 src/SubscriptionManagement/            API: Program.cs, Features/{Subscriptions,Plans,Invoices}, Infrastructure/
 src/SubscriptionManagement.Migrator/   SQL migration runner + embedded V*.sql
-src/AppHost/                           Aspire AppHost: local orchestration (Postgres, Redis, migrator, API) + dashboard
+src/SubscriptionManagement.Contracts/  AOT-compatible message records + billing.proto (no runtime package dependencies)
+src/SubscriptionManagement.Billing/    JIT gRPC quotes/status, EF Core renewal saga + credit notes
+src/SubscriptionManagement.Payments/   JIT Marten payment streams + inline snapshots, simulated gateway
+src/SubscriptionManagement.Relay/      JIT raw SQL outbox → Wolverine/RabbitMQ and broker → API HTTP
+src/AppHost/                           Aspire: Postgres, Redis, RabbitMQ, migrator, API, s2s services + dashboard
 src/AppHost/observability/             OTel Collector, Prometheus, Tempo, Loki configs + Grafana provisioning/dashboards
 src/SubscriptionManagement.ServiceDefaults/  shared OpenTelemetry defaults (logs, traces, metrics over OTLP)
 tests/SubscriptionManagement.UnitTests/         domain, validators, cursor codec, problem writer
 tests/SubscriptionManagement.IntegrationTests/  Testcontainers + WebApplicationFactory
+tests/SubscriptionManagement.{Billing,Payments,Relay}.Tests/  service state/transaction/message tests
 scripts/                               aot-smoke.sh, measure-startup.sh, k6 scenarios (*-test.js, lib/api.js, k6-test.sh) + Locust, sonar.sh, .env (k8s) / .env.compose / .env.aspire
 deploy/helm/subscription-management/   Helm chart (API/Rollout, migrator, PostgreSQL, Redis, Kong plugins, monitoring, canary analysis)
 deploy/kind/ · kong/ · registry/       kind cluster config, Kong values, local registry setup
@@ -490,6 +697,10 @@ docs/                                  technical-design, implementation-plan, mi
 
 | Symptom | Cause / fix |
 |---|---|
+| `/renewals` returns 503 `billing-not-configured` | Set both `Billing__GrpcAddress` and `Outbox__Enabled=true`, and run Relay/Payments/Billing; Aspire wires them |
+| Renewal is 404 just after 202 | InvoiceIssued is not consumed yet; poll the Location until the saga exists |
+| Renewal stays `Settling` | Inspect Relay retries/dead letters and API availability; the AwaitingPayment timeout does not act here |
+| Payment times out unexpectedly | Gateway thresholds use the taxed quote total; keep `RENEWAL_TIMEOUT_S` aligned with Billing and inspect message backlog |
 | Publish fails: `Platform linker not found` / `clang` | `sudo apt-get install clang zlib1g-dev`, or `-p:CppCompilerAndLinker=gcc` |
 | API exits: `ConnectionStrings:Postgres is not configured` | Set `ConnectionStrings__Postgres` (fail-fast by design) |
 | `relation "subscriptions" does not exist` | Run the migrator first |

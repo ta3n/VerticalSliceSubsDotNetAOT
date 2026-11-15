@@ -1,12 +1,19 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/AppHost/AppHost.csproj" />
-    <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj" />
-    <Project Path="src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj" />
-    <Project Path="src/SubscriptionManagement/SubscriptionManagement.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/SubscriptionManagement.IntegrationTests/SubscriptionManagement.IntegrationTests.csproj" />
-    <Project Path="tests/SubscriptionManagement.UnitTests/SubscriptionManagement.UnitTests.csproj" />
-  </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/AppHost/AppHost.csproj"/>
+        <Project Path="src/SubscriptionManagement.Billing/SubscriptionManagement.Billing.csproj"/>
+        <Project Path="src/SubscriptionManagement.Contracts/SubscriptionManagement.Contracts.csproj"/>
+        <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"/>
+        <Project Path="src/SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj"/>
+        <Project Path="src/SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj"/>
+        <Project Path="src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj"/>
+        <Project Path="src/SubscriptionManagement/SubscriptionManagement.csproj"/>
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/SubscriptionManagement.Billing.Tests/SubscriptionManagement.Billing.Tests.csproj"/>
+        <Project Path="tests/SubscriptionManagement.IntegrationTests/SubscriptionManagement.IntegrationTests.csproj"/>
+        <Project Path="tests/SubscriptionManagement.Payments.Tests/SubscriptionManagement.Payments.Tests.csproj"/>
+        <Project Path="tests/SubscriptionManagement.Relay.Tests/SubscriptionManagement.Relay.Tests.csproj"/>
+        <Project Path="tests/SubscriptionManagement.UnitTests/SubscriptionManagement.UnitTests.csproj"/>
+    </Folder>
 </Solution>

@@ -1,0 +1,14 @@
+syntax = "proto3";
+option csharp_namespace = "SubscriptionManagement.Contracts.Grpc";
+package billing.v1;
+
+service BillingService {
+  // Pure function of the request; safe to retry. INVALID_ARGUMENT on unparsable values.
+  rpc GetRenewalQuote (RenewalQuoteRequest) returns (RenewalQuoteReply);
+  // State of the collection saga. NOT_FOUND until InvoiceIssued has been consumed.
+  rpc GetRenewal (GetRenewalRequest) returns (RenewalReply);
+}
+message RenewalQuoteRequest { string subscription_id = 1; string price = 2; string currency = 3; string period_start = 4; string period_end = 5; }
+message RenewalQuoteReply   { string net = 1; string tax = 2; string total = 3; string tax_rate = 4; }
+message GetRenewalRequest   { string invoice_id = 1; }
+message RenewalReply        { string invoice_id = 1; string subscription_id = 2; string payment_id = 3; string state = 4; string failure_reason = 5; string updated_at = 6; }

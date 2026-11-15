@@ -13,11 +13,20 @@ namespace SubscriptionManagement.Features.Subscriptions;
 public sealed class SubscriptionCache(
     IDistributedCache cache,
     IOptions<CacheOptions> options,
-    ILogger<SubscriptionCache> logger)
+    ILogger<SubscriptionCache> logger
+)
 {
-    private static string Key(Guid id) => $"subscriptions:{id}";
+    private static string Key(
+        Guid id
+    )
+    {
+        return $"subscriptions:{id}";
+    }
 
-    public async Task<SubscriptionResponse?> GetAsync(Guid id, CancellationToken ct)
+    public async Task<SubscriptionResponse?> GetAsync(
+        Guid id,
+        CancellationToken ct
+    )
     {
         try
         {
@@ -33,13 +42,23 @@ public sealed class SubscriptionCache(
         }
     }
 
-    public async Task PutAsync(SubscriptionResponse response, CancellationToken ct)
+    public async Task PutAsync(
+        SubscriptionResponse response,
+        CancellationToken ct
+    )
     {
         try
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(response, AppJsonSerializerContext.Default.SubscriptionResponse);
-            await cache.SetAsync(Key(response.Id), bytes,
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = options.Value.SubscriptionTtl }, ct);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(
+                response,
+                AppJsonSerializerContext.Default.SubscriptionResponse
+            );
+            await cache.SetAsync(
+                Key(response.Id),
+                bytes,
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = options.Value.SubscriptionTtl },
+                ct
+            );
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -47,7 +66,10 @@ public sealed class SubscriptionCache(
         }
     }
 
-    public async Task EvictAsync(Guid id, CancellationToken ct)
+    public async Task EvictAsync(
+        Guid id,
+        CancellationToken ct
+    )
     {
         try
         {

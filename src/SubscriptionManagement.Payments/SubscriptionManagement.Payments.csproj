@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <!-- JIT on purpose (no PublishAot): Wolverine and Marten generate code at runtime. See docs/adr/005. -->
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SubscriptionManagement.Payments.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\SubscriptionManagement.Contracts\SubscriptionManagement.Contracts.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.ServiceDefaults\SubscriptionManagement.ServiceDefaults.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Marten" Version="9.59.0"/>
+        <PackageReference Include="WolverineFx" Version="6.64.0"/>
+        <PackageReference Include="WolverineFx.Marten" Version="6.64.0"/>
+        <PackageReference Include="WolverineFx.RabbitMQ" Version="6.64.0"/>
+        <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.64.0"/>
+    </ItemGroup>
+
+</Project>

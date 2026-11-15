@@ -7,12 +7,17 @@ public class SubscriptionTests
 {
     private static readonly DateOnly Start = new(2026, 9, 5);
 
-    private static Subscription NewActive(DateOnly? trial = null) => Subscription.Create("Netflix", 99000m, Start, trial);
+    private static Subscription NewActive(
+        DateOnly? trial = null
+    )
+    {
+        return Subscription.Create("Netflix", 99000m, Start, trial);
+    }
 
     [Fact]
     public void Create_starts_active_and_uses_trial_end_as_first_period_end()
     {
-        var s = NewActive(trial: new DateOnly(2026, 9, 12));
+        var s = NewActive(new DateOnly(2026, 9, 12));
 
         Assert.Equal(SubscriptionStatus.Active, s.Status);
         Assert.Equal(Start, s.CurrentPeriodStart);
@@ -59,7 +64,9 @@ public class SubscriptionTests
     [Theory]
     [InlineData(SubscriptionStatus.Paused)]
     [InlineData(SubscriptionStatus.Canceled)]
-    public void Pause_requires_active(SubscriptionStatus from)
+    public void Pause_requires_active(
+        SubscriptionStatus from
+    )
     {
         var s = InState(from);
         var ex = Assert.Throws<ApiProblemException>(s.Pause);
@@ -72,7 +79,9 @@ public class SubscriptionTests
     [Theory]
     [InlineData(SubscriptionStatus.Active)]
     [InlineData(SubscriptionStatus.Canceled)]
-    public void Resume_requires_paused(SubscriptionStatus from)
+    public void Resume_requires_paused(
+        SubscriptionStatus from
+    )
     {
         Assert.Equal(409, Assert.Throws<ApiProblemException>(InState(from).Resume).Status);
     }
@@ -80,7 +89,9 @@ public class SubscriptionTests
     [Theory]
     [InlineData(SubscriptionStatus.Paused)]
     [InlineData(SubscriptionStatus.Canceled)]
-    public void Renew_requires_active(SubscriptionStatus from)
+    public void Renew_requires_active(
+        SubscriptionStatus from
+    )
     {
         Assert.Equal(409, Assert.Throws<ApiProblemException>(() => InState(from).Renew()).Status);
     }
@@ -88,7 +99,7 @@ public class SubscriptionTests
     [Fact]
     public void Renew_advances_one_month_from_the_current_period_end()
     {
-        var s = NewActive(trial: new DateOnly(2026, 9, 12));
+        var s = NewActive(new DateOnly(2026, 9, 12));
 
         var period = s.Renew();
 
@@ -97,7 +108,9 @@ public class SubscriptionTests
         Assert.Equal(period.End, s.CurrentPeriodEnd);
     }
 
-    private static Subscription InState(SubscriptionStatus status)
+    private static Subscription InState(
+        SubscriptionStatus status
+    )
     {
         var s = NewActive();
         switch (status)

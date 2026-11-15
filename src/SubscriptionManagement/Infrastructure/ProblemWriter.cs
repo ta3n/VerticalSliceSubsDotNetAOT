@@ -12,10 +12,26 @@ public static class ProblemWriter
     private const string TypeBase = "https://api.demo/errors/";
 
     private static readonly HashSet<string> Reserved =
-        new(["type", "title", "status", "detail", "instance", "timestamp", "traceId", "errors"], StringComparer.Ordinal);
+        new(
+            ["type", "title", "status", "detail", "instance", "timestamp", "traceId", "errors"],
+            StringComparer.Ordinal
+        );
 
-    public static Task WriteAsync(HttpContext context, ApiProblemException problem) =>
-        WriteAsync(context, problem.Status, problem.Slug, problem.Title, problem.Detail, problem.Extensions, problem.Errors);
+    public static Task WriteAsync(
+        HttpContext context,
+        ApiProblemException problem
+    )
+    {
+        return WriteAsync(
+            context,
+            problem.Status,
+            problem.Slug,
+            problem.Title,
+            problem.Detail,
+            problem.Extensions,
+            problem.Errors
+        );
+    }
 
     public static async Task WriteAsync(
         HttpContext context,
@@ -24,7 +40,8 @@ public static class ProblemWriter
         string title,
         string? detail,
         IReadOnlyDictionary<string, object>? extensions = null,
-        IReadOnlyDictionary<string, string[]>? errors = null)
+        IReadOnlyDictionary<string, string[]>? errors = null
+    )
     {
         var response = context.Response;
         response.StatusCode = status;
@@ -48,35 +65,29 @@ public static class ProblemWriter
         string title,
         string? detail,
         IReadOnlyDictionary<string, object>? extensions,
-        IReadOnlyDictionary<string, string[]>? errors)
+        IReadOnlyDictionary<string, string[]>? errors
+    )
     {
         writer.WriteStartObject();
         writer.WriteString("type", TypeBase + slug);
         writer.WriteString("title", title);
         writer.WriteNumber("status", status);
-        if (detail is not null)
-        {
-            writer.WriteString("detail", detail);
-        }
+        if (detail is not null) writer.WriteString("detail", detail);
 
         writer.WriteString("instance", context.Request.Path.Value);
         writer.WriteString("timestamp", timeProvider.GetUtcNow().UtcDateTime);
         writer.WriteString("traceId", context.TraceIdentifier);
 
         if (extensions is not null)
-        {
             foreach (var (key, value) in extensions)
             {
                 if (Reserved.Contains(key))
-                {
                     // RFC 9457 §3.2: extensions must not redefine standard members (would emit duplicate keys).
                     throw new InvalidOperationException($"Problem extension '{key}' collides with a standard member.");
-                }
 
                 writer.WritePropertyName(key);
                 WriteValue(writer, value);
             }
-        }
 
         if (errors is not null)
         {
@@ -84,10 +95,7 @@ public static class ProblemWriter
             foreach (var (field, messages) in errors)
             {
                 writer.WriteStartArray(field);
-                foreach (var message in messages)
-                {
-                    writer.WriteStringValue(message);
-                }
+                foreach (var message in messages) writer.WriteStringValue(message);
 
                 writer.WriteEndArray();
             }
@@ -98,7 +106,10 @@ public static class ProblemWriter
         writer.WriteEndObject();
     }
 
-    private static void WriteValue(Utf8JsonWriter writer, object value)
+    private static void WriteValue(
+        Utf8JsonWriter writer,
+        object value
+    )
     {
         switch (value)
         {

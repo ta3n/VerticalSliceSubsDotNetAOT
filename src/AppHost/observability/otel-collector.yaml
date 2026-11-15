@@ -60,14 +60,14 @@ service:
                 port: 8888
   pipelines:
     traces:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp/aspire, otlp/tempo]
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlp/aspire, otlp/tempo ]
     metrics:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp/aspire, otlphttp/prometheus]
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlp/aspire, otlphttp/prometheus ]
     logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp/aspire, otlphttp/loki]
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlp/aspire, otlphttp/loki ]

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Messages and the gRPC contract shared by the services. No packages: Protos/billing.proto is compiled by the
+         projects that link it (the API as a client, Billing as the server), so this stays trim/AOT-clean for the
+         Native AOT API that references it. -->
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+</Project>

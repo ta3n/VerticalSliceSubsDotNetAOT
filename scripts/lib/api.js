@@ -16,6 +16,8 @@ function withoutTrailingSlashes(url) {
 }
 
 export const BASE = withoutTrailingSlashes(__ENV.BASE_URL || 'http://localhost:8080');
+export const BILLING = withoutTrailingSlashes(__ENV.BILLING_URL || 'http://localhost:5128');
+export const PAYMENTS = withoutTrailingSlashes(__ENV.PAYMENTS_URL || 'http://localhost:5129');
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const TIMEOUT = __ENV.HTTP_TIMEOUT || '10s';
 
@@ -23,8 +25,8 @@ const TIMEOUT = __ENV.HTTP_TIMEOUT || '10s';
 export const lifecycleDuration = new Trend('lifecycle_duration', true);
 
 /** Request params: JSON headers, the `endpoint` tag and, for expected error responses, the accepted statuses. */
-export function params(endpoint, expected) {
-  const p = { headers: JSON_HEADERS, tags: { endpoint }, timeout: TIMEOUT };
+export function params(endpoint, expected, headers) {
+  const p = { headers: headers ? Object.assign({}, JSON_HEADERS, headers) : JSON_HEADERS, tags: { endpoint }, timeout: TIMEOUT };
   if (expected) p.responseCallback = http.expectedStatuses(...expected);
   return p;
 }
@@ -35,14 +37,19 @@ const json = (value) => JSON.stringify(value);
 export const api = {
   createSubscription: (body, expect) => http.post(`${BASE}/subscriptions`, json(body), params('POST /subscriptions', expect)),
   getSubscription: (id, expect) => http.get(`${BASE}/subscriptions/${id}`, params('GET /subscriptions/{id}', expect)),
-  cancelSubscription: (id, expect) => http.del(`${BASE}/subscriptions/${id}`, null, params('DELETE /subscriptions/{id}', expect)),
+  cancelSubscription: (id, expect, headers) => http.del(`${BASE}/subscriptions/${id}`, null, params('DELETE /subscriptions/{id}', expect, headers)),
   pauseSubscription: (id, expect) => http.post(`${BASE}/subscriptions/${id}/pause`, null, params('POST /subscriptions/{id}/pause', expect)),
   resumeSubscription: (id, expect) => http.post(`${BASE}/subscriptions/${id}/resume`, null, params('POST /subscriptions/{id}/resume', expect)),
   renewSubscription: (id, expect) => http.post(`${BASE}/subscriptions/${id}/renew`, null, params('POST /subscriptions/{id}/renew', expect)),
+  startRenewal: (id, expect, headers) => http.post(`${BASE}/subscriptions/${id}/renewals`, null, params('POST /subscriptions/{id}/renewals', expect, headers)),
   searchSubscriptions: (query, expect) => http.post(`${BASE}/subscriptions/search`, json(query || {}), params('POST /subscriptions/search', expect)),
   listInvoices: (subscriptionId, expect) => http.get(`${BASE}/subscriptions/${subscriptionId}/invoices`, params('GET /subscriptions/{id}/invoices', expect)),
   getInvoice: (id, expect) => http.get(`${BASE}/invoices/${id}`, params('GET /invoices/{id}', expect)),
+  getInvoiceRenewal: (id, expect) => http.get(`${BASE}/invoices/${id}/renewal`, params('GET /invoices/{id}/renewal', expect)),
   payInvoice: (id, expect) => http.post(`${BASE}/invoices/${id}/pay`, null, params('POST /invoices/{id}/pay', expect)),
+  getPayment: (id, expect) => http.get(`${PAYMENTS}/payments/${id}`, params('GET /payments/{id}', expect)),
+  getPaymentEvents: (id, expect) => http.get(`${PAYMENTS}/payments/${id}/events`, params('GET /payments/{id}/events', expect)),
+  listCreditNotes: (subscriptionId, expect) => http.get(`${BILLING}/credit-notes?subscriptionId=${subscriptionId}`, params('GET /credit-notes', expect)),
   listPlans: () => http.get(`${BASE}/plans`, params('GET /plans')),
   getPlan: (code, expect) => http.get(`${BASE}/plans/${code}`, params('GET /plans/{code}', expect)),
   createPlan: (body, expect) => http.post(`${BASE}/plans`, json(body), params('POST /plans', expect)),

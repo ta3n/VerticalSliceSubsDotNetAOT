@@ -2,7 +2,9 @@ using System.Net;
 
 namespace SubscriptionManagement.IntegrationTests;
 
-public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
+public sealed class LifecycleApiTests(
+    ApiFixture fixture
+) : ApiTestBase(fixture)
 {
     [Fact]
     public async Task Pause_then_resume_updates_the_status_and_the_next_read_sees_it()
@@ -11,11 +13,17 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         var paused = await ReadAsync(await PostAsync($"/subscriptions/{id}/pause"));
         Assert.Equal(3, paused.GetProperty("status").GetInt32());
-        Assert.Equal(3, (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32());
+        Assert.Equal(
+            3,
+            (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32()
+        );
 
         var resumed = await ReadAsync(await PostAsync($"/subscriptions/{id}/resume"));
         Assert.Equal(1, resumed.GetProperty("status").GetInt32());
-        Assert.Equal(1, (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32());
+        Assert.Equal(
+            1,
+            (await ReadAsync(await Client.GetAsync($"/subscriptions/{id}"))).GetProperty("status").GetInt32()
+        );
     }
 
     [Fact]
@@ -24,8 +32,11 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
         var id = Id(await CreateSubscriptionAsync());
         await PostAsync($"/subscriptions/{id}/pause");
 
-        var problem = await AssertProblemAsync(await PostAsync($"/subscriptions/{id}/pause"),
-            HttpStatusCode.Conflict, "invalid-subscription-transition");
+        var problem = await AssertProblemAsync(
+            await PostAsync($"/subscriptions/{id}/pause"),
+            HttpStatusCode.Conflict,
+            "invalid-subscription-transition"
+        );
         Assert.Equal("PAUSED", problem.GetProperty("from").GetString());
         Assert.Equal("PAUSED", problem.GetProperty("to").GetString());
     }
@@ -34,7 +45,11 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
     public async Task Resuming_an_active_subscription_is_a_409()
     {
         var id = Id(await CreateSubscriptionAsync());
-        await AssertProblemAsync(await PostAsync($"/subscriptions/{id}/resume"), HttpStatusCode.Conflict, "invalid-subscription-transition");
+        await AssertProblemAsync(
+            await PostAsync($"/subscriptions/{id}/resume"),
+            HttpStatusCode.Conflict,
+            "invalid-subscription-transition"
+        );
     }
 
     [Fact]
@@ -44,26 +59,33 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
         await Client.DeleteAsync($"/subscriptions/{id}");
 
         foreach (var action in new[] { "pause", "resume", "renew" })
-        {
-            await AssertProblemAsync(await PostAsync($"/subscriptions/{id}/{action}"),
-                HttpStatusCode.Conflict, "invalid-subscription-transition");
-        }
+            await AssertProblemAsync(
+                await PostAsync($"/subscriptions/{id}/{action}"),
+                HttpStatusCode.Conflict,
+                "invalid-subscription-transition"
+            );
     }
 
     [Theory]
     [InlineData("pause")]
     [InlineData("resume")]
     [InlineData("renew")]
-    public async Task Lifecycle_actions_on_an_unknown_subscription_are_404(string action)
+    public async Task Lifecycle_actions_on_an_unknown_subscription_are_404(
+        string action
+    )
     {
-        await AssertProblemAsync(await PostAsync($"/subscriptions/{Guid.NewGuid()}/{action}"),
-            HttpStatusCode.NotFound, "subscription-not-found");
+        await AssertProblemAsync(
+            await PostAsync($"/subscriptions/{Guid.NewGuid()}/{action}"),
+            HttpStatusCode.NotFound,
+            "subscription-not-found"
+        );
     }
 
     [Fact]
     public async Task Renew_issues_an_open_usd_invoice_for_the_period_just_entered()
     {
-        var subscription = await CreateSubscriptionAsync(NewSubscription(price: 12.5m, start: "2026-09-05", trial: "2026-09-12"));
+        var subscription =
+            await CreateSubscriptionAsync(NewSubscription(price: 12.5m, start: "2026-09-05", trial: "2026-09-12"));
         var id = Id(subscription);
 
         var response = await PostAsync($"/subscriptions/{id}/renew");
@@ -109,8 +131,11 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
         Assert.Equal("PAID", paid.GetProperty("statusLabel").GetString());
         Assert.NotEqual(System.Text.Json.JsonValueKind.Null, paid.GetProperty("paidAt").ValueKind);
 
-        var again = await AssertProblemAsync(await PostAsync($"/invoices/{invoiceId}/pay"),
-            HttpStatusCode.Conflict, "invoice-not-payable");
+        var again = await AssertProblemAsync(
+            await PostAsync($"/invoices/{invoiceId}/pay"),
+            HttpStatusCode.Conflict,
+            "invoice-not-payable"
+        );
         Assert.Equal("PAID", again.GetProperty("invoiceStatus").GetString());
     }
 
@@ -129,9 +154,21 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
     [Fact]
     public async Task Unknown_invoice_and_unknown_subscription_invoices_are_404()
     {
-        await AssertProblemAsync(await Client.GetAsync($"/invoices/{Guid.NewGuid()}"), HttpStatusCode.NotFound, "invoice-not-found");
-        await AssertProblemAsync(await PostAsync($"/invoices/{Guid.NewGuid()}/pay"), HttpStatusCode.NotFound, "invoice-not-found");
-        await AssertProblemAsync(await Client.GetAsync($"/subscriptions/{Guid.NewGuid()}/invoices"), HttpStatusCode.NotFound, "subscription-not-found");
+        await AssertProblemAsync(
+            await Client.GetAsync($"/invoices/{Guid.NewGuid()}"),
+            HttpStatusCode.NotFound,
+            "invoice-not-found"
+        );
+        await AssertProblemAsync(
+            await PostAsync($"/invoices/{Guid.NewGuid()}/pay"),
+            HttpStatusCode.NotFound,
+            "invoice-not-found"
+        );
+        await AssertProblemAsync(
+            await Client.GetAsync($"/subscriptions/{Guid.NewGuid()}/invoices"),
+            HttpStatusCode.NotFound,
+            "subscription-not-found"
+        );
     }
 
     [Fact]
@@ -148,7 +185,11 @@ public sealed class LifecycleApiTests(ApiFixture fixture) : ApiTestBase(fixture)
         // 20 integer digits fit the subscription price column but not invoices.amount NUMERIC(20,4).
         var id = Id(await CreateSubscriptionAsync(NewSubscription(price: 12345678901234567890m)));
 
-        await AssertProblemAsync(await PostAsync($"/subscriptions/{id}/renew"), HttpStatusCode.BadRequest, "value-out-of-range");
+        await AssertProblemAsync(
+            await PostAsync($"/subscriptions/{id}/renew"),
+            HttpStatusCode.BadRequest,
+            "value-out-of-range"
+        );
 
         var list = await ReadAsync(await Client.GetAsync($"/subscriptions/{id}/invoices"));
         Assert.Empty(list.GetProperty("items").EnumerateArray()); // transaction rolled back as a whole
