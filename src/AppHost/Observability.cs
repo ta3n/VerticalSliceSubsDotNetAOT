@@ -12,7 +12,9 @@ internal static class Observability
     public static ObservabilityStack AddObservabilityStack(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<PostgresServerResource> postgres,
-        IResourceBuilder<RedisResource> redis
+        IResourceBuilder<RedisResource> redis,
+        IReadOnlyList<IResourceBuilder<ContainerResource>> standbys,
+        IResourceBuilder<ContainerResource>? pgbouncer
     )
     {
         // Fixed host ports so bookmarks and the k6 scripts on the host (scripts/.env.aspire) keep working.
@@ -86,6 +88,45 @@ internal static class Observability
             .WithHttpHealthCheck("/metrics")
             .WithParentRelationship(postgres)
             .WaitFor(postgres);
+
+        // One exporter per standby (replication lag in seconds and the standby's own state) and one for PgBouncer's admin
+        // console (pools, waiting clients, query/wait time). Prometheus scrapes them under the names in prometheus.yml.
+        for (var i = 0; i < standbys.Count; i++)
+        {
+            var standby = standbys[i];
+            var endpoint = standby.GetEndpoint("tcp");
+            builder.AddContainer(
+                    $"postgres-exporter-replica-{(i + 1).ToString()}",
+                    "prometheuscommunity/postgres-exporter",
+                    "v0.20.1"
+                )
+                .WithEnvironment(
+                    "DATA_SOURCE_NAME",
+                    ReferenceExpression.Create(
+                        $"postgresql://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/postgres?sslmode=disable"
+                    )
+                )
+                .WithHttpEndpoint(targetPort: 9187)
+                .WithHttpHealthCheck("/metrics")
+                .WithParentRelationship(standby)
+                .WaitFor(standby);
+        }
+
+        if (pgbouncer is not null)
+        {
+            var endpoint = pgbouncer.GetEndpoint("tcp");
+            builder.AddContainer("pgbouncer-exporter", "prometheuscommunity/pgbouncer-exporter", "v0.12.0")
+                .WithEnvironment(
+                    "PGBOUNCER_EXPORTER_CONNECTION_STRING",
+                    ReferenceExpression.Create(
+                        $"postgres://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/pgbouncer?sslmode=disable"
+                    )
+                )
+                .WithHttpEndpoint(targetPort: 9127)
+                .WithHttpHealthCheck("/metrics")
+                .WithParentRelationship(pgbouncer)
+                .WaitFor(pgbouncer);
+        }
 
         builder.AddContainer("redis-exporter", "oliver006/redis_exporter", "v1.97.0")
             .WithEnvironment("REDIS_ADDR", redis.Resource.UriExpression)

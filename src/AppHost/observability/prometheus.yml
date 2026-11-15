@@ -33,7 +33,26 @@ scrape_configs:
   - job_name: redis
     static_configs:
       - targets: [ "redis-exporter:9121" ]
+  # One exporter per standby (Postgres:Standbys): lag in seconds and the standby's own state. A target that does not
+  # exist (fewer standbys) just shows as down.
+  - job_name: postgres-replica
+    static_configs:
+      - targets: [ "postgres-exporter-replica-1:9187" ]
+        labels: { replica: "1" }
+      - targets: [ "postgres-exporter-replica-2:9187" ]
+        labels: { replica: "2" }
+  # PgBouncer's admin console (PgBouncer:Enabled): pools, waiting clients, query and wait time.
+  - job_name: pgbouncer
+    static_configs:
+      - targets: [ "pgbouncer-exporter:9127" ]
   # The broker's built-in rabbitmq_prometheus plugin (enabled in the official image), not an exporter container.
   - job_name: rabbitmq
+    static_configs:
+      - targets: [ "messaging:15692" ]
+  # The same plugin's per-queue view (backlog, consumers, utilisation, published / acked counters per queue), for the dashboards.
+  - job_name: rabbitmq-queues
+    metrics_path: /metrics/detailed
+    params:
+      family: [ queue_coarse_metrics, queue_metrics, queue_delivery_metrics, queue_exchange_metrics ]
     static_configs:
       - targets: [ "messaging:15692" ]

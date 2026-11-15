@@ -1,3 +1,5 @@
+using Projects;
+
 namespace AppHost;
 
 internal sealed record S2SServices(
@@ -25,13 +27,19 @@ internal static class Services
         var billingDb = postgres.AddDatabase("billing-db", "billing");
         var paymentsDb = postgres.AddDatabase("payments-db", "payments");
 
-        var billing = builder.AddProject<Projects.SubscriptionManagement_Billing>("billing")
+        // Every service runs Replicas instances; Aspire's endpoint proxy balances HTTP/gRPC across them. Billing and
+        // Payments (Wolverine / Marten on PostgreSQL) coordinate through the database; the Relay's outbox claim uses
+        // FOR UPDATE SKIP LOCKED, so instances take different rows.
+        var replicas = builder.Configuration.Required<int>("Replicas");
+
+        var billing = builder.AddProject<SubscriptionManagement_Billing>("billing")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(billingDb, servicePoolSize))
             .WithReferenceRelationship(billingDb)
             .WithReference(messaging)
             .WaitFor(billingDb)
             .WaitFor(messaging)
             .WithHttpHealthCheck("/health/ready", endpointName: "http")
+            .WithReplicas(replicas)
             .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
             .WithEnvironment(
                 "Billing__RenewalTimeoutSeconds",
@@ -39,13 +47,14 @@ internal static class Services
             )
             .WithEnvironment("Billing__TaxRate", builder.Configuration.Required<string>("Billing:TaxRate"));
 
-        var payments = builder.AddProject<Projects.SubscriptionManagement_Payments>("payments")
+        var payments = builder.AddProject<SubscriptionManagement_Payments>("payments")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(paymentsDb, servicePoolSize))
             .WithReferenceRelationship(paymentsDb)
             .WithReference(messaging)
             .WaitFor(paymentsDb)
             .WaitFor(messaging)
             .WithHttpHealthCheck("/health/ready", endpointName: "http")
+            .WithReplicas(replicas)
             .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
             .WithEnvironment(
                 "Gateway__DeclineAtOrAbove",
@@ -56,7 +65,7 @@ internal static class Services
                 builder.Configuration.Required<string>("Gateway:NoReplyAtOrAbove")
             );
 
-        var relay = builder.AddProject<Projects.SubscriptionManagement_Relay>("relay")
+        var relay = builder.AddProject<SubscriptionManagement_Relay>("relay")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(database, servicePoolSize))
             .WithReferenceRelationship(database)
             .WithReference(messaging)
@@ -65,6 +74,7 @@ internal static class Services
             .WaitForCompletion(migrator)
             .WaitFor(api)
             .WithHttpHealthCheck("/health/ready", endpointName: "http")
+            .WithReplicas(replicas)
             .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
             .WithEnvironment("Api__BaseUrl", api.GetEndpoint("http"))
             .WithEnvironment("Relay__PollIntervalMs", builder.Configuration.Required<string>("Relay:PollIntervalMs"))

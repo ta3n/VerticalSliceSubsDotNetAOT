@@ -35,19 +35,19 @@ Design rationale: [docs/technical-design.md](docs/technical-design.md) · decisi
 
 ## Technology stack
 
-| | Version |
-|---|---|
-| .NET target | `net10.0` (`global.json` is currently absent; use a .NET 10 SDK) |
-| ASP.NET Core | 10.0 — Minimal APIs, `CreateSlimBuilder`, source-generated JSON |
-| PostgreSQL / driver | 17 / Npgsql 10.0.3 (explicit SQL in the API) |
-| Service messaging / persistence | RabbitMQ 4.3-management, Wolverine 6.64.0, EF Core PostgreSQL provider 10.0.3 (Billing/Relay), Marten 9.59.0 (Payments) |
-| Service contracts | gRPC 2.85.0, Google.Protobuf 3.36.2; generated client in API, server in Billing |
-| Local orchestration | Aspire 13.6.5 |
-| Cache | Redis 7 via Microsoft.Extensions.Caching.StackExchangeRedis 10.0.12 (in-process fallback) |
-| API docs | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11 |
-| Telemetry | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter) |
-| Tests | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis, RabbitMQ), Microsoft.AspNetCore.Mvc.Testing 10.0.12 |
-| Load tests | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination, saga), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
+|                                 | Version                                                                                                                                                          |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| .NET target                     | `net10.0` (`global.json` is currently absent; use a .NET 10 SDK)                                                                                                 |
+| ASP.NET Core                    | 10.0 — Minimal APIs, `CreateSlimBuilder`, source-generated JSON                                                                                                  |
+| PostgreSQL / driver             | 17 / Npgsql 10.0.3 (explicit SQL in the API)                                                                                                                     |
+| Service messaging / persistence | RabbitMQ 4.3-management, Wolverine 6.64.0, EF Core PostgreSQL provider 10.0.3 (Billing/Relay), Marten 9.59.0 (Payments)                                          |
+| Service contracts               | gRPC 2.85.0, Google.Protobuf 3.36.2; generated client in API, server in Billing                                                                                  |
+| Local orchestration             | Aspire 13.6.5                                                                                                                                                    |
+| Cache                           | Redis 7 via Microsoft.Extensions.Caching.StackExchangeRedis 10.0.12 (in-process fallback)                                                                        |
+| API docs                        | Microsoft.AspNetCore.OpenApi 10.0.12 + Scalar.AspNetCore 2.17.11                                                                                                 |
+| Telemetry                       | OpenTelemetry 1.19.x (ASP.NET Core + Npgsql instrumentation, OTLP exporter)                                                                                      |
+| Tests                           | xUnit 2.9.3, Testcontainers 4.15.0 (PostgreSQL, Redis, RabbitMQ), Microsoft.AspNetCore.Mvc.Testing 10.0.12                                                       |
+| Load tests                      | k6 (smoke, load, stress, spike, soak, rampup, breakpoint, contention, pagination, saga, mq), Locust — run in containers by `scripts/*.sh` or as Aspire resources |
 
 Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
@@ -107,43 +107,68 @@ unchanged. `billing` waits for `billing-db` and `messaging`; `payments` waits fo
 The API waits for Billing, Redis and the successful migrator; `relay` then waits for the API, migrator and broker.
 The long-running projects are health-checked on `/health/ready`; when monitoring is enabled they also wait for the collector.
 
-| Resource | Owns / exposes |
-|---|---|
-| `postgres` → `subscriptions`, `billing-db`, `payments-db` | One PostgreSQL instance; database names `subscriptions`, `billing`, `payments` |
-| `messaging` | RabbitMQ 4.3 with management plugin and a persistent data volume; management URL is in Aspire |
-| `billing` | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128` |
-| `payments` | Payment snapshot and event reads on `http://localhost:5129` |
-| `relay` | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire |
-| `k6-saga` | On-demand s2s scenario; waits for Billing, Payments and Relay |
+| Resource                                                  | Owns / exposes                                                                                                                                               |
+|-----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `postgres` → `subscriptions`, `billing-db`, `payments-db` | The PostgreSQL primary; database names `subscriptions`, `billing`, `payments`                                                                                |
+| `postgres-replica-1`, `postgres-replica-2`                | Streaming replicas (hot standbys, read-only) cloned from the primary with `pg_basebackup` on every start; `Postgres:Standbys` sets how many                  |
+| `pgbouncer`                                               | PgBouncer 1.24 in transaction-pooling mode in front of the primary, used by the **API only** (`PgBouncer:Enabled=false` connects it straight to the primary) |
+| `postgres-exporter-replica-N`, `pgbouncer-exporter`       | Prometheus exporters for each standby (lag in seconds, state) and for PgBouncer's admin console (pools, waiting clients, query/wait time)                    |
+| `messaging`                                               | RabbitMQ 4.3 with management plugin and a persistent data volume; management URL is in Aspire                                                                |
+| `billing`                                                 | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128`                                                                      |
+| `payments`                                                | Payment snapshot and event reads on `http://localhost:5129`                                                                                                  |
+| `relay`                                                   | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire                                                                                 |
+| `k6-saga`                                                 | On-demand s2s scenario; waits for Billing, Payments and Relay                                                                                                |
+| `k6-mq`                                                   | On-demand message-broker load (see `mq` below); waits for Billing, Payments and Relay                                                                        |
 
 Postgres and RabbitMQ data survive restarts in volumes; do not delete the volumes to rerun a scenario. Generated
 credentials are managed by Aspire/user secrets. The AppHost lives in `src/AppHost/AppHost.cs` and `Services.cs`;
 shared OpenTelemetry setup lives in `src/SubscriptionManagement.ServiceDefaults`.
-Connection budgets cover the whole PostgreSQL instance: API pool 900 + three service pools × 20 = 960, below
-1000 − 3 reserved slots, with capacity left for migrations, exporters and interactive sessions.
+Connection budgets cover the whole PostgreSQL primary: the API's Npgsql pool (1000 per instance) is only the client side
+of
+PgBouncer, which opens at most `PgBouncer:PoolSize` (400) server connections; Billing, Payments and Relay connect
+directly (2 replicas × 3 service pools × 20 = 120), so the primary sees ~520 of its 1000 − 3 slots, with room for
+migrations, exporters
+and interactive sessions. The migrator and the three services skip PgBouncer on purpose: they hold session-level
+advisory
+locks (the migrator's own lock, Wolverine's and Marten's durability agents), which a transaction pooler cannot keep. The
+replicas only stream and serve read-only sessions (`postgres-replica-N`, see `pg_stat_replication` on the primary);
+nothing
+routes reads to them yet, and there is no automatic failover. PgBouncer's pool must cover *write rate × transaction
+time*,
+and a commit holds its server connection until the WAL is flushed, so on a machine with a slow disk (OrbStack's measured
+30-50 ms per `fdatasync` at times) 100 connections capped the API at ~2,400 transactions/s.
 
 The AppHost's operational settings live in `src/AppHost/appsettings.json`; override any of them with
 `--Section:Key=value`, an environment variable (`Section__Key`) or user secrets:
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `Postgres:MaxConnections` | 1000 | PostgreSQL `max_connections` |
-| `Api:PostgresMaxPoolSize` | 900 | API pool; startup requires API pool + 3 × service pool < `MaxConnections` − 3 |
-| `Api:OutboxEnabled` | true | Sets the API's `Outbox:Enabled`; enables renewal/cancellation events in Aspire |
-| `Services:PostgresMaxPoolSize` | 20 | Pool per Billing, Payments and Relay; shared with each service's message persistence |
-| `Billing:RenewalTimeoutSeconds` | 30 | Durable local timeout while the saga awaits payment |
-| `Billing:TaxRate` | 0.10 | Quote tax fraction, added to the subscription price (USD) |
-| `Gateway:DeclineAtOrAbove` | 5000 | Simulated gateway declines charged totals at/above this amount |
-| `Gateway:NoReplyAtOrAbove` | 9000 | Simulated gateway records the request but sends no reply; checked before decline |
-| `Relay:PollIntervalMs` | 250 | Delay after a non-full outbox batch |
-| `Relay:BatchSize` | 100 | Maximum raw outbox rows transferred per transaction |
-| `Observability:Enabled` | true | Prometheus/Tempo/Loki/Grafana stack next to the Aspire dashboard |
-| `Observability:GrafanaPort` / `PrometheusPort` | 3000 / 9190 | Fixed host ports (`scripts/.env.aspire` points k6 at the Prometheus one) |
-| `Observability:PrometheusRetention` | 7d | Prometheus TSDB retention |
-| `LoadTest:AutoStart` | (empty) | Comma-separated k6 scenarios to start with the app |
-| `LoadTest:<name>:<KNOB>` | `load`/`stress`: 2000 VUs | Knobs of a k6 scenario (see each script's header) |
-| `LoadTest:saga:ITERATIONS` | 3 | Fresh success/decline/timeout/refund cases per iteration, one VU |
-| `LoadTest:saga:RENEWAL_TIMEOUT_S` | 30 | Must match `Billing:RenewalTimeoutSeconds`; client polling adds 30 s delivery margin |
+| Setting                                        | Default                   | Meaning                                                                                                                                                                                                            |
+|------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Postgres:MaxConnections`                      | 1000                      | PostgreSQL `max_connections` (the replicas use the same value: a standby must not allow fewer)                                                                                                                     |
+| `Postgres:Standbys`                            | 2                         | Streaming replicas next to the primary (`2` = the three-instance topology)                                                                                                                                         |
+| `PgBouncer:Enabled`                            | true                      | Put PgBouncer in front of the primary for the API                                                                                                                                                                  |
+| `PgBouncer:PoolSize`                           | 400                       | Server connections PgBouncer keeps to the primary for the API (`default_pool_size`)                                                                                                                                |
+| `PgBouncer:MaxClientConnections`               | 10000                     | `max_client_conn`; startup requires `Replicas` × `Api:PostgresMaxPoolSize` to fit                                                                                                                                  |
+| `PgBouncer:MaxPreparedStatements`              | 200                       | Protocol-level prepared statements shared across pooled connections                                                                                                                                                |
+| `Replicas`                                     | 2                         | Instances of the API, Billing, Payments and Relay (HA; Aspire balances across them)                                                                                                                                |
+| `Api:PostgresMaxPoolSize`                      | 1000                      | API Npgsql pool per instance (client side of PgBouncer); startup requires `PgBouncer:PoolSize` + `Replicas` × 3 × service pool < `MaxConnections` − 3 (with `PgBouncer:Enabled=false` the API pools count instead) |
+| `Api:OutboxEnabled`                            | true                      | Sets the API's `Outbox:Enabled`; enables renewal/cancellation events in Aspire                                                                                                                                     |
+| `Services:PostgresMaxPoolSize`                 | 20                        | Pool per instance of Billing, Payments and Relay; shared with each service's message persistence                                                                                                                   |
+| `Billing:RenewalTimeoutSeconds`                | 30                        | Durable local timeout while the saga awaits payment                                                                                                                                                                |
+| `Billing:TaxRate`                              | 0.10                      | Quote tax fraction, added to the subscription price (USD)                                                                                                                                                          |
+| `Gateway:DeclineAtOrAbove`                     | 5000                      | Simulated gateway declines charged totals at/above this amount                                                                                                                                                     |
+| `Gateway:NoReplyAtOrAbove`                     | 9000                      | Simulated gateway records the request but sends no reply; checked before decline                                                                                                                                   |
+| `Relay:PollIntervalMs`                         | 250                       | Delay after a non-full outbox batch                                                                                                                                                                                |
+| `Relay:BatchSize`                              | 100                       | Maximum raw outbox rows transferred per transaction                                                                                                                                                                |
+| `Observability:Enabled`                        | true                      | Prometheus/Tempo/Loki/Grafana stack next to the Aspire dashboard                                                                                                                                                   |
+| `Observability:GrafanaPort` / `PrometheusPort` | 3000 / 9190               | Fixed host ports (`scripts/.env.aspire` points k6 at the Prometheus one)                                                                                                                                           |
+| `Observability:PrometheusRetention`            | 7d                        | Prometheus TSDB retention                                                                                                                                                                                          |
+| `LoadTest:AutoStart`                           | (empty)                   | Comma-separated k6 scenarios to start with the app                                                                                                                                                                 |
+| `LoadTest:<name>:<KNOB>`                       | `load`/`stress`: 2000 VUs | Knobs of a k6 scenario (see each script's header)                                                                                                                                                                  |
+| `LoadTest:saga:ITERATIONS`                     | 3                         | Fresh success/decline/timeout/refund cases per iteration, one VU                                                                                                                                                   |
+| `LoadTest:saga:RENEWAL_TIMEOUT_S`              | 30                        | Must match `Billing:RenewalTimeoutSeconds`; client polling adds 30 s delivery margin                                                                                                                               |
+| `LoadTest:mq:MQ_FLOWS`                         | 2500                      | Flows per type (success / decline / timeout / rejected): 22 × n messages over 11 queues = 5000 per queue on average                                                                                                |
+| `LoadTest:mq:MQ_VUS`                           | 100                       | VUs per flow type; the pressure on the API (watch the queues' backlog)                                                                                                                                             |
+| `LoadTest:mq:MQ_SETTLE_S`                      | 180                       | Wait after the last flow so the delayed saga timeouts fire (thousands of 30 s timers are delivered over 2-3 minutes)                                                                                               |
 
 #### Monitoring and load testing (Grafana)
 
@@ -182,14 +207,25 @@ Provisioned dashboards (folder *Subscription Management*), generated from the re
   GC collections and pause time, thread pool threads/queue, lock contention), Npgsql pool (used/idle vs max, pending
   requests, command p95, commands/s), PostgreSQL server (connections vs `max_connections`, TPS, rows, cache hit ratio,
   locks, deadlocks), Redis (commands, hit ratio, latency, memory, clients), Tempo service graph, slow/error traces,
-  logs by level, and the collector's own pipeline health (exports, failures, queue usage).
+  logs by level, RabbitMQ broker health (backlog, published/acked/redelivered per second, consumers, connections,
+  memory, disk, file descriptors, resource alarms), PgBouncer (active/waiting clients, pool in use, server connections
+  vs pool
+  size, queries and transactions per second, time per query/transaction/client wait), PostgreSQL replication (standbys
+  streaming, lag in bytes and seconds per standby, standby state, WAL size and rate), and the collector's own pipeline
+  health (exports, failures, queue usage).
 * **Subscription Management — Load test (k6)**: VUs vs client/server throughput, client p95/p99 per scenario, client vs
   server latency, request phases (blocked/connecting/waiting …), status codes, checks — next to the service's
   saturation signals (CPU, GC, in-flight requests, Kestrel and thread-pool queues, Npgsql pool, Postgres connections)
   and the error logs; plus per-endpoint client throughput/p95, dropped iterations (open-model tests), correctness
-  violations (contention, pagination) and journey / first-vs-deep-page latency.
+  violations (contention, pagination) and journey / first-vs-deep-page latency; a RabbitMQ row puts the broker's
+  published/acked rate next to the VUs, with backlog, time to drain and consumer utilisation per queue (`k6-mq`), and a
+  PgBouncer & replication row (waiting clients, server connections vs pool size, transaction/wait time, replication
+  lag).
 * **Subscription Management — Request flow**: service graph and edge/operation RED metrics, invoice-filtered traces,
-  messaging traffic, RabbitMQ backlog, Wolverine failures/inbox/outbox/scheduled messages and logs.
+  messaging traffic, RabbitMQ backlog, per-queue backlog / published / acked / time to drain / consumer utilisation,
+  broker-side failures (redeliveries, dead letters, unroutable messages, Wolverine DLQ depth), Wolverine
+  failures/inbox/outbox/scheduled messages and logs. Per-queue series come from the broker's `/metrics/detailed`
+  endpoint (Prometheus job `rabbitmq-queues`).
 
 To follow one renewal, run `k6-saga` and copy `invoiceId` and `traceId` from its JSON console lines. Open
 [Request flow](http://localhost:3000/d/subs-aspire-request-flow), keep **Service = All**, set **Invoice id**, and select
@@ -207,19 +243,20 @@ The scenarios live in `scripts/*-test.js` (shared helpers in `scripts/lib/api.js
 the same files run as Aspire resources or from the host. The existing API scenarios also run against compose/Kubernetes;
 `saga` and the s2s part of `endpoints` (`S2S=true`) require the s2s services, currently wired by Aspire.
 
-| Scenario | Question it answers | Shape (defaults) | Passes when |
-|---|---|---|---|
-| `smoke` | Is the stack sane? Every endpoint and the whole error contract | 1 VU × 3 iterations | every check passes, no unexpected failure |
-| `load` | How does each endpoint behave under normal load? | 6 scenarios in sequence, 2000 VUs × 20 s | <1% failures, p95 < 100–200 ms per scenario |
-| `stress` | What happens at one high, constant load? | 2000 VUs × 60 s, mixed workload | (no thresholds; `stress-test.sh` runs the VU ladder) |
-| `spike` | Does it survive a burst, and what do regular users feel meanwhile? | 20 steady VUs + two bursts of 400 VUs | <1% failures, steady users p95 < 500 ms |
-| `soak` | Does anything degrade over time (memory, GC, pools, Redis)? | 100 iterations/s for 10 min (use 1 h+) | <0.5% failures, p95 < 300 ms, <1% dropped |
-| `rampup` | How do latency and throughput change as users build up gradually? | VUs ramp 50 → 2000 over 5 min, hold 1 min | <1% failures, p95 < 1 s |
-| `breakpoint` | Where is the limit? | rate ramps 50 → 3000/s over 5 min | **aborts** at the limit (exit 99 is the result) |
-| `contention` | Is it still correct when clients race the same row? | 8 racers per pay / cancel / create-plan | exactly one winner, always |
-| `pagination` | Does keyset paging stay consistent and flat under writes? | 20 readers walking 10 pages + 2 writers | no duplicate/out-of-order row, deep page p95 < 200 ms |
-| `saga` | Do renewal orchestration and cancel/refund choreography settle correctly? | 1 VU × 3 iterations, prices 10 / 6000 / 9500 | checks >99%, zero unexpected HTTP errors or saga failures; records `saga_settle_ms` |
-| `endpoints` | Does every route hold up when all of them are used at once, and is any route missing from the load tests? | 7 parallel flows (catalog, reads, lifecycle, invoices incl. the Relay's settle/void, errors, health, + saga with `S2S=true`), 40 VUs × 1 min | checks >99%, <1% failures, p95 < 1 s, **every route called at least once** (`calls_<name>` metric per route), zero saga failures |
+| Scenario     | Question it answers                                                                                       | Shape (defaults)                                                                                                                             | Passes when                                                                                                                                                                                                                                    |
+|--------------|-----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `smoke`      | Is the stack sane? Every endpoint and the whole error contract                                            | 1 VU × 3 iterations                                                                                                                          | every check passes, no unexpected failure                                                                                                                                                                                                      |
+| `load`       | How does each endpoint behave under normal load?                                                          | 6 scenarios in sequence, 2000 VUs × 20 s                                                                                                     | <1% failures, p95 < 100–200 ms per scenario                                                                                                                                                                                                    |
+| `stress`     | What happens at one high, constant load?                                                                  | 2000 VUs × 60 s, mixed workload                                                                                                              | (no thresholds; `stress-test.sh` runs the VU ladder)                                                                                                                                                                                           |
+| `spike`      | Does it survive a burst, and what do regular users feel meanwhile?                                        | 20 steady VUs + two bursts of 400 VUs                                                                                                        | <1% failures, steady users p95 < 500 ms                                                                                                                                                                                                        |
+| `soak`       | Does anything degrade over time (memory, GC, pools, Redis)?                                               | 100 iterations/s for 10 min (use 1 h+)                                                                                                       | <0.5% failures, p95 < 300 ms, <1% dropped                                                                                                                                                                                                      |
+| `rampup`     | How do latency and throughput change as users build up gradually?                                         | VUs ramp 50 → 2000 over 5 min, hold 1 min                                                                                                    | <1% failures, p95 < 1 s                                                                                                                                                                                                                        |
+| `breakpoint` | Where is the limit?                                                                                       | rate ramps 50 → 3000/s over 5 min                                                                                                            | **aborts** at the limit (exit 99 is the result)                                                                                                                                                                                                |
+| `contention` | Is it still correct when clients race the same row?                                                       | 8 racers per pay / cancel / create-plan                                                                                                      | exactly one winner, always                                                                                                                                                                                                                     |
+| `pagination` | Does keyset paging stay consistent and flat under writes?                                                 | 20 readers walking 10 pages + 2 writers                                                                                                      | no duplicate/out-of-order row, deep page p95 < 200 ms                                                                                                                                                                                          |
+| `saga`       | Do renewal orchestration and cancel/refund choreography settle correctly?                                 | 1 VU × 3 iterations, prices 10 / 6000 / 9500                                                                                                 | checks >99%, zero unexpected HTTP errors or saga failures; records `saga_settle_ms`                                                                                                                                                            |
+| `mq`         | How do the RabbitMQ queues behave with thousands of messages each?                                        | 4 flow types × `MQ_FLOWS` (2500) in parallel: success + refund, decline, timeout, rejected settlement                                        | checks >99%, <1% failures; per-queue counts: InvoiceIssued / ChargePayment 4n, PaymentSucceeded / SettleInvoice / CancelRenewal / CancelPayment / PaymentRefunded 2n, the other four n. Watch "Backlog by queue" on the Request flow dashboard |
+| `endpoints`  | Does every route hold up when all of them are used at once, and is any route missing from the load tests? | 7 parallel flows (catalog, reads, lifecycle, invoices incl. the Relay's settle/void, errors, health, + saga with `S2S=true`), 40 VUs × 1 min | checks >99%, <1% failures, p95 < 1 s, **every route called at least once** (`calls_<name>` metric per route), zero saga failures                                                                                                               |
 
 Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, `ENDPOINTS_VUS`, …). Three ways to run one:
 

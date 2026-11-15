@@ -1197,6 +1197,408 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Backlog by queue",
+      "description": "Messages waiting or being handled per queue (ready + unacked), from the broker's per-queue metrics. A queue whose line rises while the others stay flat is the slow consumer; the sum is the 'RabbitMQ backlog' panel above.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (queue) (rabbitmq_detailed_queue_messages_ready{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"} + rabbitmq_detailed_queue_messages_unacked{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}), \"queue\", \"$1\", \"queue\", \"SubscriptionManagement\\\\.Contracts\\\\.(.*)\")",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 25,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 67
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Consumer utilisation by queue",
+      "description": "Share of time the queue could deliver to its consumers (1 = always, low = consumers are the bottleneck). Empty while a queue is idle.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(avg by (queue) (rabbitmq_detailed_queue_consumer_utilisation{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}), \"queue\", \"$1\", \"queue\", \"SubscriptionManagement\\\\.Contracts\\\\.(.*)\")",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 26,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 67
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Published/s by queue",
+      "description": "Messages routed into each queue per second (exchange → queue, from the broker). Compare with the acked rate below: published above acked for a while means the queue is filling.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (queue) (rate(rabbitmq_detailed_queue_exchange_messages_published_total{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}[$__rate_interval])), \"queue\", \"$1\", \"queue\", \"SubscriptionManagement\\\\.Contracts\\\\.(.*)\")",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 27,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 76
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Acked/s by queue",
+      "description": "Messages the consumers finished handling per second, per queue. A queue that publishes but does not ack has a stuck or slow consumer.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (queue) (rate(rabbitmq_detailed_queue_messages_acked_total{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}[$__rate_interval])), \"queue\", \"$1\", \"queue\", \"SubscriptionManagement\\\\.Contracts\\\\.(.*)\")",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 76
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Time to drain by queue",
+      "description": "Estimated seconds until each queue is empty at its current pace: backlog (ready + unacked) divided by the acked rate. Flat and low = the consumers keep up; rising = the queue falls behind. Shown only while a queue has a backlog and is being consumed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (queue) (rabbitmq_detailed_queue_messages_ready{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"} + rabbitmq_detailed_queue_messages_unacked{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}) / (sum by (queue) (rate(rabbitmq_detailed_queue_messages_acked_total{queue=~\"SubscriptionManagement.Contracts.*|wolverine-dead-letter-queue\"}[$__rate_interval])) > 0), \"queue\", \"$1\", \"queue\", \"SubscriptionManagement\\\\.Contracts\\\\.(.*)\")",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 29,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 85
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Broker-side failures",
+      "description": "Redeliveries (a consumer rejected or lost a message), messages dead-lettered by the broker, messages no queue accepted (unroutable) and the depth of the Wolverine dead-letter queue. All of them stay at 0 on a healthy run.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(rabbitmq_global_messages_redelivered_total{job=\"rabbitmq\"}[$__rate_interval]))",
+          "legendFormat": "redelivered/s",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(rate(rabbitmq_global_messages_dead_lettered_expired_total{job=\"rabbitmq\"}[$__rate_interval])) or vector(0)) + (sum(rate(rabbitmq_global_messages_dead_lettered_maxlen_total{job=\"rabbitmq\"}[$__rate_interval])) or vector(0)) + (sum(rate(rabbitmq_global_messages_dead_lettered_rejected_total{job=\"rabbitmq\"}[$__rate_interval])) or vector(0)) + (sum(rate(rabbitmq_global_messages_dead_lettered_delivery_limit_total{job=\"rabbitmq\"}[$__rate_interval])) or vector(0))",
+          "legendFormat": "dead-lettered/s",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(rabbitmq_global_messages_unroutable_dropped_total{job=\"rabbitmq\"}[$__rate_interval])) + sum(rate(rabbitmq_global_messages_unroutable_returned_total{job=\"rabbitmq\"}[$__rate_interval]))",
+          "legendFormat": "unroutable/s",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rabbitmq_detailed_queue_messages{queue=\"wolverine-dead-letter-queue\"})",
+          "legendFormat": "Wolverine DLQ depth",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 30,
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 85
+      }
+    },
+    {
       "type": "row",
       "title": "Logs",
       "collapsed": false,
@@ -1205,7 +1607,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 94
       },
       "panels": [],
       "description": "Find service logs for the selected invoice."
@@ -1242,7 +1644,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 95
       }
     }
   ]

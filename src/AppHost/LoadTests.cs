@@ -33,6 +33,7 @@ internal static class LoadTests
         ("contention", "races on the same row: exactly one winner"),
         ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency"),
         ("saga", "s2s: renewal saga (success, decline, timeout) + cancel/refund choreography"),
+        ("mq", "message broker: ~5000 messages per RabbitMQ queue through the renewal and cancellation flows"),
         ("endpoints", "every route of the API, Billing and Payments in parallel flows, a coverage threshold per route")
     ];
 
@@ -73,7 +74,7 @@ internal static class LoadTests
             foreach (var knob in settings.GetSection(name).GetChildren())
                 k6.WithEnvironment(knob.Key.ToUpperInvariant(), knob.Value ?? "");
 
-            if (name is "saga" or "endpoints")
+            if (name is "saga" or "endpoints" or "mq")
             {
                 // The endpoints suite also drives the s2s routes; its knobs are under LoadTest:endpoints.
                 if (name == "endpoints") k6.WithEnvironment("S2S", "true");
