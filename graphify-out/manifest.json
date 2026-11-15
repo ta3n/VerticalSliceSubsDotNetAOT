@@ -1,0 +1,1628 @@
+{
+  ".github/workflows/ci.yml": {
+    "mtime": 1792931416.6351686,
+    "seen": 1794759270.661036,
+    "ast_hash": "717e9b82c29533cfb491b0c5dd7e8bdb",
+    "semantic_hash": "717e9b82c29533cfb491b0c5dd7e8bdb"
+  },
+  ".serena/project.yml": {
+    "mtime": 1793118460.1570861,
+    "seen": 1794759270.6610408,
+    "ast_hash": "3f7dc5e81f89f4b3565b30cf99d4fa63",
+    "semantic_hash": "3f7dc5e81f89f4b3565b30cf99d4fa63"
+  },
+  ".vscode/settings.json": {
+    "mtime": 1794748890.9873245,
+    "seen": 1794759270.661042,
+    "ast_hash": "5b645e239d18d0f191b7773f1eb87b8d",
+    "semantic_hash": "5b645e239d18d0f191b7773f1eb87b8d"
+  },
+  "SubscriptionManagement.slnx": {
+    "mtime": 1794746652.2139535,
+    "seen": 1794759270.661043,
+    "ast_hash": "0e0e442edcd1c19bdfd5d492f8827b66",
+    "semantic_hash": "0e0e442edcd1c19bdfd5d492f8827b66"
+  },
+  "Taskfile.yml": {
+    "mtime": 1794747921.4423342,
+    "seen": 1794759270.661044,
+    "ast_hash": "19103c7fe2d715062f9e1e6d731c520e",
+    "semantic_hash": "19103c7fe2d715062f9e1e6d731c520e"
+  },
+  "aspire.config.json": {
+    "mtime": 1794630736.527072,
+    "seen": 1794759270.661044,
+    "ast_hash": "caa33be4cebd8510d1df67b9f965262d",
+    "semantic_hash": "caa33be4cebd8510d1df67b9f965262d"
+  },
+  "compose.yaml": {
+    "mtime": 1794746475.1558185,
+    "seen": 1794759270.661045,
+    "ast_hash": "23824ac4796694ab15abf56d266b3090",
+    "semantic_hash": "23824ac4796694ab15abf56d266b3090"
+  },
+  "deploy/argo-rollouts/values.yaml": {
+    "mtime": 1792931416.6369057,
+    "seen": 1794759270.661045,
+    "ast_hash": "30f8efbea0a9d65ea6fd60a9fd18b766",
+    "semantic_hash": "30f8efbea0a9d65ea6fd60a9fd18b766"
+  },
+  "deploy/argocd/application.yaml": {
+    "mtime": 1792931416.6370597,
+    "seen": 1794759270.661046,
+    "ast_hash": "36f9a4f2bec1090d3a49f17f44c2182d",
+    "semantic_hash": "36f9a4f2bec1090d3a49f17f44c2182d"
+  },
+  "deploy/argocd/repository.yaml": {
+    "mtime": 1792931416.6371558,
+    "seen": 1794759270.661046,
+    "ast_hash": "6c379b7e6f91bb07c7881bc7cc69fb29",
+    "semantic_hash": "6c379b7e6f91bb07c7881bc7cc69fb29"
+  },
+  "deploy/argocd/values.yaml": {
+    "mtime": 1792931416.6372492,
+    "seen": 1794759270.661047,
+    "ast_hash": "a73ba6b76ea5f4ed05575d86e89a9844",
+    "semantic_hash": "a73ba6b76ea5f4ed05575d86e89a9844"
+  },
+  "deploy/helm/subscription-management/Chart.yaml": {
+    "mtime": 1792931416.6375086,
+    "seen": 1794759270.6610482,
+    "ast_hash": "af141f52532a8ed6280971071bf46963",
+    "semantic_hash": "af141f52532a8ed6280971071bf46963"
+  },
+  "deploy/helm/subscription-management/dashboards/overview.json": {
+    "mtime": 1792931416.6377027,
+    "seen": 1794759270.6610482,
+    "ast_hash": "5fc70b31c23c7db1dc5e89e73a8a0d1b",
+    "semantic_hash": "5fc70b31c23c7db1dc5e89e73a8a0d1b"
+  },
+  "deploy/helm/subscription-management/templates/analysistemplate.yaml": {
+    "mtime": 1792931416.6380866,
+    "seen": 1794759270.6610491,
+    "ast_hash": "05a7fe163b907e73851c68ab1411bf9e",
+    "semantic_hash": "05a7fe163b907e73851c68ab1411bf9e"
+  },
+  "deploy/helm/subscription-management/templates/configmap.yaml": {
+    "mtime": 1792931416.6381972,
+    "seen": 1794759270.6610491,
+    "ast_hash": "16be81461fc6554d272f0f1a238b6580",
+    "semantic_hash": "16be81461fc6554d272f0f1a238b6580"
+  },
+  "deploy/helm/subscription-management/templates/deployment.yaml": {
+    "mtime": 1792931416.638332,
+    "seen": 1794759270.66105,
+    "ast_hash": "10dc27310dfc2e5cc90a19023c325064",
+    "semantic_hash": "10dc27310dfc2e5cc90a19023c325064"
+  },
+  "deploy/helm/subscription-management/templates/grafana-dashboard.yaml": {
+    "mtime": 1792931416.6384432,
+    "seen": 1794759270.66105,
+    "ast_hash": "250ea088a67e72fd2cbecb1da63dc238",
+    "semantic_hash": "250ea088a67e72fd2cbecb1da63dc238"
+  },
+  "deploy/helm/subscription-management/templates/hpa.yaml": {
+    "mtime": 1792931416.6385522,
+    "seen": 1794759270.6610508,
+    "ast_hash": "3fab33b25a07f1245bc56893aca03796",
+    "semantic_hash": "3fab33b25a07f1245bc56893aca03796"
+  },
+  "deploy/helm/subscription-management/templates/ingress.yaml": {
+    "mtime": 1792931416.638641,
+    "seen": 1794759270.6610508,
+    "ast_hash": "f5cf793e19b2c2a073c264cbcb9f80fc",
+    "semantic_hash": "f5cf793e19b2c2a073c264cbcb9f80fc"
+  },
+  "deploy/helm/subscription-management/templates/kong-plugins.yaml": {
+    "mtime": 1792931416.6387415,
+    "seen": 1794759270.661052,
+    "ast_hash": "ae47a9b1f152ede9163c5cfa3173e7d0",
+    "semantic_hash": "ae47a9b1f152ede9163c5cfa3173e7d0"
+  },
+  "deploy/helm/subscription-management/templates/networkpolicy.yaml": {
+    "mtime": 1792931416.638837,
+    "seen": 1794759270.661052,
+    "ast_hash": "bcb4a3c0428cbd8f59d72b4fdbf5b212",
+    "semantic_hash": "bcb4a3c0428cbd8f59d72b4fdbf5b212"
+  },
+  "deploy/helm/subscription-management/templates/pdb.yaml": {
+    "mtime": 1792931416.6389215,
+    "seen": 1794759270.661053,
+    "ast_hash": "0c1266d9b2eea327c7dec2c6fe08bd6d",
+    "semantic_hash": "0c1266d9b2eea327c7dec2c6fe08bd6d"
+  },
+  "deploy/helm/subscription-management/templates/postgresql.yaml": {
+    "mtime": 1794747950.8284674,
+    "seen": 1794759270.661053,
+    "ast_hash": "9a2131e79145c8069eab69056db2fec6",
+    "semantic_hash": "9a2131e79145c8069eab69056db2fec6"
+  },
+  "deploy/helm/subscription-management/templates/prometheusrule.yaml": {
+    "mtime": 1792931416.6391363,
+    "seen": 1794759270.661054,
+    "ast_hash": "f45d613877ef033d85c7f881e3c4e624",
+    "semantic_hash": "f45d613877ef033d85c7f881e3c4e624"
+  },
+  "deploy/helm/subscription-management/templates/redis.yaml": {
+    "mtime": 1792931416.6392202,
+    "seen": 1794759270.661054,
+    "ast_hash": "5956c51b8bf50f9e3b53ad61479c9bf0",
+    "semantic_hash": "5956c51b8bf50f9e3b53ad61479c9bf0"
+  },
+  "deploy/helm/subscription-management/templates/service.yaml": {
+    "mtime": 1792931416.6393974,
+    "seen": 1794759270.661055,
+    "ast_hash": "a6e13f065f3d3d319ad6c2084d41941a",
+    "semantic_hash": "a6e13f065f3d3d319ad6c2084d41941a"
+  },
+  "deploy/helm/subscription-management/templates/servicemonitor.yaml": {
+    "mtime": 1792931416.6396096,
+    "seen": 1794759270.661055,
+    "ast_hash": "36dddecf252d3d9e516c1ae0ff3a06f3",
+    "semantic_hash": "36dddecf252d3d9e516c1ae0ff3a06f3"
+  },
+  "deploy/helm/subscription-management/templates/tests/test-api.yaml": {
+    "mtime": 1792931416.6397407,
+    "seen": 1794759270.661056,
+    "ast_hash": "ff47a5ca87c2b6c0ddf625166768b522",
+    "semantic_hash": "ff47a5ca87c2b6c0ddf625166768b522"
+  },
+  "deploy/helm/subscription-management/values-local.yaml": {
+    "mtime": 1792931416.639822,
+    "seen": 1794759270.661056,
+    "ast_hash": "2097213e2caa494fe16fd929f1703ab2",
+    "semantic_hash": "2097213e2caa494fe16fd929f1703ab2"
+  },
+  "deploy/helm/subscription-management/values.yaml": {
+    "mtime": 1792931416.6399393,
+    "seen": 1794759270.661057,
+    "ast_hash": "cd4341423d38f888b022aad1f791079f",
+    "semantic_hash": "cd4341423d38f888b022aad1f791079f"
+  },
+  "deploy/kind/cluster.yaml": {
+    "mtime": 1792933542.1268828,
+    "seen": 1794759270.661057,
+    "ast_hash": "664dc581929e0a56e85ac43666827bcb",
+    "semantic_hash": "664dc581929e0a56e85ac43666827bcb"
+  },
+  "deploy/kong/values.yaml": {
+    "mtime": 1792931416.6403275,
+    "seen": 1794759270.661058,
+    "ast_hash": "cd5a35f6c93fbc36a707030c603177af",
+    "semantic_hash": "cd5a35f6c93fbc36a707030c603177af"
+  },
+  "deploy/observability/alloy.yaml": {
+    "mtime": 1792931416.6404805,
+    "seen": 1794759270.661058,
+    "ast_hash": "b052428a48e15748b8b207abf52fcd1e",
+    "semantic_hash": "b052428a48e15748b8b207abf52fcd1e"
+  },
+  "deploy/observability/kong.yaml": {
+    "mtime": 1792931416.6405814,
+    "seen": 1794759270.6610591,
+    "ast_hash": "4cf3d99a764e400aaa8ae2664230d422",
+    "semantic_hash": "4cf3d99a764e400aaa8ae2664230d422"
+  },
+  "deploy/observability/kube-prometheus-stack.yaml": {
+    "mtime": 1792931416.6407084,
+    "seen": 1794759270.6610591,
+    "ast_hash": "4257cf0e67d4441cf2456a169b210faa",
+    "semantic_hash": "4257cf0e67d4441cf2456a169b210faa"
+  },
+  "deploy/observability/loki.yaml": {
+    "mtime": 1792931416.6407971,
+    "seen": 1794759270.66106,
+    "ast_hash": "6e69c8399673c5beff7be5da871edd37",
+    "semantic_hash": "6e69c8399673c5beff7be5da871edd37"
+  },
+  "deploy/observability/tempo.yaml": {
+    "mtime": 1792931560.7398114,
+    "seen": 1794759270.66106,
+    "ast_hash": "70d2855f2bce688058ce337195d9a0b3",
+    "semantic_hash": "70d2855f2bce688058ce337195d9a0b3"
+  },
+  "deploy/registry/digest.sh": {
+    "mtime": 1792931416.6410153,
+    "seen": 1794759270.661061,
+    "ast_hash": "5184d3316e970ff132ed98d980297785",
+    "semantic_hash": "5184d3316e970ff132ed98d980297785"
+  },
+  "deploy/registry/local-registry-hosting.yaml": {
+    "mtime": 1792931416.641177,
+    "seen": 1794759270.661061,
+    "ast_hash": "fbec82f59c8605228d1249c525d7793b",
+    "semantic_hash": "fbec82f59c8605228d1249c525d7793b"
+  },
+  "deploy/registry/setup.sh": {
+    "mtime": 1792933566.200138,
+    "seen": 1794759270.661062,
+    "ast_hash": "cedb01c08ef77a49a1eb70f3579f1208",
+    "semantic_hash": "cedb01c08ef77a49a1eb70f3579f1208"
+  },
+  "deploy/sonarqube/compose.yaml": {
+    "mtime": 1794630650.8432262,
+    "seen": 1794759270.661062,
+    "ast_hash": "76d9986d481fcd3f912a22765f5002ed",
+    "semantic_hash": "76d9986d481fcd3f912a22765f5002ed"
+  },
+  "dotnet-tools.json": {
+    "mtime": 1794630650.843299,
+    "seen": 1794759270.661063,
+    "ast_hash": "bfc6da3d2cf5c9dfc43a3b330605e0f2",
+    "semantic_hash": "bfc6da3d2cf5c9dfc43a3b330605e0f2"
+  },
+  "scripts/aot-smoke.sh": {
+    "mtime": 1794746475.1559942,
+    "seen": 1794759270.661063,
+    "ast_hash": "d9b7be79e4222d9ff5bc694558fa6801",
+    "semantic_hash": "d9b7be79e4222d9ff5bc694558fa6801"
+  },
+  "scripts/breakpoint-test.js": {
+    "mtime": 1794630650.843467,
+    "seen": 1794759270.661064,
+    "ast_hash": "e19e951e9bd7a3e6917668b59fbd2668",
+    "semantic_hash": "e19e951e9bd7a3e6917668b59fbd2668"
+  },
+  "scripts/contention-test.js": {
+    "mtime": 1794630650.843555,
+    "seen": 1794759270.661064,
+    "ast_hash": "5d9f15221bb3a5186f4739ab5d6a177d",
+    "semantic_hash": "5d9f15221bb3a5186f4739ab5d6a177d"
+  },
+  "scripts/endpoints-test.js": {
+    "mtime": 1794746987.3824909,
+    "seen": 1794759270.6610649,
+    "ast_hash": "bb0d4fdd0d7d7c817542e6482632a4e2",
+    "semantic_hash": "bb0d4fdd0d7d7c817542e6482632a4e2"
+  },
+  "scripts/env.sh": {
+    "mtime": 1794630650.8436608,
+    "seen": 1794759270.6610649,
+    "ast_hash": "dd7a64abe6533558eebb6c03108104c8",
+    "semantic_hash": "dd7a64abe6533558eebb6c03108104c8"
+  },
+  "scripts/k6-test.sh": {
+    "mtime": 1794747000.8411098,
+    "seen": 1794759270.661066,
+    "ast_hash": "029ba76c580e5ece5b06af5f2d018776",
+    "semantic_hash": "029ba76c580e5ece5b06af5f2d018776"
+  },
+  "scripts/lib/api.js": {
+    "mtime": 1794746941.8086412,
+    "seen": 1794759270.661066,
+    "ast_hash": "6da59efc30ef2d9e45aacc02da4e9923",
+    "semantic_hash": "6da59efc30ef2d9e45aacc02da4e9923"
+  },
+  "scripts/load-test.js": {
+    "mtime": 1794630650.843991,
+    "seen": 1794759270.661067,
+    "ast_hash": "223112e8f6ad95fcdea131bcedd7e32e",
+    "semantic_hash": "223112e8f6ad95fcdea131bcedd7e32e"
+  },
+  "scripts/load-test.sh": {
+    "mtime": 1794630650.8440874,
+    "seen": 1794759270.661067,
+    "ast_hash": "b17af431a2fdb7f0fad2ce3faa5b6319",
+    "semantic_hash": "b17af431a2fdb7f0fad2ce3faa5b6319"
+  },
+  "scripts/locust-test.sh": {
+    "mtime": 1792931416.6431262,
+    "seen": 1794759270.661068,
+    "ast_hash": "17e2a1a00c4443179de15e29b721afa9",
+    "semantic_hash": "17e2a1a00c4443179de15e29b721afa9"
+  },
+  "scripts/locust/locustfile.py": {
+    "mtime": 1792931416.6432798,
+    "seen": 1794759270.661068,
+    "ast_hash": "78fc7060238c6b77e1a6db05fe59c458",
+    "semantic_hash": "78fc7060238c6b77e1a6db05fe59c458"
+  },
+  "scripts/measure-startup.sh": {
+    "mtime": 1792931416.6433682,
+    "seen": 1794759270.6610692,
+    "ast_hash": "88efcc5f832972663f42058d40fdd80c",
+    "semantic_hash": "88efcc5f832972663f42058d40fdd80c"
+  },
+  "scripts/mq-test.js": {
+    "mtime": 1794758864.359,
+    "seen": 1794759270.6610692,
+    "ast_hash": "88ed06de265ec418079bb42b500d1a39",
+    "semantic_hash": "88ed06de265ec418079bb42b500d1a39"
+  },
+  "scripts/pagination-test.js": {
+    "mtime": 1794630650.8441772,
+    "seen": 1794759270.66107,
+    "ast_hash": "8d6a921325695f84c4505cf063219912",
+    "semantic_hash": "8d6a921325695f84c4505cf063219912"
+  },
+  "scripts/rampup-test.js": {
+    "mtime": 1794656627.2911537,
+    "seen": 1794759270.66107,
+    "ast_hash": "33f0dd4e77e193dac43b1c514a0b88c4",
+    "semantic_hash": "33f0dd4e77e193dac43b1c514a0b88c4"
+  },
+  "scripts/saga-test.js": {
+    "mtime": 1794726338.7789733,
+    "seen": 1794759270.66107,
+    "ast_hash": "580ce6c22eb15e5ebd069d1d562f54b2",
+    "semantic_hash": "580ce6c22eb15e5ebd069d1d562f54b2"
+  },
+  "scripts/smoke-test.js": {
+    "mtime": 1794630650.8442707,
+    "seen": 1794759270.661071,
+    "ast_hash": "42dadee0c4a7ff0e7544e3b747305eda",
+    "semantic_hash": "42dadee0c4a7ff0e7544e3b747305eda"
+  },
+  "scripts/soak-test.js": {
+    "mtime": 1794630650.8443444,
+    "seen": 1794759270.6610718,
+    "ast_hash": "54de31a9230bdba29db8f88db52f037d",
+    "semantic_hash": "54de31a9230bdba29db8f88db52f037d"
+  },
+  "scripts/sonar.sh": {
+    "mtime": 1794630650.8444364,
+    "seen": 1794759270.6610718,
+    "ast_hash": "d4fe74db68ed94c07297762e5b8774b8",
+    "semantic_hash": "d4fe74db68ed94c07297762e5b8774b8"
+  },
+  "scripts/sonar_report.py": {
+    "mtime": 1794630650.84453,
+    "seen": 1794759270.6610718,
+    "ast_hash": "4021ad2208b1a7e6bf08a1902c8b0d59",
+    "semantic_hash": "4021ad2208b1a7e6bf08a1902c8b0d59"
+  },
+  "scripts/spike-test.js": {
+    "mtime": 1794630650.8446174,
+    "seen": 1794759270.661073,
+    "ast_hash": "e24209fea89d64865061448c299b9e17",
+    "semantic_hash": "e24209fea89d64865061448c299b9e17"
+  },
+  "scripts/stress-test.js": {
+    "mtime": 1792931416.6434445,
+    "seen": 1794759270.661073,
+    "ast_hash": "6158fdb57c4cacc8c46b7425e2a445b7",
+    "semantic_hash": "6158fdb57c4cacc8c46b7425e2a445b7"
+  },
+  "scripts/stress-test.sh": {
+    "mtime": 1794630650.844749,
+    "seen": 1794759270.661074,
+    "ast_hash": "01b6fe15505ee92a972e4e68f6c8594e",
+    "semantic_hash": "01b6fe15505ee92a972e4e68f6c8594e"
+  },
+  "src/AppHost/AppHost.cs": {
+    "mtime": 1794758866.553,
+    "seen": 1794759270.661074,
+    "ast_hash": "7f253ed167bfe5d67fca58ef4a75770e",
+    "semantic_hash": "7f253ed167bfe5d67fca58ef4a75770e"
+  },
+  "src/AppHost/AppHost.csproj": {
+    "mtime": 1794746475.1546874,
+    "seen": 1794759270.6610749,
+    "ast_hash": "e0daa681867e995ecafddc216cc01a98",
+    "semantic_hash": "e0daa681867e995ecafddc216cc01a98"
+  },
+  "src/AppHost/LoadTests.cs": {
+    "mtime": 1794751431.1673748,
+    "seen": 1794759270.6610749,
+    "ast_hash": "a136fbf402758da9ac95d36555d1d82f",
+    "semantic_hash": "a136fbf402758da9ac95d36555d1d82f"
+  },
+  "src/AppHost/Observability.cs": {
+    "mtime": 1794758865.978,
+    "seen": 1794759270.661076,
+    "ast_hash": "22c2e76cbf49bdf62af97a869f265382",
+    "semantic_hash": "22c2e76cbf49bdf62af97a869f265382"
+  },
+  "src/AppHost/PostgresCluster.cs": {
+    "mtime": 1794758866.555,
+    "seen": 1794759270.661076,
+    "ast_hash": "299b34c020928589de1a5ef60b4b9984",
+    "semantic_hash": "299b34c020928589de1a5ef60b4b9984"
+  },
+  "src/AppHost/Properties/launchSettings.json": {
+    "mtime": 1794630650.845329,
+    "seen": 1794759270.661077,
+    "ast_hash": "f821994fea9c151e61645754f925d965",
+    "semantic_hash": "f821994fea9c151e61645754f925d965"
+  },
+  "src/AppHost/Services.cs": {
+    "mtime": 1794758866.437,
+    "seen": 1794759270.661077,
+    "ast_hash": "0b7eb3219acf18f26387684365da1c26",
+    "semantic_hash": "0b7eb3219acf18f26387684365da1c26"
+  },
+  "src/AppHost/Settings.cs": {
+    "mtime": 1794758866.503,
+    "seen": 1794759270.661078,
+    "ast_hash": "0ad75b255ea503e954cf28a7afeb05c7",
+    "semantic_hash": "0ad75b255ea503e954cf28a7afeb05c7"
+  },
+  "src/AppHost/appsettings.json": {
+    "mtime": 1794758121.3884835,
+    "seen": 1794759270.661078,
+    "ast_hash": "b4194d959c368476730d9bc0a844ac6a",
+    "semantic_hash": "b4194d959c368476730d9bc0a844ac6a"
+  },
+  "src/AppHost/observability/grafana/dashboards/load-test.json": {
+    "mtime": 1794758645.228172,
+    "seen": 1794759270.661079,
+    "ast_hash": "fddbf12351619c88298cbfc5f52491e9",
+    "semantic_hash": "fddbf12351619c88298cbfc5f52491e9"
+  },
+  "src/AppHost/observability/grafana/dashboards/request-flow.json": {
+    "mtime": 1794755104.871172,
+    "seen": 1794759270.661079,
+    "ast_hash": "5f569d7f328d27edefee78cfce16aab9",
+    "semantic_hash": "5f569d7f328d27edefee78cfce16aab9"
+  },
+  "src/AppHost/observability/grafana/dashboards/service-overview.json": {
+    "mtime": 1794758645.2272294,
+    "seen": 1794759270.6610801,
+    "ast_hash": "815fb548b0c7c3f4578a162eaa7dbb2f",
+    "semantic_hash": "815fb548b0c7c3f4578a162eaa7dbb2f"
+  },
+  "src/AppHost/observability/grafana/provisioning/dashboards/dashboards.yaml": {
+    "mtime": 1794630650.8460557,
+    "seen": 1794759270.6610801,
+    "ast_hash": "3f9e7c74cdcccaaf4328607ee5a9e722",
+    "semantic_hash": "3f9e7c74cdcccaaf4328607ee5a9e722"
+  },
+  "src/AppHost/observability/grafana/provisioning/datasources/datasources.yaml": {
+    "mtime": 1794630650.8462002,
+    "seen": 1794759270.661081,
+    "ast_hash": "43ca08daf0ae57ed08b02a9a79131f9e",
+    "semantic_hash": "43ca08daf0ae57ed08b02a9a79131f9e"
+  },
+  "src/AppHost/observability/loki.yaml": {
+    "mtime": 1794630650.846298,
+    "seen": 1794759270.661081,
+    "ast_hash": "58c4ccebce8498a04e5b3c33c0666af8",
+    "semantic_hash": "58c4ccebce8498a04e5b3c33c0666af8"
+  },
+  "src/AppHost/observability/otel-collector.yaml": {
+    "mtime": 1794728365.452,
+    "seen": 1794759270.661082,
+    "ast_hash": "50487407135ca6309b1829266c316a69",
+    "semantic_hash": "50487407135ca6309b1829266c316a69"
+  },
+  "src/AppHost/observability/prometheus.yml": {
+    "mtime": 1794758387.6519125,
+    "seen": 1794759270.661082,
+    "ast_hash": "3eb5978c6a4a3e05e2ff6109dd456db5",
+    "semantic_hash": "3eb5978c6a4a3e05e2ff6109dd456db5"
+  },
+  "src/AppHost/observability/tempo.yaml": {
+    "mtime": 1794728365.478,
+    "seen": 1794759270.661083,
+    "ast_hash": "7289599c0d6c87ac3e85eb0761e36ca5",
+    "semantic_hash": "7289599c0d6c87ac3e85eb0761e36ca5"
+  },
+  "src/AppHost/postgres/replica.sh": {
+    "mtime": 1794756482.8172784,
+    "seen": 1794759270.661083,
+    "ast_hash": "4a8959a0140af0a2ba77d38fa6e3729e",
+    "semantic_hash": "4a8959a0140af0a2ba77d38fa6e3729e"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/GetInvoice/GetInvoiceEndpoint.cs": {
+    "mtime": 1794728354.227,
+    "seen": 1794759270.661084,
+    "ast_hash": "fbc51d9c8fe893e229657aade28e77cc",
+    "semantic_hash": "fbc51d9c8fe893e229657aade28e77cc"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/GetInvoiceRenewal/GetInvoiceRenewalEndpoint.cs": {
+    "mtime": 1794728354.841,
+    "seen": 1794759270.661084,
+    "ast_hash": "97084930008ddaee290b5ab3574c8b8e",
+    "semantic_hash": "97084930008ddaee290b5ab3574c8b8e"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/Invoice.cs": {
+    "mtime": 1794728354.429,
+    "seen": 1794759270.661085,
+    "ast_hash": "c19baa40e7a3e9815318066affebf4c3",
+    "semantic_hash": "c19baa40e7a3e9815318066affebf4c3"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/InvoiceResponse.cs": {
+    "mtime": 1794728354.882,
+    "seen": 1794759270.661085,
+    "ast_hash": "16a39dcaad9d0b9583335321b2fd5708",
+    "semantic_hash": "16a39dcaad9d0b9583335321b2fd5708"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/InvoiceStore.cs": {
+    "mtime": 1794728354.774,
+    "seen": 1794759270.6610858,
+    "ast_hash": "66187ad08b78396beaadbaa8f2611656",
+    "semantic_hash": "66187ad08b78396beaadbaa8f2611656"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/ListInvoicesBySubscription/ListInvoicesBySubscriptionEndpoint.cs": {
+    "mtime": 1794728354.946,
+    "seen": 1794759270.6610858,
+    "ast_hash": "8d14a269e7196695f31f1839271f3b1c",
+    "semantic_hash": "8d14a269e7196695f31f1839271f3b1c"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/PayInvoice/PayInvoiceEndpoint.cs": {
+    "mtime": 1794728354.496,
+    "seen": 1794759270.661087,
+    "ast_hash": "6899d588f6bfb87f6b9eb93d3456760e",
+    "semantic_hash": "6899d588f6bfb87f6b9eb93d3456760e"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/SettleInvoice/SettleInvoiceEndpoint.cs": {
+    "mtime": 1794728354.642,
+    "seen": 1794759270.661088,
+    "ast_hash": "743592c872939a2d8e1272e92ddac84a",
+    "semantic_hash": "743592c872939a2d8e1272e92ddac84a"
+  },
+  "src/SubscriptionManagement.Api/Features/Invoices/VoidInvoice/VoidInvoiceEndpoint.cs": {
+    "mtime": 1794728354.566,
+    "seen": 1794759270.661088,
+    "ast_hash": "e453985fc9652b46cab9d5c4ca270fdf",
+    "semantic_hash": "e453985fc9652b46cab9d5c4ca270fdf"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/CreatePlan/CreatePlanEndpoint.cs": {
+    "mtime": 1794728354.087,
+    "seen": 1794759270.661089,
+    "ast_hash": "851d439961d83e2fe16dce2766900ea2",
+    "semantic_hash": "851d439961d83e2fe16dce2766900ea2"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/CreatePlan/CreatePlanHandler.cs": {
+    "mtime": 1794728354.051,
+    "seen": 1794759270.661089,
+    "ast_hash": "930a40b8dd3117df9cb1cb86bc63d49a",
+    "semantic_hash": "930a40b8dd3117df9cb1cb86bc63d49a"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/GetPlan/GetPlanEndpoint.cs": {
+    "mtime": 1794728353.787,
+    "seen": 1794759270.6610901,
+    "ast_hash": "d752d44e9d72bd85dfbff6688f70daa1",
+    "semantic_hash": "d752d44e9d72bd85dfbff6688f70daa1"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/ListPlans/ListPlansEndpoint.cs": {
+    "mtime": 1794728353.953,
+    "seen": 1794759270.6610901,
+    "ast_hash": "a212d87d04fd13b059e8d310845af2a5",
+    "semantic_hash": "a212d87d04fd13b059e8d310845af2a5"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/Plan.cs": {
+    "mtime": 1794728353.91,
+    "seen": 1794759270.661091,
+    "ast_hash": "27488c2791f70ef9e55266047580789f",
+    "semantic_hash": "27488c2791f70ef9e55266047580789f"
+  },
+  "src/SubscriptionManagement.Api/Features/Plans/PlanStore.cs": {
+    "mtime": 1794728354.18,
+    "seen": 1794759270.661091,
+    "ast_hash": "f2c82c640e62333b508a48f268e76cb4",
+    "semantic_hash": "f2c82c640e62333b508a48f268e76cb4"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/CancelSubscriptions/CancelSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.407,
+    "seen": 1794759270.661092,
+    "ast_hash": "8e066fa2a00dcaa2742079e30bdb7358",
+    "semantic_hash": "8e066fa2a00dcaa2742079e30bdb7358"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/CancelSubscriptions/CancelSubscriptionHandler.cs": {
+    "mtime": 1794728355.375,
+    "seen": 1794759270.661092,
+    "ast_hash": "b7f042dcfdbbd531b94a5885e7604114",
+    "semantic_hash": "b7f042dcfdbbd531b94a5885e7604114"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/CreateSubscriptions/CreateSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.505,
+    "seen": 1794759270.6610932,
+    "ast_hash": "df96c5d8711097f27a105fefc7aeefc0",
+    "semantic_hash": "df96c5d8711097f27a105fefc7aeefc0"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/CreateSubscriptions/CreateSubscriptionHandler.cs": {
+    "mtime": 1794728355.474,
+    "seen": 1794759270.6610932,
+    "ast_hash": "78c34480cc1ac5ca1f3e96a567a8de25",
+    "semantic_hash": "78c34480cc1ac5ca1f3e96a567a8de25"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/GetSubscription/GetSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.087,
+    "seen": 1794759270.661094,
+    "ast_hash": "1874bcffd706e130f3497a3d59031b9c",
+    "semantic_hash": "1874bcffd706e130f3497a3d59031b9c"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/GetSubscription/GetSubscriptionHandler.cs": {
+    "mtime": 1794728355.061,
+    "seen": 1794759270.661094,
+    "ast_hash": "2dc0771710b8e5534a168c87eab6695f",
+    "semantic_hash": "2dc0771710b8e5534a168c87eab6695f"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/PauseSubscription/PauseSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.206,
+    "seen": 1794759270.661095,
+    "ast_hash": "5a0db6135b94c2e00aaedb172682b3d1",
+    "semantic_hash": "5a0db6135b94c2e00aaedb172682b3d1"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/PauseSubscription/PauseSubscriptionHandler.cs": {
+    "mtime": 1794728355.183,
+    "seen": 1794759270.661095,
+    "ast_hash": "ff98c3eb9e185b2e4287a4c7b104bfff",
+    "semantic_hash": "ff98c3eb9e185b2e4287a4c7b104bfff"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/RenewSubscription/RenewSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.278,
+    "seen": 1794759270.6610959,
+    "ast_hash": "7e5a7c8d518d270f29dfdce63cd4fa39",
+    "semantic_hash": "7e5a7c8d518d270f29dfdce63cd4fa39"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/RenewSubscription/RenewSubscriptionHandler.cs": {
+    "mtime": 1794728355.252,
+    "seen": 1794759270.6610959,
+    "ast_hash": "a4c50daf014c6459cf09ee660955c2dc",
+    "semantic_hash": "a4c50daf014c6459cf09ee660955c2dc"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/ResumeSubscription/ResumeSubscriptionEndpoint.cs": {
+    "mtime": 1794728355.333,
+    "seen": 1794759270.661097,
+    "ast_hash": "31547bcc98f66a1fd6f6f1030d073b5d",
+    "semantic_hash": "31547bcc98f66a1fd6f6f1030d073b5d"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/ResumeSubscription/ResumeSubscriptionHandler.cs": {
+    "mtime": 1794728355.306,
+    "seen": 1794759270.661097,
+    "ast_hash": "4ffedd1893c77fa23684b1928e50a089",
+    "semantic_hash": "4ffedd1893c77fa23684b1928e50a089"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SearchSubscriptions/SearchCursor.cs": {
+    "mtime": 1794728355.574,
+    "seen": 1794759270.661097,
+    "ast_hash": "41f753fcfb2ef01151ce054a083dd0d9",
+    "semantic_hash": "41f753fcfb2ef01151ce054a083dd0d9"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SearchSubscriptions/SearchSubscriptionsEndpoint.cs": {
+    "mtime": 1794728355.644,
+    "seen": 1794759270.661098,
+    "ast_hash": "4956683f639766d1242e28a103abb9f3",
+    "semantic_hash": "4956683f639766d1242e28a103abb9f3"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SearchSubscriptions/SearchSubscriptionsHandler.cs": {
+    "mtime": 1794728355.617,
+    "seen": 1794759270.661099,
+    "ast_hash": "b4cdf652f0ff588ab6475251355ad358",
+    "semantic_hash": "b4cdf652f0ff588ab6475251355ad358"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/StartRenewal/StartRenewalEndpoint.cs": {
+    "mtime": 1794728355.033,
+    "seen": 1794759270.661099,
+    "ast_hash": "b03e5e195ce6ba0a8bcb23025327cac1",
+    "semantic_hash": "b03e5e195ce6ba0a8bcb23025327cac1"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/StartRenewal/StartRenewalHandler.cs": {
+    "mtime": 1794728354.991,
+    "seen": 1794759270.6611001,
+    "ast_hash": "99961a0880e1232a1ff22e6497cb907d",
+    "semantic_hash": "99961a0880e1232a1ff22e6497cb907d"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/Subscription.cs": {
+    "mtime": 1794728355.156,
+    "seen": 1794759270.6611001,
+    "ast_hash": "317a9dc9c7dcd9d5e83e9e671fc09b70",
+    "semantic_hash": "317a9dc9c7dcd9d5e83e9e671fc09b70"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SubscriptionCache.cs": {
+    "mtime": 1794728355.687,
+    "seen": 1794759270.661101,
+    "ast_hash": "d4e7089decdff9d952ade95b3506d3a2",
+    "semantic_hash": "d4e7089decdff9d952ade95b3506d3a2"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SubscriptionProblems.cs": {
+    "mtime": 1794728355.914,
+    "seen": 1794759270.661101,
+    "ast_hash": "044202f083650580aa5b6f8eaa3e2c9e",
+    "semantic_hash": "044202f083650580aa5b6f8eaa3e2c9e"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SubscriptionResponse.cs": {
+    "mtime": 1794728355.937,
+    "seen": 1794759270.661102,
+    "ast_hash": "52014e93771ce4793d3166a101bf3210",
+    "semantic_hash": "52014e93771ce4793d3166a101bf3210"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SubscriptionStatus.cs": {
+    "mtime": 1794728355.829,
+    "seen": 1794759270.661102,
+    "ast_hash": "d9c4c13adf9c6e6cfd88dd74a0e56c88",
+    "semantic_hash": "d9c4c13adf9c6e6cfd88dd74a0e56c88"
+  },
+  "src/SubscriptionManagement.Api/Features/Subscriptions/SubscriptionStore.cs": {
+    "mtime": 1794728355.787,
+    "seen": 1794759270.661103,
+    "ast_hash": "f90cf1ece056c49ecc1b3b88100f0760",
+    "semantic_hash": "f90cf1ece056c49ecc1b3b88100f0760"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/ApiExceptionHandler.cs": {
+    "mtime": 1794728356.489,
+    "seen": 1794759270.661103,
+    "ast_hash": "035bce3ac1eb5e76b78d799968f01ec0",
+    "semantic_hash": "035bce3ac1eb5e76b78d799968f01ec0"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/ApiProblemException.cs": {
+    "mtime": 1794728356.522,
+    "seen": 1794759270.6611042,
+    "ast_hash": "d37656fd013083b8e5c82357e6cc78ee",
+    "semantic_hash": "d37656fd013083b8e5c82357e6cc78ee"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/AppJsonSerializerContext.cs": {
+    "mtime": 1794728356.585,
+    "seen": 1794759270.6611042,
+    "ast_hash": "8df4dd5a42914f38c6fb3d26d91a04a2",
+    "semantic_hash": "8df4dd5a42914f38c6fb3d26d91a04a2"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Billing/BillingProblems.cs": {
+    "mtime": 1794728356.119,
+    "seen": 1794759270.661105,
+    "ast_hash": "c9130e64d1d723358acfdd41afcc23f1",
+    "semantic_hash": "c9130e64d1d723358acfdd41afcc23f1"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Billing/GrpcBillingGateway.cs": {
+    "mtime": 1794728356.207,
+    "seen": 1794759270.661105,
+    "ast_hash": "f051da1c7fb5bdfa918ceb183ce7bbbb",
+    "semantic_hash": "f051da1c7fb5bdfa918ceb183ce7bbbb"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Billing/IBillingGateway.cs": {
+    "mtime": 1794728356.146,
+    "seen": 1794759270.6611059,
+    "ast_hash": "7ab42046eefdaa647297cd945a769680",
+    "semantic_hash": "7ab42046eefdaa647297cd945a769680"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Billing/UnconfiguredBillingGateway.cs": {
+    "mtime": 1794728356.236,
+    "seen": 1794759270.6611059,
+    "ast_hash": "993bd8f7f347aa86ef7b91d3b399e099",
+    "semantic_hash": "993bd8f7f347aa86ef7b91d3b399e099"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/CacheOptions.cs": {
+    "mtime": 1794728356.323,
+    "seen": 1794759270.6611068,
+    "ast_hash": "6cb43500d44ad7497db8db2b4dff8b4a",
+    "semantic_hash": "6cb43500d44ad7497db8db2b4dff8b4a"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/CorrelationMiddleware.cs": {
+    "mtime": 1794728356.568,
+    "seen": 1794759270.6611068,
+    "ast_hash": "d4d644c4dc56eb71f2431c44c7a1cb01",
+    "semantic_hash": "d4d644c4dc56eb71f2431c44c7a1cb01"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Db.cs": {
+    "mtime": 1794728490.34,
+    "seen": 1794759270.661108,
+    "ast_hash": "fa810853dce3927781faa4783c570628",
+    "semantic_hash": "fa810853dce3927781faa4783c570628"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/HealthEndpoints.cs": {
+    "mtime": 1794728356.456,
+    "seen": 1794759270.661108,
+    "ast_hash": "1f25f4982c48307dc7de8fdb4b3bd909",
+    "semantic_hash": "1f25f4982c48307dc7de8fdb4b3bd909"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/HealthProbe.cs": {
+    "mtime": 1794728356.312,
+    "seen": 1794759270.661108,
+    "ast_hash": "1f38bdc243be7a4c882dda1908d5e455",
+    "semantic_hash": "1f38bdc243be7a4c882dda1908d5e455"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Outbox.cs": {
+    "mtime": 1794728356.262,
+    "seen": 1794759270.661109,
+    "ast_hash": "5e7ebc4ac9ad45d27d60d64dfcb33c8d",
+    "semantic_hash": "5e7ebc4ac9ad45d27d60d64dfcb33c8d"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/ProblemResult.cs": {
+    "mtime": 1794728356.34,
+    "seen": 1794759270.661109,
+    "ast_hash": "7b4f3a990404ee208f110fa67da763eb",
+    "semantic_hash": "7b4f3a990404ee208f110fa67da763eb"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/ProblemWriter.cs": {
+    "mtime": 1794728356.417,
+    "seen": 1794759270.66111,
+    "ast_hash": "cc333c5a2033ba05321b4b07c2705a35",
+    "semantic_hash": "cc333c5a2033ba05321b4b07c2705a35"
+  },
+  "src/SubscriptionManagement.Api/Infrastructure/Validation.cs": {
+    "mtime": 1794728356.297,
+    "seen": 1794759270.66111,
+    "ast_hash": "51f5ef2c296130ddc5809f602d50fdb7",
+    "semantic_hash": "51f5ef2c296130ddc5809f602d50fdb7"
+  },
+  "src/SubscriptionManagement.Api/Program.cs": {
+    "mtime": 1794728356.019,
+    "seen": 1794759270.661111,
+    "ast_hash": "351cde8d5a737ff70d0f20b7d4152cd5",
+    "semantic_hash": "351cde8d5a737ff70d0f20b7d4152cd5"
+  },
+  "src/SubscriptionManagement.Api/Properties/launchSettings.json": {
+    "mtime": 1792931416.6491983,
+    "seen": 1794759270.661111,
+    "ast_hash": "0727886aeefde0d40ce76f69399236f8",
+    "semantic_hash": "0727886aeefde0d40ce76f69399236f8"
+  },
+  "src/SubscriptionManagement.Api/SubscriptionManagement.Api.csproj": {
+    "mtime": 1794746475.156682,
+    "seen": 1794759270.661112,
+    "ast_hash": "2795f3c5e5d394f41efea25813deb95c",
+    "semantic_hash": "2795f3c5e5d394f41efea25813deb95c"
+  },
+  "src/SubscriptionManagement.Api/appsettings.Development.json": {
+    "mtime": 1792931416.6493647,
+    "seen": 1794759270.661112,
+    "ast_hash": "fa4b7176e2c768485fad9b9b85d8f87e",
+    "semantic_hash": "fa4b7176e2c768485fad9b9b85d8f87e"
+  },
+  "src/SubscriptionManagement.Api/appsettings.json": {
+    "mtime": 1794719370.3233318,
+    "seen": 1794759270.661113,
+    "ast_hash": "e63c261ba4d8652018773a9c7536a4d5",
+    "semantic_hash": "e63c261ba4d8652018773a9c7536a4d5"
+  },
+  "src/SubscriptionManagement.Billing/Features/CreditNotes/CreditNote.cs": {
+    "mtime": 1794728357.074,
+    "seen": 1794759270.661113,
+    "ast_hash": "5a67dbae369b845bb30c73832f56a3bf",
+    "semantic_hash": "5a67dbae369b845bb30c73832f56a3bf"
+  },
+  "src/SubscriptionManagement.Billing/Features/CreditNotes/IssueCreditNote/IssueCreditNoteHandler.cs": {
+    "mtime": 1794728357.096,
+    "seen": 1794759270.6611142,
+    "ast_hash": "bd8bda710c291c57227c4b4dfe369951",
+    "semantic_hash": "bd8bda710c291c57227c4b4dfe369951"
+  },
+  "src/SubscriptionManagement.Billing/Features/CreditNotes/ListCreditNotes/ListCreditNotesEndpoint.cs": {
+    "mtime": 1794728357.132,
+    "seen": 1794759270.6611142,
+    "ast_hash": "b574cfcd8bc574f6d7802d13c05aeb25",
+    "semantic_hash": "b574cfcd8bc574f6d7802d13c05aeb25"
+  },
+  "src/SubscriptionManagement.Billing/Features/Renewals/BillingGrpcService.cs": {
+    "mtime": 1794728357.022,
+    "seen": 1794759270.661115,
+    "ast_hash": "aa15aa385b72b5fde0cd875a4701f37a",
+    "semantic_hash": "aa15aa385b72b5fde0cd875a4701f37a"
+  },
+  "src/SubscriptionManagement.Billing/Features/Renewals/RenewalQuote.cs": {
+    "mtime": 1794728356.949,
+    "seen": 1794759270.661115,
+    "ast_hash": "e78d40a5ba2bc984cc01204b6a61d6fb",
+    "semantic_hash": "e78d40a5ba2bc984cc01204b6a61d6fb"
+  },
+  "src/SubscriptionManagement.Billing/Features/Renewals/RenewalSaga.cs": {
+    "mtime": 1794729320.5400248,
+    "seen": 1794759270.661116,
+    "ast_hash": "bf3953f154b7e21893130f21899d52da",
+    "semantic_hash": "bf3953f154b7e21893130f21899d52da"
+  },
+  "src/SubscriptionManagement.Billing/Infrastructure/BillingDbContext.cs": {
+    "mtime": 1794728357.223,
+    "seen": 1794759270.661116,
+    "ast_hash": "d8a14d0aa75c1aa2445868bbaebda4c6",
+    "semantic_hash": "d8a14d0aa75c1aa2445868bbaebda4c6"
+  },
+  "src/SubscriptionManagement.Billing/Infrastructure/BillingOptions.cs": {
+    "mtime": 1794728357.177,
+    "seen": 1794759270.6611168,
+    "ast_hash": "67f258ccedfad4cba5aba5bdaacc153d",
+    "semantic_hash": "67f258ccedfad4cba5aba5bdaacc153d"
+  },
+  "src/SubscriptionManagement.Billing/Program.cs": {
+    "mtime": 1794728357.15,
+    "seen": 1794759270.6611168,
+    "ast_hash": "6bb41c858675e4cf7aeaad688a7cf1dc",
+    "semantic_hash": "6bb41c858675e4cf7aeaad688a7cf1dc"
+  },
+  "src/SubscriptionManagement.Billing/Properties/launchSettings.json": {
+    "mtime": 1794717748.618084,
+    "seen": 1794759270.661118,
+    "ast_hash": "0affdd9fd3232d447cb5020b37731b4c",
+    "semantic_hash": "0affdd9fd3232d447cb5020b37731b4c"
+  },
+  "src/SubscriptionManagement.Billing/ServiceSetup.cs": {
+    "mtime": 1794728357.281,
+    "seen": 1794759270.661118,
+    "ast_hash": "a3087af7f4692b159cd1779cc95a56b4",
+    "semantic_hash": "a3087af7f4692b159cd1779cc95a56b4"
+  },
+  "src/SubscriptionManagement.Billing/SubscriptionManagement.Billing.csproj": {
+    "mtime": 1794728365.472,
+    "seen": 1794759270.661119,
+    "ast_hash": "5f2062e3db247b0d899285fa4406988c",
+    "semantic_hash": "5f2062e3db247b0d899285fa4406988c"
+  },
+  "src/SubscriptionManagement.Billing/appsettings.json": {
+    "mtime": 1794717748.6153147,
+    "seen": 1794759270.661119,
+    "ast_hash": "bc72f9f61ab9e86eee639b2123e4a7ae",
+    "semantic_hash": "bc72f9f61ab9e86eee639b2123e4a7ae"
+  },
+  "src/SubscriptionManagement.Contracts/Messages.cs": {
+    "mtime": 1794728357.889,
+    "seen": 1794759270.66112,
+    "ast_hash": "c82cf1b65011101ec4f5af1264deb7d9",
+    "semantic_hash": "c82cf1b65011101ec4f5af1264deb7d9"
+  },
+  "src/SubscriptionManagement.Contracts/OutboxMessageTypes.cs": {
+    "mtime": 1794728357.922,
+    "seen": 1794759270.66112,
+    "ast_hash": "c441dfaa9757de88e29d2e29867c092c",
+    "semantic_hash": "c441dfaa9757de88e29d2e29867c092c"
+  },
+  "src/SubscriptionManagement.Contracts/SubscriptionManagement.Contracts.csproj": {
+    "mtime": 1794728365.47,
+    "seen": 1794759270.6611211,
+    "ast_hash": "ea91cf7ddc36b2213497cebf1bd0c493",
+    "semantic_hash": "ea91cf7ddc36b2213497cebf1bd0c493"
+  },
+  "src/SubscriptionManagement.Migrator/DbUpSupport.cs": {
+    "mtime": 1794748207.846568,
+    "seen": 1794759270.6611211,
+    "ast_hash": "56e0c9fbf19d7d9fdc981ac3d4370a3d",
+    "semantic_hash": "56e0c9fbf19d7d9fdc981ac3d4370a3d"
+  },
+  "src/SubscriptionManagement.Migrator/MigrationRunner.cs": {
+    "mtime": 1794748213.2954514,
+    "seen": 1794759270.661122,
+    "ast_hash": "6ec8645530553412cff37bd7efd2700f",
+    "semantic_hash": "6ec8645530553412cff37bd7efd2700f"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V1__create_subscriptions.sql": {
+    "mtime": 1792931416.6439028,
+    "seen": 1794759270.661122,
+    "ast_hash": "5b3449f48f97d8b3f78c97243a3b98c6",
+    "semantic_hash": "5b3449f48f97d8b3f78c97243a3b98c6"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V2__create_plans.sql": {
+    "mtime": 1792931416.6439812,
+    "seen": 1794759270.661123,
+    "ast_hash": "cad526c28d4ac9eedf7a22b6aefd3cb0",
+    "semantic_hash": "cad526c28d4ac9eedf7a22b6aefd3cb0"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V3__create_invoices.sql": {
+    "mtime": 1792931416.6440585,
+    "seen": 1794759270.661123,
+    "ast_hash": "4a9b6f4587de68829fa957e980c4c40a",
+    "semantic_hash": "4a9b6f4587de68829fa957e980c4c40a"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V4__add_subscription_period_columns.sql": {
+    "mtime": 1792931416.6441352,
+    "seen": 1794759270.661124,
+    "ast_hash": "4693eb15ded95659eaca3e5b76b3d201",
+    "semantic_hash": "4693eb15ded95659eaca3e5b76b3d201"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V5__index_subscription_search.sql": {
+    "mtime": 1792931416.6442199,
+    "seen": 1794759270.661124,
+    "ast_hash": "a1252553b78ac3fde4a69dd77163c452",
+    "semantic_hash": "a1252553b78ac3fde4a69dd77163c452"
+  },
+  "src/SubscriptionManagement.Migrator/Migrations/V6__s2s_outbox_and_payment_reference.sql": {
+    "mtime": 1794719243.9516237,
+    "seen": 1794759270.6611252,
+    "ast_hash": "e8827b6fe083e86ae33c2ed5e1e37e2c",
+    "semantic_hash": "e8827b6fe083e86ae33c2ed5e1e37e2c"
+  },
+  "src/SubscriptionManagement.Migrator/Program.cs": {
+    "mtime": 1794728357.297,
+    "seen": 1794759270.6611252,
+    "ast_hash": "92777051d645a7bdc41ded15b7c5e2e7",
+    "semantic_hash": "92777051d645a7bdc41ded15b7c5e2e7"
+  },
+  "src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj": {
+    "mtime": 1794748207.8418415,
+    "seen": 1794759270.661126,
+    "ast_hash": "c762e5837e5dc88c79d3cc831d2f8ac7",
+    "semantic_hash": "c762e5837e5dc88c79d3cc831d2f8ac7"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/Cancel/CancelPaymentHandler.cs": {
+    "mtime": 1794728357.363,
+    "seen": 1794759270.661126,
+    "ast_hash": "e38ce5481a10436e07e01c3da4683012",
+    "semantic_hash": "e38ce5481a10436e07e01c3da4683012"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/Charge/ChargePaymentHandler.cs": {
+    "mtime": 1794728357.38,
+    "seen": 1794759270.6611269,
+    "ast_hash": "8724bb3d3f009a1acfa16524a0c31e3d",
+    "semantic_hash": "8724bb3d3f009a1acfa16524a0c31e3d"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/GetPayment/GetPaymentEndpoint.cs": {
+    "mtime": 1794728357.426,
+    "seen": 1794759270.661128,
+    "ast_hash": "8af6cb5e01a7c417257af2ef0bd96479",
+    "semantic_hash": "8af6cb5e01a7c417257af2ef0bd96479"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/GetPaymentEvents/GetPaymentEventsEndpoint.cs": {
+    "mtime": 1794728357.508,
+    "seen": 1794759270.661128,
+    "ast_hash": "009f2ed1482531ceacd7e15422052658",
+    "semantic_hash": "009f2ed1482531ceacd7e15422052658"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/Payment.cs": {
+    "mtime": 1794728357.466,
+    "seen": 1794759270.661129,
+    "ast_hash": "dea166630f0172038d518b35c997a144",
+    "semantic_hash": "dea166630f0172038d518b35c997a144"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/PaymentDecider.cs": {
+    "mtime": 1794728357.582,
+    "seen": 1794759270.661129,
+    "ast_hash": "d88ea409fb7441f1ed59c3fc66bf036e",
+    "semantic_hash": "d88ea409fb7441f1ed59c3fc66bf036e"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/PaymentEvents.cs": {
+    "mtime": 1794728357.526,
+    "seen": 1794759270.66113,
+    "ast_hash": "63a9868d35fc996e5769765e285fb65c",
+    "semantic_hash": "63a9868d35fc996e5769765e285fb65c"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/PaymentResponse.cs": {
+    "mtime": 1794728357.626,
+    "seen": 1794759270.66113,
+    "ast_hash": "2d5c90d36393b45958479c1acff2c73b",
+    "semantic_hash": "2d5c90d36393b45958479c1acff2c73b"
+  },
+  "src/SubscriptionManagement.Payments/Features/Payments/RefundCanceledSubscription/SubscriptionCanceledHandler.cs": {
+    "mtime": 1794728357.643,
+    "seen": 1794759270.661131,
+    "ast_hash": "5cb8a8227d3425504dbee6cbd4b2c5c1",
+    "semantic_hash": "5cb8a8227d3425504dbee6cbd4b2c5c1"
+  },
+  "src/SubscriptionManagement.Payments/Infrastructure/GatewayOptions.cs": {
+    "mtime": 1794728357.67,
+    "seen": 1794759270.661131,
+    "ast_hash": "a76fcac3a11f5cf2ef1f65897f7cfb59",
+    "semantic_hash": "a76fcac3a11f5cf2ef1f65897f7cfb59"
+  },
+  "src/SubscriptionManagement.Payments/Program.cs": {
+    "mtime": 1794728357.659,
+    "seen": 1794759270.661132,
+    "ast_hash": "37e214509ed6cdc9fb664341805167cd",
+    "semantic_hash": "37e214509ed6cdc9fb664341805167cd"
+  },
+  "src/SubscriptionManagement.Payments/Properties/launchSettings.json": {
+    "mtime": 1794717844.662312,
+    "seen": 1794759270.661132,
+    "ast_hash": "2925e3a1b8a3c4bdfcba3d7c2bd78740",
+    "semantic_hash": "2925e3a1b8a3c4bdfcba3d7c2bd78740"
+  },
+  "src/SubscriptionManagement.Payments/ServiceSetup.cs": {
+    "mtime": 1794728357.829,
+    "seen": 1794759270.661133,
+    "ast_hash": "1ff48f098163bee1072c2c2fd61b75b6",
+    "semantic_hash": "1ff48f098163bee1072c2c2fd61b75b6"
+  },
+  "src/SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj": {
+    "mtime": 1794728365.464,
+    "seen": 1794759270.661133,
+    "ast_hash": "6ea459e56fab13f2b1bc7fae05d9ddb9",
+    "semantic_hash": "6ea459e56fab13f2b1bc7fae05d9ddb9"
+  },
+  "src/SubscriptionManagement.Payments/appsettings.json": {
+    "mtime": 1794717844.6601584,
+    "seen": 1794759270.661133,
+    "ast_hash": "1b2bcf28b6301daa2891cd863d2b81c4",
+    "semantic_hash": "1b2bcf28b6301daa2891cd863d2b81c4"
+  },
+  "src/SubscriptionManagement.Relay/Features/Invoices/Settle/SettleInvoiceHandler.cs": {
+    "mtime": 1794728356.69,
+    "seen": 1794759270.661134,
+    "ast_hash": "9d397c4c8fdec4d8a3f4bdf057bbaaba",
+    "semantic_hash": "9d397c4c8fdec4d8a3f4bdf057bbaaba"
+  },
+  "src/SubscriptionManagement.Relay/Features/Outbox/OutboxDrain.cs": {
+    "mtime": 1794728356.662,
+    "seen": 1794759270.661134,
+    "ast_hash": "ba92661c7f236111f4f18c56662c83f0",
+    "semantic_hash": "ba92661c7f236111f4f18c56662c83f0"
+  },
+  "src/SubscriptionManagement.Relay/Features/Renewals/Cancel/CancelRenewalHandler.cs": {
+    "mtime": 1794728356.71,
+    "seen": 1794759270.6611352,
+    "ast_hash": "6bde6fef846451d0260b4e4bcbfbf582",
+    "semantic_hash": "6bde6fef846451d0260b4e4bcbfbf582"
+  },
+  "src/SubscriptionManagement.Relay/Infrastructure/ApiClient.cs": {
+    "mtime": 1794728490.358,
+    "seen": 1794759270.6611352,
+    "ast_hash": "50b46ab51a1be54bfe8029fba671fe3b",
+    "semantic_hash": "50b46ab51a1be54bfe8029fba671fe3b"
+  },
+  "src/SubscriptionManagement.Relay/Infrastructure/RelayDbContext.cs": {
+    "mtime": 1794728356.796,
+    "seen": 1794759270.661136,
+    "ast_hash": "ed17c4a31619e50ab3b81f339cf10963",
+    "semantic_hash": "ed17c4a31619e50ab3b81f339cf10963"
+  },
+  "src/SubscriptionManagement.Relay/Infrastructure/RelayOptions.cs": {
+    "mtime": 1794728356.784,
+    "seen": 1794759270.661136,
+    "ast_hash": "907cce724ab648df592eba598aeca0ea",
+    "semantic_hash": "907cce724ab648df592eba598aeca0ea"
+  },
+  "src/SubscriptionManagement.Relay/Program.cs": {
+    "mtime": 1794728356.727,
+    "seen": 1794759270.6611369,
+    "ast_hash": "ddcc6702ffd3e7c0015420ea52c1cf81",
+    "semantic_hash": "ddcc6702ffd3e7c0015420ea52c1cf81"
+  },
+  "src/SubscriptionManagement.Relay/Properties/launchSettings.json": {
+    "mtime": 1794717748.63684,
+    "seen": 1794759270.6611369,
+    "ast_hash": "be10437a1584c5a580c4c87051a04dfe",
+    "semantic_hash": "be10437a1584c5a580c4c87051a04dfe"
+  },
+  "src/SubscriptionManagement.Relay/ServiceSetup.cs": {
+    "mtime": 1794728356.857,
+    "seen": 1794759270.6611378,
+    "ast_hash": "9da0ab361e22b5100d68aa9436001b0c",
+    "semantic_hash": "9da0ab361e22b5100d68aa9436001b0c"
+  },
+  "src/SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj": {
+    "mtime": 1794728365.461,
+    "seen": 1794759270.6611378,
+    "ast_hash": "c7f9af64ca20099cab845527237aea4a",
+    "semantic_hash": "c7f9af64ca20099cab845527237aea4a"
+  },
+  "src/SubscriptionManagement.Relay/appsettings.json": {
+    "mtime": 1794717748.6340573,
+    "seen": 1794759270.661139,
+    "ast_hash": "96618f81deb122b5ce338a93b3ed4ee4",
+    "semantic_hash": "96618f81deb122b5ce338a93b3ed4ee4"
+  },
+  "src/SubscriptionManagement.ServiceDefaults/Extensions.cs": {
+    "mtime": 1794728476.109,
+    "seen": 1794759270.661139,
+    "ast_hash": "0fdff9d16ce5b2c3b8f8a70eef0e3690",
+    "semantic_hash": "0fdff9d16ce5b2c3b8f8a70eef0e3690"
+  },
+  "src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj": {
+    "mtime": 1794728365.469,
+    "seen": 1794759270.66114,
+    "ast_hash": "d7475b1b022a2381c58052d4fb8a96fc",
+    "semantic_hash": "d7475b1b022a2381c58052d4fb8a96fc"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/BillingFixture.cs": {
+    "mtime": 1794728370.052,
+    "seen": 1794759270.66114,
+    "ast_hash": "3fde1487845270e789996fd4032abccd",
+    "semantic_hash": "3fde1487845270e789996fd4032abccd"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/BillingGrpcServiceTests.cs": {
+    "mtime": 1794729320.5401874,
+    "seen": 1794759270.661141,
+    "ast_hash": "d50a002bd8d41ad9cd88bad4cc7e1095",
+    "semantic_hash": "d50a002bd8d41ad9cd88bad4cc7e1095"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/BillingOptionsTests.cs": {
+    "mtime": 1794728370.376,
+    "seen": 1794759270.661141,
+    "ast_hash": "65ececefce54923220c97f0f746bfe42",
+    "semantic_hash": "65ececefce54923220c97f0f746bfe42"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/BrokerStartupTests.cs": {
+    "mtime": 1794728370.332,
+    "seen": 1794759270.661142,
+    "ast_hash": "9e9c42857522376f011cd472147eb6e5",
+    "semantic_hash": "9e9c42857522376f011cd472147eb6e5"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/CreditNoteTests.cs": {
+    "mtime": 1794728476.112,
+    "seen": 1794759270.661142,
+    "ast_hash": "0ef5f6a9a4c6db745ebe62d92f1d12c7",
+    "semantic_hash": "0ef5f6a9a4c6db745ebe62d92f1d12c7"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/HostSmokeTests.cs": {
+    "mtime": 1794728370.086,
+    "seen": 1794759270.661143,
+    "ast_hash": "2ad391382aae0f43e1412943a7421ddd",
+    "semantic_hash": "2ad391382aae0f43e1412943a7421ddd"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/RenewalQuoteTests.cs": {
+    "mtime": 1794728370.291,
+    "seen": 1794759270.661143,
+    "ast_hash": "b909250018e9a660aab0503fa553123d",
+    "semantic_hash": "b909250018e9a660aab0503fa553123d"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/RenewalSagaFlowTests.cs": {
+    "mtime": 1794728476.115,
+    "seen": 1794759270.661143,
+    "ast_hash": "b5bf3b6dccabbc5b1370df8dc6b2606c",
+    "semantic_hash": "b5bf3b6dccabbc5b1370df8dc6b2606c"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/RenewalSagaTests.cs": {
+    "mtime": 1794728370.25,
+    "seen": 1794759270.661144,
+    "ast_hash": "1540152d18efff63ba42418a6c4e1584",
+    "semantic_hash": "1540152d18efff63ba42418a6c4e1584"
+  },
+  "tests/SubscriptionManagement.Billing.Tests/SubscriptionManagement.Billing.Tests.csproj": {
+    "mtime": 1794728398.683,
+    "seen": 1794759270.661144,
+    "ast_hash": "7952585856e9528226a0f38a0e680da0",
+    "semantic_hash": "7952585856e9528226a0f38a0e680da0"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/ApiFixture.cs": {
+    "mtime": 1794728490.349,
+    "seen": 1794759270.661145,
+    "ast_hash": "47bf1663ed4f58bcf867bdcd1e660998",
+    "semantic_hash": "47bf1663ed4f58bcf867bdcd1e660998"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/ApiTestBase.cs": {
+    "mtime": 1794728371.396,
+    "seen": 1794759270.661145,
+    "ast_hash": "f2bdcfbee55fdadf3986401065f268e1",
+    "semantic_hash": "f2bdcfbee55fdadf3986401065f268e1"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/CacheAndPlatformTests.cs": {
+    "mtime": 1794728372.019,
+    "seen": 1794759270.6611462,
+    "ast_hash": "29ee810f541c1b9c0ee406d1be7e61ca",
+    "semantic_hash": "29ee810f541c1b9c0ee406d1be7e61ca"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/FakeBillingGateway.cs": {
+    "mtime": 1794728371.835,
+    "seen": 1794759270.6611462,
+    "ast_hash": "ddadedb6ca02c86fbfba06fd7fcf6c42",
+    "semantic_hash": "ddadedb6ca02c86fbfba06fd7fcf6c42"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/GrpcBillingGatewayTests.cs": {
+    "mtime": 1794729320.5404477,
+    "seen": 1794759270.6611469,
+    "ast_hash": "84a433ff01ce4d75d560e72658257ed6",
+    "semantic_hash": "84a433ff01ce4d75d560e72658257ed6"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/InfrastructureFailureTests.cs": {
+    "mtime": 1794728372.274,
+    "seen": 1794759270.6611469,
+    "ast_hash": "da931074c7aab44899e8e59236769bd9",
+    "semantic_hash": "da931074c7aab44899e8e59236769bd9"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/InvoiceSettlementApiTests.cs": {
+    "mtime": 1794728372.201,
+    "seen": 1794759270.6611478,
+    "ast_hash": "8fdb7a53a2513653de688665e4061420",
+    "semantic_hash": "8fdb7a53a2513653de688665e4061420"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/LifecycleApiTests.cs": {
+    "mtime": 1794728371.805,
+    "seen": 1794759270.6611478,
+    "ast_hash": "544943c259cdcded683e218cc6c7f16d",
+    "semantic_hash": "544943c259cdcded683e218cc6c7f16d"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/PlanApiTests.cs": {
+    "mtime": 1794728371.507,
+    "seen": 1794759270.661149,
+    "ast_hash": "841f98b28aeddc7b164d2bdd1abfe027",
+    "semantic_hash": "841f98b28aeddc7b164d2bdd1abfe027"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/RenewalApiTests.cs": {
+    "mtime": 1794728476.116,
+    "seen": 1794759270.661149,
+    "ast_hash": "17f5cf4dad5c30717d96f66946292405",
+    "semantic_hash": "17f5cf4dad5c30717d96f66946292405"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/SearchApiTests.cs": {
+    "mtime": 1794728371.584,
+    "seen": 1794759270.66115,
+    "ast_hash": "150b1c0385795e6ddf97658c02394356",
+    "semantic_hash": "150b1c0385795e6ddf97658c02394356"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/SubscriptionApiTests.cs": {
+    "mtime": 1794728371.899,
+    "seen": 1794759270.66115,
+    "ast_hash": "7a91769143fa12f4258706f731fc8fab",
+    "semantic_hash": "7a91769143fa12f4258706f731fc8fab"
+  },
+  "tests/SubscriptionManagement.IntegrationTests/SubscriptionManagement.IntegrationTests.csproj": {
+    "mtime": 1794746475.1552343,
+    "seen": 1794759270.66115,
+    "ast_hash": "bcf12bb19f87cef72449201aea5f309f",
+    "semantic_hash": "bcf12bb19f87cef72449201aea5f309f"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/BrokerStartupTests.cs": {
+    "mtime": 1794728370.89,
+    "seen": 1794759270.661151,
+    "ast_hash": "a48276ed915d8e5abcb0c557e4448c45",
+    "semantic_hash": "a48276ed915d8e5abcb0c557e4448c45"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/HostSmokeTests.cs": {
+    "mtime": 1794728370.737,
+    "seen": 1794759270.661151,
+    "ast_hash": "302e10ec00a26d9b699820aa8e8e2ec4",
+    "semantic_hash": "302e10ec00a26d9b699820aa8e8e2ec4"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/PaymentDeciderTests.cs": {
+    "mtime": 1794729365.012165,
+    "seen": 1794759270.661152,
+    "ast_hash": "22a055e9d54969dcdecfa0cdba353a30",
+    "semantic_hash": "22a055e9d54969dcdecfa0cdba353a30"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/PaymentEndpointTests.cs": {
+    "mtime": 1794728371.219,
+    "seen": 1794759270.661152,
+    "ast_hash": "ac2da6efd8c2ac9de39b7796202f60f6",
+    "semantic_hash": "ac2da6efd8c2ac9de39b7796202f60f6"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/PaymentHandlerTests.cs": {
+    "mtime": 1794728476.118,
+    "seen": 1794759270.661153,
+    "ast_hash": "b8ef440892a47f1e47df2c66afc23be2",
+    "semantic_hash": "b8ef440892a47f1e47df2c66afc23be2"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/PaymentsFixture.cs": {
+    "mtime": 1794728370.851,
+    "seen": 1794759270.661153,
+    "ast_hash": "862fb11dee9908d9e3483984d4823cf4",
+    "semantic_hash": "862fb11dee9908d9e3483984d4823cf4"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/SubscriptionManagement.Payments.Tests.csproj": {
+    "mtime": 1794728398.686,
+    "seen": 1794759270.661154,
+    "ast_hash": "12557c22f598768ec2f39a5c9920485c",
+    "semantic_hash": "12557c22f598768ec2f39a5c9920485c"
+  },
+  "tests/SubscriptionManagement.Payments.Tests/TelemetryTests.cs": {
+    "mtime": 1794728370.778,
+    "seen": 1794759270.661154,
+    "ast_hash": "25d15ac71771e9d36fb8f1c7f2993cd4",
+    "semantic_hash": "25d15ac71771e9d36fb8f1c7f2993cd4"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/CancelRenewalHandlerTests.cs": {
+    "mtime": 1794728369.933,
+    "seen": 1794759270.661155,
+    "ast_hash": "d980d6ba2e5de41e70f144789cc7c451",
+    "semantic_hash": "d980d6ba2e5de41e70f144789cc7c451"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/CommandHandlingTests.cs": {
+    "mtime": 1794728369.864,
+    "seen": 1794759270.661155,
+    "ast_hash": "f339212d40e1c6c17be0e2a95fe1150b",
+    "semantic_hash": "f339212d40e1c6c17be0e2a95fe1150b"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/ContractRoutingTests.cs": {
+    "mtime": 1794728369.897,
+    "seen": 1794759270.6611562,
+    "ast_hash": "f6a287ae4520b52f92b8a1f9fa47c922",
+    "semantic_hash": "f6a287ae4520b52f92b8a1f9fa47c922"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/HostSmokeTests.cs": {
+    "mtime": 1794728369.627,
+    "seen": 1794759270.6611562,
+    "ast_hash": "63db3608760dc9e43b97c2d0ef999adc",
+    "semantic_hash": "63db3608760dc9e43b97c2d0ef999adc"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/OutboxDrainTests.cs": {
+    "mtime": 1794728369.819,
+    "seen": 1794759270.6611571,
+    "ast_hash": "5d8ea5322be5464031e8543f2809b490",
+    "semantic_hash": "5d8ea5322be5464031e8543f2809b490"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/RelayFixture.cs": {
+    "mtime": 1794728369.597,
+    "seen": 1794759270.6611571,
+    "ast_hash": "307635aa80dc27c4abbc716f477de060",
+    "semantic_hash": "307635aa80dc27c4abbc716f477de060"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/SettleInvoiceHandlerTests.cs": {
+    "mtime": 1794728369.988,
+    "seen": 1794759270.6611571,
+    "ast_hash": "52dca023d0cb16d865c7e850bd0772ba",
+    "semantic_hash": "52dca023d0cb16d865c7e850bd0772ba"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/StubApi.cs": {
+    "mtime": 1794728369.534,
+    "seen": 1794759270.6611578,
+    "ast_hash": "75f4ea847a2655bf1f2b136c88b442f4",
+    "semantic_hash": "75f4ea847a2655bf1f2b136c88b442f4"
+  },
+  "tests/SubscriptionManagement.Relay.Tests/SubscriptionManagement.Relay.Tests.csproj": {
+    "mtime": 1794728398.678,
+    "seen": 1794759270.6611578,
+    "ast_hash": "4c1679d5f1de1ce8bc7c768464c2db74",
+    "semantic_hash": "4c1679d5f1de1ce8bc7c768464c2db74"
+  },
+  "tests/SubscriptionManagement.SystemTests/CancellationChoreographyTests.cs": {
+    "mtime": 1794746748.1190507,
+    "seen": 1794759270.6611588,
+    "ast_hash": "97f0d10bb0f22093a883726d12e5b010",
+    "semantic_hash": "97f0d10bb0f22093a883726d12e5b010"
+  },
+  "tests/SubscriptionManagement.SystemTests/Eventually.cs": {
+    "mtime": 1794746691.060193,
+    "seen": 1794759270.6611588,
+    "ast_hash": "445cfeaf4d0820c3bdb42f24fc7ade44",
+    "semantic_hash": "445cfeaf4d0820c3bdb42f24fc7ade44"
+  },
+  "tests/SubscriptionManagement.SystemTests/RenewalSagaSystemTests.cs": {
+    "mtime": 1794746747.0650918,
+    "seen": 1794759270.66116,
+    "ast_hash": "13ceccb21f48371107270bd1cedfb121",
+    "semantic_hash": "13ceccb21f48371107270bd1cedfb121"
+  },
+  "tests/SubscriptionManagement.SystemTests/SubscriptionManagement.SystemTests.csproj": {
+    "mtime": 1794746770.3039548,
+    "seen": 1794759270.66116,
+    "ast_hash": "dc8fa684308314f76de4055ee488fd1c",
+    "semantic_hash": "dc8fa684308314f76de4055ee488fd1c"
+  },
+  "tests/SubscriptionManagement.SystemTests/SystemFixture.cs": {
+    "mtime": 1794746834.1109328,
+    "seen": 1794759270.661161,
+    "ast_hash": "d9bacac6f6b1dd74c56e2046e60900f4",
+    "semantic_hash": "d9bacac6f6b1dd74c56e2046e60900f4"
+  },
+  "tests/SubscriptionManagement.SystemTests/SystemTestBase.cs": {
+    "mtime": 1794747862.863698,
+    "seen": 1794759270.661161,
+    "ast_hash": "d58d66772e15e1b8f322fe2e2161cb2e",
+    "semantic_hash": "d58d66772e15e1b8f322fe2e2161cb2e"
+  },
+  "tests/SubscriptionManagement.SystemTests/TraceContinuityTests.cs": {
+    "mtime": 1794746759.0708547,
+    "seen": 1794759270.661162,
+    "ast_hash": "509782beafbd5824ba038174aa732003",
+    "semantic_hash": "509782beafbd5824ba038174aa732003"
+  },
+  "tests/SubscriptionManagement.UnitTests/BillingGatewayTests.cs": {
+    "mtime": 1794728369.461,
+    "seen": 1794759270.661162,
+    "ast_hash": "9706fe9e55334a749637c378663a7ca6",
+    "semantic_hash": "9706fe9e55334a749637c378663a7ca6"
+  },
+  "tests/SubscriptionManagement.UnitTests/ErrorHandlingTests.cs": {
+    "mtime": 1794728369.26,
+    "seen": 1794759270.661163,
+    "ast_hash": "519a70130fa7e091376cc1562f36f6fa",
+    "semantic_hash": "519a70130fa7e091376cc1562f36f6fa"
+  },
+  "tests/SubscriptionManagement.UnitTests/HealthProbeTests.cs": {
+    "mtime": 1794728369.048,
+    "seen": 1794759270.661163,
+    "ast_hash": "9200b63bff38c845fe0ce904be907ec0",
+    "semantic_hash": "9200b63bff38c845fe0ce904be907ec0"
+  },
+  "tests/SubscriptionManagement.UnitTests/InvoiceTests.cs": {
+    "mtime": 1794728368.705,
+    "seen": 1794759270.661164,
+    "ast_hash": "96ef5cd9b150651af57d7ab201519443",
+    "semantic_hash": "96ef5cd9b150651af57d7ab201519443"
+  },
+  "tests/SubscriptionManagement.UnitTests/OutboxMessageTests.cs": {
+    "mtime": 1794728369.288,
+    "seen": 1794759270.661164,
+    "ast_hash": "2b880773f0259233b954565b0e8d778e",
+    "semantic_hash": "2b880773f0259233b954565b0e8d778e"
+  },
+  "tests/SubscriptionManagement.UnitTests/ProblemWriterTests.cs": {
+    "mtime": 1794728369.333,
+    "seen": 1794759270.661165,
+    "ast_hash": "ec55e145e1e628366424dfdc0ece8f67",
+    "semantic_hash": "ec55e145e1e628366424dfdc0ece8f67"
+  },
+  "tests/SubscriptionManagement.UnitTests/SearchCursorTests.cs": {
+    "mtime": 1794728369.083,
+    "seen": 1794759270.661165,
+    "ast_hash": "9777da9d451cbfadf1ac897298b03910",
+    "semantic_hash": "9777da9d451cbfadf1ac897298b03910"
+  },
+  "tests/SubscriptionManagement.UnitTests/ServiceDefaultsTests.cs": {
+    "mtime": 1794728369.505,
+    "seen": 1794759270.6611662,
+    "ast_hash": "41fb2e93ea39b6acd8f39f4a6fe7d530",
+    "semantic_hash": "41fb2e93ea39b6acd8f39f4a6fe7d530"
+  },
+  "tests/SubscriptionManagement.UnitTests/StatusMappingTests.cs": {
+    "mtime": 1794728369.36,
+    "seen": 1794759270.6611662,
+    "ast_hash": "f528a4015dae289bedf760638fd88f38",
+    "semantic_hash": "f528a4015dae289bedf760638fd88f38"
+  },
+  "tests/SubscriptionManagement.UnitTests/SubscriptionManagement.UnitTests.csproj": {
+    "mtime": 1794746475.1553223,
+    "seen": 1794759270.6611671,
+    "ast_hash": "c99852522618a0dac5a9222e84721f74",
+    "semantic_hash": "c99852522618a0dac5a9222e84721f74"
+  },
+  "tests/SubscriptionManagement.UnitTests/SubscriptionTests.cs": {
+    "mtime": 1794728369.126,
+    "seen": 1794759270.6611671,
+    "ast_hash": "23a8ddc24d9f99bc063129a549430ffa",
+    "semantic_hash": "23a8ddc24d9f99bc063129a549430ffa"
+  },
+  "tests/SubscriptionManagement.UnitTests/ValidatorTests.cs": {
+    "mtime": 1794728368.984,
+    "seen": 1794759270.661168,
+    "ast_hash": "f1611ee62b152eac47706c33af6f033d",
+    "semantic_hash": "f1611ee62b152eac47706c33af6f033d"
+  },
+  "README.md": {
+    "mtime": 1794758864.356,
+    "seen": 1794759270.661168,
+    "ast_hash": "cb4cadfb0818021d3312db59ebdf93c3",
+    "semantic_hash": "cb4cadfb0818021d3312db59ebdf93c3"
+  },
+  "deploy/helm/subscription-management/templates/NOTES.txt": {
+    "mtime": 1792931416.6378856,
+    "seen": 1794759270.6611688,
+    "ast_hash": "c431e280bdfe3b7dce463fbaa51bd8a5",
+    "semantic_hash": "c431e280bdfe3b7dce463fbaa51bd8a5"
+  },
+  "docs/adr/001-native-aot.md": {
+    "mtime": 1792931416.641468,
+    "seen": 1794759270.6611688,
+    "ast_hash": "082c50c91cd8d9fd99e0fae6fec49130",
+    "semantic_hash": "082c50c91cd8d9fd99e0fae6fec49130"
+  },
+  "docs/adr/002-data-access-npgsql.md": {
+    "mtime": 1792931416.6415565,
+    "seen": 1794759270.66117,
+    "ast_hash": "3272c0e6d937b8afe4ef1b976332147e",
+    "semantic_hash": "3272c0e6d937b8afe4ef1b976332147e"
+  },
+  "docs/adr/003-sql-migrations-executable.md": {
+    "mtime": 1792931416.6416585,
+    "seen": 1794759270.66117,
+    "ast_hash": "8278131ea4b724e2c87ae624f9e609b3",
+    "semantic_hash": "8278131ea4b724e2c87ae624f9e609b3"
+  },
+  "docs/adr/004-explicit-validation-and-problem-details.md": {
+    "mtime": 1792931416.6417673,
+    "seen": 1794759270.661171,
+    "ast_hash": "790dfb0f5d2848762b25053928f8b34d",
+    "semantic_hash": "790dfb0f5d2848762b25053928f8b34d"
+  },
+  "docs/adr/005-jit-messaging-services.md": {
+    "mtime": 1794727002.4465294,
+    "seen": 1794759270.661171,
+    "ast_hash": "e539128869502579c3c20d7576f2f926",
+    "semantic_hash": "e539128869502579c3c20d7576f2f926"
+  },
+  "docs/adr/006-outbox-relay.md": {
+    "mtime": 1794727002.4467795,
+    "seen": 1794759270.661172,
+    "ast_hash": "8f0c2db7ac9a762652ebf7a6256e18e7",
+    "semantic_hash": "8f0c2db7ac9a762652ebf7a6256e18e7"
+  },
+  "docs/adr/007-event-sourced-payments.md": {
+    "mtime": 1794727002.4469957,
+    "seen": 1794759270.661172,
+    "ast_hash": "0c08153a0ffaf566b2274db37dcbb446",
+    "semantic_hash": "0c08153a0ffaf566b2274db37dcbb446"
+  },
+  "docs/implementation-plan.md": {
+    "mtime": 1792931416.64186,
+    "seen": 1794759270.661172,
+    "ast_hash": "12e85b8dfb35a725c599e4e19f488c4d",
+    "semantic_hash": "12e85b8dfb35a725c599e4e19f488c4d"
+  },
+  "docs/migration/dotnet10-compatibility.md": {
+    "mtime": 1792931416.6419864,
+    "seen": 1794759270.661173,
+    "ast_hash": "54e85555b77db1dba65a6be6b4cfca7d",
+    "semantic_hash": "54e85555b77db1dba65a6be6b4cfca7d"
+  },
+  "docs/migration/java-feature-gap.md": {
+    "mtime": 1792931416.6421032,
+    "seen": 1794759270.661173,
+    "ast_hash": "cc5b1a66951658a7c234564d661e5286",
+    "semantic_hash": "cc5b1a66951658a7c234564d661e5286"
+  },
+  "docs/migration/native-aot-assessment.md": {
+    "mtime": 1792931416.6422286,
+    "seen": 1794759270.661174,
+    "ast_hash": "040a71d0c3de1e5d2ab8f0af0269bc81",
+    "semantic_hash": "040a71d0c3de1e5d2ab8f0af0269bc81"
+  },
+  "docs/performance.md": {
+    "mtime": 1792931416.6423368,
+    "seen": 1794759270.661174,
+    "ast_hash": "5e2b773475d066e106ea875e97a5e7bf",
+    "semantic_hash": "5e2b773475d066e106ea875e97a5e7bf"
+  },
+  "docs/technical-design.md": {
+    "mtime": 1794747042.4729521,
+    "seen": 1794759270.661175,
+    "ast_hash": "a7675ee17a02e5ea9f1e6b362c6170fc",
+    "semantic_hash": "a7675ee17a02e5ea9f1e6b362c6170fc"
+  }
+}
