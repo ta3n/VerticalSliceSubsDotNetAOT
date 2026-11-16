@@ -56,6 +56,10 @@ vars:
   # Trivy (task trivy:*): findings at or above this severity fail the task; TRIVY_EXIT_CODE=0 reports without failing.
   TRIVY_SEVERITY: HIGH,CRITICAL
   TRIVY_EXIT_CODE: 1
+  # Semgrep (task semgrep:*): findings at or above this severity fail the task; SEMGREP_EXIT_CODE=0 reports without failing.
+  SEMGREP_SEVERITY: WARNING
+  # Quoted so template comparisons (task semgrep:scan) see a string, like the registry:delete VOLUME var.
+  SEMGREP_EXIT_CODE: "1"
 
 tasks:
   default:
@@ -702,6 +706,40 @@ tasks:
     cmds:
       - task: trivy:fs
       - task: trivy:image
+
+  # ---------------------------------------------------------------- security (Semgrep)
+  # Needs semgrep on the PATH (brew install semgrep); the registry rulesets are downloaded on first use. Override per call,
+  # e.g. `task semgrep:scan SEMGREP_SEVERITY=ERROR` or `task semgrep:scan SEMGREP_EXIT_CODE=0`.
+  # Scope: C# sources only (src, tests) - Dockerfile/Helm misconfigurations are Trivy's job (task trivy:fs).
+  semgrep:scan:
+    desc: "Semgrep SAST on the C# sources (src and tests): p/csharp + p/security-audit + p/owasp-top-ten rules from the Semgrep registry"
+    cmds:
+      - >-
+        semgrep scan --config p/csharp --config p/security-audit --config p/owasp-top-ten
+        --severity {{.SEMGREP_SEVERITY}}{{if ne .SEMGREP_EXIT_CODE "0"}} --error{{end}}
+        --exclude '**/bin/**' --exclude '**/obj/**'
+        src tests
+
+  semgrep:sarif:
+    desc: "Same scan as semgrep:scan, writing SARIF to artifacts/semgrep.sarif (for IDE/CI tooling)"
+    cmds:
+      - >-
+        semgrep scan --config p/csharp --config p/security-audit --config p/owasp-top-ten
+        --severity {{.SEMGREP_SEVERITY}} --sarif --output artifacts/semgrep.sarif
+        --exclude '**/bin/**' --exclude '**/obj/**'
+        src tests
+      - ls -l artifacts/semgrep.sarif
+
+  semgrep:ci:
+    desc: "Semgrep AppSec Platform scan (semgrep ci; needs SEMGREP_APP_TOKEN and the repo linked in the Semgrep dashboard)"
+    preconditions:
+      - sh: 'test -n "$SEMGREP_APP_TOKEN"'
+        msg: "SEMGREP_APP_TOKEN is not set: export your Semgrep token (Semgrep AppSec Platform) to run 'task semgrep:ci'."
+    cmds:
+      - >-
+        semgrep ci --config p/csharp --config p/security-audit --config p/owasp-top-ten
+        --severity {{.SEMGREP_SEVERITY}}
+        src tests
 
   # ---------------------------------------------------------------- end to end
   up:
