@@ -30,6 +30,12 @@ var pgbouncer = builder.Configuration.Required<bool>("PgBouncer:Enabled") ? buil
 var redis = builder.AddRedis("redis")
     .WithImageTag("7-alpine");
 
+// Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry. Declared before
+// the projects: the Kubernetes publisher resolves the collector's OTLP endpoint for each project in model order.
+var stack = builder.Configuration.Required<bool>("Observability:Enabled")
+    ? builder.AddObservabilityStack(postgres, redis, standbys, pgbouncer)
+    : null;
+
 // The services read ConnectionStrings:Postgres / ConnectionStrings:Redis, hence the explicit connection names.
 var migrator = builder.AddProject<SubscriptionManagement_Migrator>("migrator")
     .WithReference(database, "Postgres")
@@ -65,11 +71,23 @@ api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc")
     .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
     .WaitFor(services.Billing);
 
-// Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry.
-ObservabilityStack? stack = null;
-if (builder.Configuration.Required<bool>("Observability:Enabled"))
+// Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
+// Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.
+if (builder.Configuration.Required<bool>("Bitwarden:Enabled"))
 {
-    stack = builder.AddObservabilityStack(postgres, redis, standbys, pgbouncer);
+    var bitwarden = builder.AddBitwarden();
+    api.WithBitwarden(bitwarden);
+    services.Billing.WithBitwarden(bitwarden);
+    services.Payments.WithBitwarden(bitwarden);
+    services.Relay.WithBitwarden(bitwarden);
+}
+
+// Kubernetes environment for `aspire publish` / `aspire deploy` (Helm chart); see KubernetesPublishing.cs. Off by default.
+if (builder.Configuration.Required<bool>("Kubernetes:Enabled"))
+    builder.AddKubernetes();
+
+if (stack is not null)
+{
     api.WaitFor(stack.Collector);
     services.Billing.WaitFor(stack.Collector);
     services.Payments.WaitFor(stack.Collector);
@@ -78,5 +96,13 @@ if (builder.Configuration.Required<bool>("Observability:Enabled"))
 
 // k6 scenarios from scripts/*-test.js as on-demand resources (▶ in the dashboard); see LoadTests.cs.
 builder.AddK6Suite(api, stack, services);
+
+if (stack is not null && builder.ExecutionContext.IsPublishMode)
+    foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay })
+        project.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", stack.Collector.GetEndpoint("http"))
+            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+
+// The Kubernetes publisher has no bind mounts: the config files travel as ConfigMaps instead (ConfigFiles.cs).
+builder.PublishBindMountsAsConfigMaps();
 
 await builder.Build().RunAsync();
