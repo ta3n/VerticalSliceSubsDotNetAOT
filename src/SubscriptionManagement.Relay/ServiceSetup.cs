@@ -1,6 +1,7 @@
 using JasperFx.Core;
 using JasperFx.Resources;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 using RabbitMQ.Client;
@@ -62,6 +63,12 @@ public static class ServiceSetup
                 // Inbox/outbox tables in the "relay" schema of the API's database: the only schema this service owns there.
                 opts.PersistMessagesWithPostgresql(dataSource, "relay");
                 opts.Services.AddDbContextWithWolverineIntegration<RelayDbContext>(x => x.UseNpgsql(dataSource));
+                // Wolverine registers the context as a plain scoped service (a new instance per message or drain batch)
+                // and has no pooled variant. AddDbContextPool only adds what is missing: once Wolverine's registration
+                // of the context is gone, the pool is built on the options Wolverine just registered (its model
+                // customizer, batching and the shared data source), so the lambda is never called.
+                opts.Services.RemoveAll<RelayDbContext>();
+                opts.Services.AddDbContextPool<RelayDbContext>(_ => { });
                 opts.UseEntityFrameworkCoreTransactions();
                 opts.Policies.AutoApplyTransactions();
                 opts.Policies.UseDurableOutboxOnAllSendingEndpoints();
