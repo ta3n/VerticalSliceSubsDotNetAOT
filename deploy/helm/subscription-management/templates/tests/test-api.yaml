@@ -31,3 +31,11 @@ spec:
           curl -fsS --retry 10 --retry-all-errors --retry-delay 2 "$base/health/ready"; echo
           curl -fsS "$base/health"; echo
           curl -fsS "$base/plans"; echo
+          {{- if .Values.frontend.enabled }}
+          curl -fsS "http://{{ include "subs.fullname" . }}-frontend/" | grep -q '<div id="root">'
+          {{- end }}
+          {{- if .Values.s2s.enabled }}
+          {{- range $name := list "billing" "payments" "relay" }}
+          curl -fsS "http://{{ include "subs.fullname" $ }}-{{ $name }}:8080/health/ready"; echo
+          {{- end }}
+          {{- end }}

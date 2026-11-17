@@ -1,0 +1,38 @@
+# Published chart + values-release.yaml are the desired state; retain the existing release/resource names.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: subscription-management
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: oci-registry.registry.svc.cluster.local:5000/charts
+    chart: subscription-management
+    targetRevision: ">=0.2.0-0"
+    helm:
+      releaseName: subs
+      valueFiles: [ values-cluster.yaml, values-release.yaml ]
+      # Validate every pinned manifest against the registry, even on OrbStack's shared image store.
+      parameters:
+        - { name: image.pullPolicy, value: Always }
+        - { name: migrator.image.pullPolicy, value: Always }
+        - { name: frontend.image.pullPolicy, value: Always }
+        - { name: s2s.billing.image.pullPolicy, value: Always }
+        - { name: s2s.payments.image.pullPolicy, value: Always }
+        - { name: s2s.relay.image.pullPolicy, value: Always }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: subscriptions
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff: { duration: 10s, factor: 2, maxDuration: 1m }

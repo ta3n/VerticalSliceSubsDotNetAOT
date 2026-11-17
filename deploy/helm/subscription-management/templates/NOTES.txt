@@ -6,6 +6,8 @@ Subscription Management {{ .Chart.AppVersion }} is deployed as release "{{ .Rele
   {{- end }}
   PostgreSQL     : {{ if .Values.postgresql.enabled }}in-cluster ({{ include "subs.postgresql.fullname" . }}){{ else }}external ({{ .Values.externalDatabase.host }}){{ end }}
   Redis          : {{ if .Values.redis.enabled }}in-cluster ({{ include "subs.redis.fullname" . }}){{ else if .Values.externalRedis.connectionString }}external{{ else }}disabled (in-process cache){{ end }}
+  Frontend       : {{ if .Values.frontend.enabled }}static React app, / through Kong; /api/* proxies to API{{ else }}disabled{{ end }}
+  Renewals       : {{ if .Values.s2s.enabled }}Billing + Payments + Relay + persistent RabbitMQ{{ else }}disabled{{ end }}
 
 {{- if .Values.ingress.enabled }}
 

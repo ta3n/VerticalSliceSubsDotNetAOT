@@ -19,12 +19,16 @@ vars:
   TAG: dev
   # Local registry (deploy/registry): pushed from the host and pulled by the kind nodes under the same name.
   REGISTRY_NAME: kind-registry
-  REGISTRY_PORT: 5001
+  # kind = Docker registry + containerd mirror; cluster = deploy/registry/cluster.yaml (OrbStack NodePort 30501).
+  REGISTRY_MODE: kind
+  REGISTRY_PORT: '{{if eq .REGISTRY_MODE "cluster"}}30501{{else}}5001{{end}}'
   REGISTRY: localhost:{{.REGISTRY_PORT}}
   API_REPO: subscription-management
   MIGRATOR_REPO: subscription-management-migrator
+  FRONTEND_REPO: subscription-management-frontend
   API_IMAGE: "{{.REGISTRY}}/{{.API_REPO}}"
   MIGRATOR_IMAGE: "{{.REGISTRY}}/{{.MIGRATOR_REPO}}"
+  FRONTEND_IMAGE: "{{.REGISTRY}}/{{.FRONTEND_REPO}}"
   CHART_DIR: deploy/helm/subscription-management
   CHART_VALUES: "{{.CHART_DIR}}/values-local.yaml"
   KONG_NAMESPACE: kong
@@ -282,35 +286,57 @@ tasks:
 
   # ---------------------------------------------------------------- images
   image:build:
-    desc: Build the Native AOT API and migrator images ({{.TAG}})
+    desc: Build API, migrator, frontend and the three renewal service images ({{.TAG}})
     sources:
       - Dockerfile
+      - Dockerfile.services
       - Directory.Build.props
       - src/**/*
       - exclude: src/**/bin/**
       - exclude: src/**/obj/**
+      - exclude: src/frontend/node_modules/**
+      - exclude: src/frontend/dist/**
+      - exclude: src/frontend/.env*
     status:
-      - docker image inspect {{.API_IMAGE}}:{{.TAG}} {{.MIGRATOR_IMAGE}}:{{.TAG}} >/dev/null 2>&1
+      - docker image inspect {{.API_IMAGE}}:{{.TAG}} {{.MIGRATOR_IMAGE}}:{{.TAG}} {{.FRONTEND_IMAGE}}:{{.TAG}} {{.REGISTRY}}/subscription-management-billing:{{.TAG}} {{.REGISTRY}}/subscription-management-payments:{{.TAG}} {{.REGISTRY}}/subscription-management-relay:{{.TAG}} >/dev/null 2>&1
     cmds:
       - docker build --target api -t {{.API_IMAGE}}:{{.TAG}} .
       - docker build --target migrator -t {{.MIGRATOR_IMAGE}}:{{.TAG}} .
+      - docker build -f src/frontend/Dockerfile -t {{.FRONTEND_IMAGE}}:{{.TAG}} src/frontend
+      - |
+        for component in billing payments relay; do
+          docker build -f Dockerfile.services --target "$component" -t "{{.REGISTRY}}/subscription-management-${component}:{{.TAG}}" . || exit 1
+        done
 
   image:push:
-    desc: Push both images to the local registry ({{.REGISTRY}})
+    desc: Push all six images to the local registry ({{.REGISTRY}})
     deps: [image:build, registry:setup]
     cmds:
       - docker push {{.API_IMAGE}}:{{.TAG}}
       - docker push {{.MIGRATOR_IMAGE}}:{{.TAG}}
+      - docker push {{.FRONTEND_IMAGE}}:{{.TAG}}
+      - |
+        for component in billing payments relay; do
+          docker push "{{.REGISTRY}}/subscription-management-${component}:{{.TAG}}" || exit 1
+        done
 
   # ---------------------------------------------------------------- local registry
   registry:setup:
-    desc: Start the local registry ({{.REGISTRY}}) and wire it into the kind nodes (idempotent)
+    desc: Start the local OCI registry (REGISTRY_MODE=kind or cluster)
     env:
       CLUSTER: "{{.CLUSTER}}"
       REGISTRY_NAME: "{{.REGISTRY_NAME}}"
       REGISTRY_PORT: "{{.REGISTRY_PORT}}"
     cmds:
-      - deploy/registry/setup.sh
+      - |
+        case '{{.REGISTRY_MODE}}' in
+          kind) deploy/registry/setup.sh ;;
+          cluster)
+            kubectl apply -f deploy/registry/cluster.yaml
+            kubectl -n registry rollout status statefulset/oci-registry --timeout=3m
+            ;;
+          *) echo 'REGISTRY_MODE must be kind or cluster' >&2; exit 1 ;;
+        esac
 
   registry:images:
     desc: List the repositories, tags and digests in the local registry
@@ -338,6 +364,8 @@ tasks:
     cmds:
       - helm lint {{.CHART_DIR}} --strict
       - helm lint {{.CHART_DIR}} -f {{.CHART_VALUES}} --strict
+      - helm lint {{.CHART_DIR}} -f {{.CHART_DIR}}/values-cluster.yaml --strict
+      - python3 deploy/registry/test-image-values.py
 
   app:template:
     desc: Render the chart with the local values
@@ -346,6 +374,10 @@ tasks:
         helm template {{.RELEASE}} {{.CHART_DIR}} -n {{.NAMESPACE}} -f {{.CHART_VALUES}}
         --set image.repository={{.API_IMAGE}} --set image.tag={{.TAG}}
         --set migrator.image.repository={{.MIGRATOR_IMAGE}} --set migrator.image.tag={{.TAG}}
+        --set frontend.image.repository={{.FRONTEND_IMAGE}} --set frontend.image.tag={{.TAG}}
+        --set s2s.billing.image.repository={{.REGISTRY}}/subscription-management-billing --set s2s.billing.image.tag={{.TAG}}
+        --set s2s.payments.image.repository={{.REGISTRY}}/subscription-management-payments --set s2s.payments.image.tag={{.TAG}}
+        --set s2s.relay.image.repository={{.REGISTRY}}/subscription-management-relay --set s2s.relay.image.tag={{.TAG}}
 
   app:deploy:
     desc: Install/upgrade the release "{{.RELEASE}}" with plain Helm (no Argo CD; `task dev` picks the right path)
@@ -354,27 +386,25 @@ tasks:
       - sh: "! kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} >/dev/null 2>&1"
         msg: "{{.APP_NAME}} is managed by Argo CD (it would revert a manual helm upgrade): use 'task gitops:deploy' or 'task dev'."
     cmds:
-      # Pin both images to the digests just pushed: pods roll exactly when an image changed, and a node never
+      # Pin all images to the digests just pushed: pods roll exactly when an image changed, and a node never
       # runs a stale cached ":{{.TAG}}".
       - |
         set -eu
-        api_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.API_REPO}} {{.TAG}})
-        migrator_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.MIGRATOR_REPO}} {{.TAG}})
-        echo "api      {{.API_IMAGE}}:{{.TAG}}@$api_digest"
-        echo "migrator {{.MIGRATOR_IMAGE}}:{{.TAG}}@$migrator_digest"
+        release_values=$(mktemp)
+        trap 'rm -f "$release_values"' EXIT
+        deploy/registry/image-values.sh '{{.REGISTRY}}' '{{.TAG}}' '{{.API_REPO}}' '{{.MIGRATOR_REPO}}' '{{.FRONTEND_REPO}}' > "$release_values"
         helm upgrade --install {{.RELEASE}} {{.CHART_DIR}} \
           --namespace {{.NAMESPACE}} --create-namespace \
           -f {{.CHART_VALUES}} \
-          --set image.repository={{.API_IMAGE}} --set image.tag={{.TAG}} --set image.digest="$api_digest" \
-          --set migrator.image.repository={{.MIGRATOR_IMAGE}} --set migrator.image.tag={{.TAG}} --set migrator.image.digest="$migrator_digest" \
+          -f "$release_values" \
           --wait --timeout 5m
       - task: app:status
 
   app:test:
-    desc: In-cluster check of the API (helm test for a Helm release, a curl pod otherwise)
+    desc: In-cluster readiness and static frontend checks (helm test for a release, API curl pod otherwise)
     cmds:
       - |
-        if helm status {{.RELEASE}} -n {{.NAMESPACE}} >/dev/null 2>&1; then
+        if ! kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} >/dev/null 2>&1 && helm status {{.RELEASE}} -n {{.NAMESPACE}} >/dev/null 2>&1; then
           helm test {{.RELEASE}} -n {{.NAMESPACE}} --logs
         else
           # Labelled like the chart's test pod, which the API NetworkPolicy admits.
@@ -451,8 +481,9 @@ tasks:
         --namespace {{.ARGOCD_NAMESPACE}} --create-namespace
         --version {{.ARGOCD_CHART_VERSION}}
         -f deploy/argocd/values.yaml
+        {{if eq .REGISTRY_MODE "cluster"}}-f deploy/argocd/values-cluster.yaml{{end}}
         --wait --timeout 10m
-      - kubectl apply -f deploy/argocd/repository.yaml
+      - kubectl apply -f deploy/argocd/repository{{if eq .REGISTRY_MODE "cluster"}}-cluster{{end}}.yaml
 
   rollouts:install:
     desc: Install the Argo Rollouts controller and dashboard into "{{.ROLLOUTS_NAMESPACE}}"
@@ -489,54 +520,38 @@ tasks:
       - |
         set -eu
         version="{{.CHART_BASE_VERSION}}-dev.$(date -u +%Y%m%d%H%M%S)"
-        api_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.API_REPO}} {{.TAG}})
-        migrator_digest=$(deploy/registry/digest.sh {{.REGISTRY}} {{.MIGRATOR_REPO}} {{.TAG}})
         build=$(mktemp -d)
+        trap 'rm -rf "$build"' EXIT
         cp -r {{.CHART_DIR}} "$build/{{.APP_NAME}}"
-        cat > "$build/{{.APP_NAME}}/values-release.yaml" <<EOF
-        # Generated by task app:publish ($version): the images this chart version deploys.
-        image:
-          repository: {{.API_IMAGE}}
-          tag: {{.TAG}}
-          digest: $api_digest
-        migrator:
-          image:
-            repository: {{.MIGRATOR_IMAGE}}
-            tag: {{.TAG}}
-            digest: $migrator_digest
-        EOF
+        deploy/registry/image-values.sh '{{.REGISTRY}}' '{{.TAG}}' '{{.API_REPO}}' '{{.MIGRATOR_REPO}}' '{{.FRONTEND_REPO}}' > "$build/{{.APP_NAME}}/values-release.yaml"
         # appVersion stays the Chart.yaml one: it is a pod label, and changing it would restart every pod (PostgreSQL too).
         helm package "$build/{{.APP_NAME}}" --version "$version" -d "$build" >/dev/null
         helm push "$build/{{.APP_NAME}}-$version.tgz" oci://{{.REGISTRY}}/charts --plain-http
-        rm -rf "$build"
         mkdir -p .task && echo "$version" > .task/published-chart-version
-        echo "published {{.APP_NAME}} $version (api @$api_digest, migrator @$migrator_digest)"
+        echo "published {{.APP_NAME}} $version (all six images pinned in values-release.yaml)"
 
   gitops:adopt:
-    desc: Hand a release installed with plain Helm over to Argo CD (forgets the Helm release, deletes no resources)
-    status:
-      - "! helm status {{.RELEASE}} -n {{.NAMESPACE}} >/dev/null 2>&1"
+    desc: Let Argo CD adopt the release through tracking annotations (Helm history and PVCs are retained)
     cmds:
-      - kubectl -n {{.NAMESPACE}} delete secret -l owner=helm,name={{.RELEASE}}
+      - kubectl apply -f deploy/argocd/application{{if eq .REGISTRY_MODE "cluster"}}-cluster{{end}}.yaml
 
   gitops:deploy:
     desc: Publish the chart and let Argo CD sync it (API changes roll out as an analysed canary)
     deps: [app:publish]
     cmds:
       - task: gitops:adopt
-      - kubectl apply -f deploy/argocd/application.yaml
       - kubectl -n {{.ARGOCD_NAMESPACE}} annotate application {{.APP_NAME}} argocd.argoproj.io/refresh=hard --overwrite >/dev/null
       - |
         want=$(cat .task/published-chart-version)
-        for i in $(seq 1 60); do
-          have=$(kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} -o jsonpath='{.status.sync.revision}')
-          [ "$have" = "$want" ] && break
+        for i in $(seq 1 200); do
+          have=$(kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}')
+          [ "$have" = "Synced Healthy $want" ] && break
           sleep 3
         done
         kubectl -n {{.ARGOCD_NAMESPACE}} get application {{.APP_NAME}} \
           -o custom-columns='APP:.metadata.name,REVISION:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status'
-        [ "$have" = "$want" ] || { echo "Argo CD has not picked up $want yet (task argocd:open to look)"; exit 1; }
-        echo "Argo CD is on $want. A changed API image now rolls out as a canary: task rollout:watch"
+        [ "$have" = "Synced Healthy $want" ] || { echo "Argo CD is not Synced/Healthy at $want (task argocd:open to look)"; exit 1; }
+        echo "Argo CD is Synced/Healthy at $want. See task app:status (or rollout:watch for canaries)."
       # After adopting a Helm release: the old API Deployment is not tracked by Argo CD, so it is never pruned.
       # Retire it once the Rollout that replaces it is healthy (both select the same pods' labels).
       - |
@@ -613,12 +628,12 @@ tasks:
 
   # ---------------------------------------------------------------- aspire (local, no cluster)
   aspire:
-    desc: "Run the app locally under Aspire + monitoring (Aspire dashboard :15043, Grafana :3000, Prometheus :9190)"
+    desc: "Run backend + frontend :5173 under Aspire + monitoring (dashboard :15043, Grafana :3000, Prometheus :9190)"
     cmds:
       - dotnet run --project src/AppHost --launch-profile http
 
   aspire:lean:
-    desc: "Run the app locally under Aspire without the Grafana/Prometheus/Tempo/Loki stack"
+    desc: "Run backend + frontend :5173 under Aspire without the Grafana/Prometheus/Tempo/Loki stack"
     cmds:
       - dotnet run --project src/AppHost --launch-profile http -- --Observability:Enabled=false
 

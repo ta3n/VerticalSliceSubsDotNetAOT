@@ -31,6 +31,12 @@ spec:
     - http:
         paths:
           {{- range .paths }}
+            { { - $paths := list . } }
+            { { - if and $.Values.frontend.enabled (eq .path "/") } }
+            { { - /* Keep legacy API paths while reserving / for the UI; /api is a separate strip-path route. */ } }
+            { { - $paths = list (dict "path" "/subscriptions" "pathType" "Prefix") (dict "path" "/plans" "pathType" "Prefix") (dict "path" "/invoices" "pathType" "Prefix") (dict "path" "/health" "pathType" "Prefix") (dict "path" "/scalar" "pathType" "Prefix") (dict "path" "/openapi" "pathType" "Prefix") } }
+            { { - end } }
+            { { - range $paths } }
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
@@ -38,6 +44,7 @@ spec:
                 name: {{ $fullname }}
                 port:
                   name: http
+            { { - end } }
           {{- end }}
       {{- with .host }}
       host: {{ . | quote }}

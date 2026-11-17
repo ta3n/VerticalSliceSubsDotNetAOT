@@ -46,15 +46,21 @@ app.kubernetes.io/component: {{ .component }}
 
 {{/* repository:tag, plus @digest when one is given (the digest then decides what is pulled). */}}
 {{- define "subs.image" -}}
-{{- $ref := printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
-{{- with .Values.image.digest }}{{ $ref = printf "%s@%s" $ref . }}{{ end }}
-{{- $ref }}
+{{- include "subs.imageRef" (dict "ctx" . "image" .Values.image) }}
 {{- end }}
 
 {{- define "subs.migratorImage" -}}
-{{- $ref := printf "%s:%s" .Values.migrator.image.repository (default (default .Chart.AppVersion .Values.image.tag) .Values.migrator.image.tag) }}
-{{- with .Values.migrator.image.digest }}{{ $ref = printf "%s@%s" $ref . }}{{ end }}
+{{- include "subs.imageRef" (dict "ctx" . "image" .Values.migrator.image) }}
+{{- end }}
+
+{{- define "subs.imageRef" -}}
+{{- $ref := printf "%s:%s" .image.repository (default (default .ctx.Chart.AppVersion .ctx.Values.image.tag) .image.tag) }}
+{{- with .image.digest }}{{ $ref = printf "%s@%s" $ref . }}{{ end }}
 {{- $ref }}
+{{- end }}
+
+{{- define "subs.messaging.secretName" -}}
+{{- default (printf "%s-messaging" (include "subs.fullname" .)) .Values.s2s.rabbitmq.auth.existingSecret }}
 {{- end }}
 
 {{- define "subs.postgresql.fullname" -}}
@@ -113,7 +119,7 @@ Kubernetes' $(VAR) expansion, so the connection string itself never lands in a C
       name: {{ include "subs.db.secretName" .ctx }}
       key: postgres-password
 - name: ConnectionStrings__Postgres
-  value: {{ printf "Host=%s;Port=%s;Database=%s;Username=%s;Password=$(DB_PASSWORD)%s" (include "subs.db.host" .ctx) (include "subs.db.port" .ctx) (include "subs.db.name" .ctx) (include "subs.db.user" .ctx) .suffix | quote }}
+  value: {{ printf "Host=%s;Port=%s;Database=%s;Username=%s;Password=$(DB_PASSWORD)%s" (include "subs.db.host" .ctx) (include "subs.db.port" .ctx) (default (include "subs.db.name" .ctx) .database) (include "subs.db.user" .ctx) .suffix | quote }}
 {{- end }}
 
 {{/*
@@ -124,9 +130,12 @@ one rolling-update surge) may hold config.postgresMaxPoolSize connections.
 {{- if .Values.postgresql.enabled }}
 {{- $pods := ternary .Values.autoscaling.maxReplicas .Values.replicaCount .Values.autoscaling.enabled | int }}
 {{- $needed := mul (add $pods 1) (int .Values.config.postgresMaxPoolSize) }}
+{{- if .Values.s2s.enabled }}
+{{- $needed = add $needed (mul 3 (add (int .Values.s2s.replicaCount) 1) (int .Values.s2s.postgresMaxPoolSize)) }}
+{{- end }}
 {{- $available := sub (int .Values.postgresql.maxConnections) 3 }}
 {{- if gt $needed $available }}
-{{- fail (printf "API pools need up to %d Postgres connections ((%d pods + 1 surge) x postgresMaxPoolSize %v) but postgresql.maxConnections allows %d; raise postgresql.maxConnections or lower config.postgresMaxPoolSize" $needed $pods .Values.config.postgresMaxPoolSize $available) }}
+{{- fail (printf "API + renewal service pools need up to %d Postgres connections (including rolling-update surge) but postgresql.maxConnections allows %d; raise postgresql.maxConnections or lower pool sizes/replicas" $needed $available) }}
 {{- end }}
 {{- end }}
 {{- end }}

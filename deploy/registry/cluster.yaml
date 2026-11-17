@@ -1,0 +1,70 @@
+# Local OrbStack registry: localhost:30501 for Docker/Helm on the host and on the node;
+# oci-registry.registry.svc:5000 for Argo CD. HTTP is for this trusted local cluster only.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oci-registry
+  namespace: registry
+spec:
+  type: NodePort
+  ports: [ { name: registry, port: 5000, targetPort: registry, nodePort: 30501 } ]
+  selector: { app: oci-registry }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: oci-registry
+  namespace: registry
+spec:
+  serviceName: oci-registry
+  replicas: 1
+  selector:
+    matchLabels: { app: oci-registry }
+  template:
+    metadata:
+      labels: { app: oci-registry }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: registry
+          image: docker.io/library/registry:3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ ALL ] }
+          ports: [ { name: registry, containerPort: 5000 } ]
+          env:
+            - { name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY, value: /var/lib/registry }
+            - { name: REGISTRY_HTTP_ADDR, value: "0.0.0.0:5000" }
+          readinessProbe:
+            httpGet: { path: /v2/, port: registry }
+            periodSeconds: 3
+          livenessProbe:
+            httpGet: { path: /v2/, port: registry }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/registry }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 32Mi }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        resources:
+          requests: { storage: 5Gi }

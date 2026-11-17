@@ -1,0 +1,156 @@
+{ { - if .Values.s2s.enabled } }
+  { { - range $name := list "billing" "payments" "relay" } }
+  { { - $settings := index $.Values.s2s $name } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: { { include "subs.fullname" $ } }-{{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" $name) | nindent 4 }}
+spec:
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+    { { - if eq $name "billing" } }
+    - { name: grpc, port: 8081, targetPort: grpc }
+    { { - end } }
+  selector:
+    { { - include "subs.selectorLabels" (dict "ctx" $ "component" $name) | nindent 4 } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { include "subs.fullname" $ } }-{{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" $name) | nindent 4 }}
+spec:
+  replicas: { { $.Values.s2s.replicaCount } }
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" $ "component" $name) | nindent 6 } }
+  template:
+    metadata:
+      annotations:
+        checksum/settings: { { toJson $.Values.s2s | sha256sum } }
+        checksum/db-secret: { { include (print $.Template.BasePath "/secret.yaml") $ | sha256sum } }
+      labels:
+        { { - include "subs.labels" (dict "ctx" $ "component" $name) | nindent 8 } }
+    spec:
+      serviceAccountName: { { include "subs.serviceAccountName" $ } }
+      automountServiceAccountToken: false
+      { { - with $.Values.imagePullSecrets } }
+      imagePullSecrets:
+        { { - toYaml . | nindent 8 } }
+      { { - end } }
+      securityContext:
+        { { - toYaml $.Values.podSecurityContext | nindent 8 } }
+      initContainers:
+        # A headless broker Service has no DNS address until RabbitMQ is ready.
+        - name: messaging-ready
+          image: { { printf "%s:%s" $.Values.postgresql.image.repository $.Values.postgresql.image.tag | quote } }
+          securityContext:
+            { { - toYaml $.Values.securityContext | nindent 12 } }
+          command: [ bash, -ec ]
+          args:
+            - until timeout 3 bash -c 'exec 3<>/dev/tcp/$1/5672' -- '{{ include "subs.fullname" $ }}-messaging'; do sleep 2; done
+          resources:
+            { { - toYaml $.Values.migrator.resources | nindent 12 } }
+      { { - if or (and (ne $name "relay") $.Values.s2s.provisionDatabases) (and (eq $name "relay") $.Values.migrator.enabled) } }
+      { { - if eq $name "relay" } }
+      # The Relay must not start draining before the API's schema/outbox exists.
+      - name: migrator
+        image: { { include "subs.migratorImage" $ } }
+        imagePullPolicy: { { $.Values.migrator.image.pullPolicy } }
+        securityContext:
+          { { - toYaml $.Values.securityContext | nindent 12 } }
+        env:
+          { { - include "subs.db.env" (dict "ctx" $ "suffix" ";Timeout=5") | nindent 12 } }
+        resources:
+          { { - toYaml $.Values.migrator.resources | nindent 12 } }
+        volumeMounts: [ { name: tmp, mountPath: /tmp } ]
+      { { - else } }
+      - name: database
+        image: { { printf "%s:%s" $.Values.postgresql.image.repository $.Values.postgresql.image.tag | quote } }
+        securityContext:
+          { { - toYaml $.Values.securityContext | nindent 12 } }
+        env:
+          - { name: PGHOST, value: { { include "subs.db.host" $ | quote } } }
+          - { name: PGPORT, value: { { include "subs.db.port" $ | quote } } }
+          - { name: PGUSER, value: { { include "subs.db.user" $ | quote } } }
+          - { name: PGDATABASE, value: postgres }
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef: { name: { { include "subs.db.secretName" $ } }, key: postgres-password }
+        command: [ sh, -ec ]
+        args:
+          - |
+            until pg_isready; do sleep 2; done
+            psql -v ON_ERROR_STOP=1 <<'SQL'
+            SELECT pg_advisory_lock(hashtext('subscription-management-databases'));
+            SELECT 'CREATE DATABASE {{ $name }}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ $name }}') \gexec
+            SELECT pg_advisory_unlock(hashtext('subscription-management-databases'));
+            SQL
+        resources:
+          { { - toYaml $.Values.migrator.resources | nindent 12 } }
+        volumeMounts: [ { name: tmp, mountPath: /tmp } ]
+      { { - end } }
+      { { - end } }
+      containers:
+        - name: { { $name } }
+          image: { { include "subs.imageRef" (dict "ctx" $ "image" $settings.image) } }
+          imagePullPolicy: { { $settings.image.pullPolicy } }
+          securityContext:
+            { { - toYaml $.Values.securityContext | nindent 12 } }
+          ports:
+            - { name: http, containerPort: 8080 }
+            { { - if eq $name "billing" } }
+            - { name: grpc, containerPort: 8081 }
+            { { - end } }
+          env:
+            { { - $database := ternary (include "subs.db.name" $) $name (eq $name "relay") } }
+              { { - include "subs.db.env" (dict "ctx" $ "database" $database "suffix" (printf ";Maximum Pool Size=%v" $.Values.s2s.postgresMaxPoolSize)) | nindent 12 } }
+              - name: ConnectionStrings__messaging
+                valueFrom:
+                  secretKeyRef: { name: { { include "subs.messaging.secretName" $ } }, key: connection-string }
+              - { name: ASPNETCORE_HTTP_PORTS, value: "8080" }
+              - { name: Logging__LogLevel__Default, value: { { $.Values.config.logLevel | quote } } }
+              { { - if eq $name "billing" } }
+              - { name: Kestrel__Endpoints__http__Url, value: "http://0.0.0.0:8080" }
+              - { name: Kestrel__Endpoints__grpc__Url, value: "http://0.0.0.0:8081" }
+              - { name: Billing__RenewalTimeoutSeconds, value: { { $settings.renewalTimeoutSeconds | quote } } }
+              - { name: Billing__TaxRate, value: { { $settings.taxRate | quote } } }
+              { { - else if eq $name "payments" } }
+              - { name: Gateway__DeclineAtOrAbove, value: { { $settings.declineAtOrAbove | quote } } }
+              - { name: Gateway__NoReplyAtOrAbove, value: { { $settings.noReplyAtOrAbove | quote } } }
+              { { - else } }
+              - { name: Api__BaseUrl, value: { { printf "http://%s:%v" (include "subs.fullname" $) $.Values.service.port | quote } } }
+              - { name: Relay__PollIntervalMs, value: { { $settings.pollIntervalMs | quote } } }
+              - { name: Relay__BatchSize, value: { { $settings.batchSize | quote } } }
+              { { - end } }
+              { { - with $.Values.config.otlpEndpoint } }
+              - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: { { . | quote } } }
+              - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc }
+              - { name: OTEL_SERVICE_NAME, value: { { $name } } }
+              { { - end } }
+          startupProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 10
+          resources:
+            { { - toYaml $.Values.s2s.resources | nindent 12 } }
+          volumeMounts: [ { name: tmp, mountPath: /tmp } ]
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+  { { - end } }
+  { { - end } }

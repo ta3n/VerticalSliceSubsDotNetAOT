@@ -1,4 +1,4 @@
-// Local orchestration with Aspire: PostgreSQL + Redis + RabbitMQ + migrator + API + billing/payments/relay.
+// Local orchestration with Aspire: PostgreSQL + Redis + RabbitMQ + migrator + API + billing/payments/relay + frontend.
 // The .NET projects run from source (JIT, debuggable) and all telemetry lands in the Aspire dashboard — and,
 // unless Observability:Enabled=false, also in Prometheus/Tempo/Loki behind Grafana (see Observability.cs).
 //
@@ -70,6 +70,14 @@ if (pgbouncer is not null) api.WaitFor(pgbouncer);
 api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc"))
     .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
     .WaitFor(services.Billing);
+
+// The Vite proxy stays server-side; the browser calls /api on the frontend's own origin.
+if (builder.ExecutionContext.IsRunMode)
+    builder.AddViteApp("frontend", "../frontend")
+        .WithNpm(installCommand: "ci")
+        .WithEndpoint("http", endpoint => endpoint.Port = 5173)
+        .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
+        .WaitFor(api);
 
 // Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
 // Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.

@@ -66,6 +66,7 @@ Local Kubernetes platform (versions pinned in `Taskfile.yml` and `deploy/`):
 
 * .NET 10 SDK (`dotnet --version`; local service verification used 10.0.401)
 * Docker (integration tests, the AOT smoke test and `docker compose`)
+* Node.js 22.12+ and npm on `PATH` (React frontend, automatically started by Aspire).
 * For Native AOT publishing on Linux: `clang` and `zlib1g-dev` (`sudo apt-get install clang zlib1g-dev`).
   If you only have `gcc`, add `-p:CppCompilerAndLinker=gcc`.
 * For the Kubernetes platform: [kind](https://kind.sigs.k8s.io), kubectl, [Task](https://taskfile.dev) v3 and Helm (`task tools:check`).
@@ -82,10 +83,37 @@ dotnet run --project src/SubscriptionManagement.Api --launch-profile http # API 
 
 Try the API with [SubscriptionManagement.http](SubscriptionManagement.http) (VS Code REST Client / Visual Studio).
 
+### React + TypeScript frontend
+
+The Vietnamese admin UI lives in [`src/frontend/`](src/frontend/README.md), with subscription lifecycle management, a
+plan catalog,
+invoice lookup and manual/automated renewals. Aspire starts it together with the backend and installs npm dependencies
+automatically (Node.js 22.12+ and npm must be on `PATH`):
+
+```bash
+dotnet run --project src/AppHost
+```
+
+Open **http://localhost:5173**, or select the `frontend` resource in the Aspire dashboard. The frontend's `/api` proxy
+uses the API endpoint supplied by Aspire. To run the frontend separately, start the backend above, then in another
+terminal:
+
+```bash
+cd src/frontend
+npm ci
+npm run dev                  # http://localhost:5173; /api proxies to localhost:5127
+```
+
+For the Compose API on port 8080, use `API_PROXY_TARGET=http://localhost:8080 npm run dev`.
+Run `npm test` for frontend tests and `npm run build` for the type-checked production bundle.
+See the [frontend guide](src/frontend/README.md) for proxy/deployment setup and the Billing/Payments requirements for
+automated renewals.
+
 ### With Aspire (one command, dashboard included)
 
 [Aspire](https://aspire.dev) 13.6.5 runs PostgreSQL 17, Redis 7, RabbitMQ, the migrator, the API and the three JIT services
-from source. The dashboard and orchestrator come from NuGet; a container engine and the .NET SDK are required.
+from source, plus the React frontend at `http://localhost:5173`. The dashboard and orchestrator come from NuGet;
+a container engine, the .NET SDK, Node.js and npm are required.
 The s2s topology is wired here; `compose.yaml` and the Helm chart still run the API/migrator/Postgres/Redis topology.
 
 ```bash
@@ -117,6 +145,7 @@ The long-running projects are health-checked on `/health/ready`; when monitoring
 | `billing`                                                 | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128`                                                                      |
 | `payments`                                                | Payment snapshot and event reads on `http://localhost:5129`                                                                                                  |
 | `relay`                                                   | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire                                                                                 |
+| `frontend`                                                | React + TypeScript Vite app at `http://localhost:5173`; installs npm dependencies and proxies `/api` to the Aspire API endpoint                              |
 | `k6-saga`                                                 | On-demand s2s scenario; waits for Billing, Payments and Relay                                                                                                |
 | `k6-mq`                                                   | On-demand message-broker load (see `mq` below); waits for Billing, Payments and Relay                                                                        |
 
@@ -551,10 +580,10 @@ podman compose down -v                 # also removes the database volume
 Override host ports/credentials with `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `OPENAPI_ENABLED`.
 The images are multi-stage (`--target api|migrator`), built with clang, run on `runtime-deps:10.0-noble-chiseled` (no shell), as the non-root `app` user (UID 1654).
 
-**Not yet covered:** compose orchestration, Helm/Kubernetes resources and CI service images for Billing, Payments,
-Relay and RabbitMQ are not added. The existing API/migrator images remain the packaged targets. Use Aspire for the
-s2s flows. Authentication/authorization, a real payment provider, cross-service production deployment and operator
-replay tooling are also outside this sample's current scope.
+**Compose remains API-only:** Billing, Payments, Relay and RabbitMQ are not included in `compose.yaml`.
+Helm deploys the complete application, including the static React frontend and renewal services. `Dockerfile.services`
+builds the three JIT images; `src/frontend/Dockerfile` builds the static frontend. Authentication/authorization,
+a real payment provider and operator replay tooling remain outside this sample's scope.
 
 ## Kubernetes (kind + Kong + Helm)
 
@@ -567,8 +596,15 @@ flowchart LR
     KG[Kong gateway]
   end
   subgraph subscriptions [ns subscriptions]
+    FE["React frontend · Nginx"]
     API["API pods (Rollout, HPA 2–4)<br/>init: migrator"] --> PG[("PostgreSQL 17<br/>StatefulSet + PVC")]
     API --> RD[(Redis 7)]
+    API -- gRPC --> B[Billing]
+    R[Relay] --> API
+    R <--> MQ[(RabbitMQ · PVC)]
+    B <--> MQ
+    MQ <--> P[Payments]
+    B & P --> PG
   end
   subgraph observability [ns observability]
     MON["Prometheus · Grafana · Loki · Tempo · Alloy"]
@@ -576,7 +612,8 @@ flowchart LR
   subgraph argo [ns argocd / argo-rollouts]
     AR["Argo CD · Argo Rollouts"]
   end
-  KG -- "subs.localhost / host-less" --> API
+  KG -- "/" --> FE
+  KG -- "/api/* + legacy API paths" --> API
   KG -- "grafana.localhost" --> MON
   KG -- "argocd.localhost · rollouts.localhost" --> AR
   REG[("kind-registry<br/>localhost:5001")] -. "images + OCI chart" .-> API
@@ -603,18 +640,42 @@ task down                # remove the app, Argo, monitoring and Kong (cluster an
 Other day-to-day tasks: `app:logs`, `app:migrator-logs`, `app:psql`, `app:restart`, `app:port-forward` (API on :8080, bypassing Kong),
 `kong:routes`, `monitoring:status`, `app:purge` (also deletes the PostgreSQL volume).
 
+### Existing OrbStack cluster: OCI + Argo CD
+
+For the existing cluster with Kong already installed:
+
+```bash
+kubectl config use-context orbstack
+DOCKER_CONTEXT=orbstack task argocd:install REGISTRY_MODE=cluster
+DOCKER_CONTEXT=orbstack task gitops:deploy REGISTRY_MODE=cluster TAG=oci-20261118
+DOCKER_CONTEXT=orbstack task app:test REGISTRY_MODE=cluster
+```
+
+This profile runs a persistent OCI registry at `localhost:30501`, publishes a chart with **all six application image
+digests**,
+and waits for Argo CD to be **Synced / Healthy at the published version**. Use a new tag after changing source.
+Argo reads charts through the registry's cluster Service; application resources keep release name `subs`.
+FE: **http://127.0.0.1:30080/**. Argo CD: **http://argocd.localhost:30080**.
+`task up` remains the kind setup; this OrbStack profile uses ordinary Deployments without Rollouts or the monitoring
+stack.
+The HTTP registry and application credentials are for a trusted local cluster.
+
+See [OCI/Argo CD deployment and renewal E2E evidence](docs/testing/frontend-argocd-oci-renewal.md) for the exact chart,
+six digests, data-preserving handoff, self-heal check and all three E2E cases.
+
 ### URLs and credentials
 
 All UIs go through Kong on port 9080 (browsers and curl resolve `*.localhost` to 127.0.0.1, no `/etc/hosts` entry needed). Credentials are local-only defaults.
 
-| What | URL | Login |
-|---|---|---|
-| API | `http://subs.localhost:9080` or `http://127.0.0.1:9080` (host-less rule) — Scalar UI at `/scalar` | — |
-| Grafana | `http://grafana.localhost:9080` (`task grafana:port-forward` → `:3000`) | `admin` / `grafana-dev-only` |
-| Argo CD | `http://argocd.localhost:9080` | `admin` / generated — `task argocd:open` prints it |
-| Argo Rollouts dashboard | `http://rollouts.localhost:9080/rollouts/subscriptions` | — |
-| Prometheus / Alertmanager | `task prometheus:port-forward` → `:9090`, `task alertmanager:port-forward` → `:9093` | — |
-| PostgreSQL | `task app:psql` | `subs` / `subs-dev-only`, database `subscriptions` |
+| What                      | URL                                                                                                                                                | Login                                              |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
+| React frontend            | `http://subs.localhost:9080/` or `http://127.0.0.1:9080/` (host-less rule)                                                                         | —                                                  |
+| API                       | Same origin, `/api/*` (prefix stripped by Kong); legacy `/subscriptions`, `/plans`, `/invoices`, `/health`, `/scalar`, `/openapi` remain available | —                                                  |
+| Grafana                   | `http://grafana.localhost:9080` (`task grafana:port-forward` → `:3000`)                                                                            | `admin` / `grafana-dev-only`                       |
+| Argo CD                   | `http://argocd.localhost:9080`                                                                                                                     | `admin` / generated — `task argocd:open` prints it |
+| Argo Rollouts dashboard   | `http://rollouts.localhost:9080/rollouts/subscriptions`                                                                                            | —                                                  |
+| Prometheus / Alertmanager | `task prometheus:port-forward` → `:9090`, `task alertmanager:port-forward` → `:9093`                                                               | —                                                  |
+| PostgreSQL                | `task app:psql`                                                                                                                                    | `subs` / `subs-dev-only`, database `subscriptions` |
 
 ### Helm chart
 
@@ -623,20 +684,31 @@ All UIs go through Kong on port 9080 (browsers and curl resolve `*.localhost` to
 * the API as a `Deployment`, or as an Argo `Rollout` when `rollout.enabled` (the local default). The migrator runs as an **init container**;
   its advisory lock makes concurrent replicas safe and the API never starts against an outdated schema;
 * PostgreSQL 17 (StatefulSet + PVC) and Redis 7 (cache only), each with an optional exporter sidecar;
-* an Ingress for `ingressClassName: kong` with KongPlugins: correlation-id on `X-Trace-Id`, rate-limiting, request-size-limiting (1 MB);
-* HPA, PDB, NetworkPolicies (API from Kong only, Postgres/Redis from the API only, exporters from `observability` only);
+* a non-root Nginx frontend Deployment/Service, with `/` routed to the UI and a separate `/api` Ingress stripping the
+  prefix before forwarding to the API;
+* Billing, Payments and Relay Deployments/Services, separate `billing`/`payments` databases and persistent RabbitMQ; API
+  outbox and Billing gRPC are wired within the cluster;
+* Kong routes with correlation-id on `X-Trace-Id`, rate-limiting and request-size-limiting (1 MB);
+* HPA, PDB and NetworkPolicies admitting Kong/test traffic, API → Billing, Relay → API, and the services'
+  database/broker traffic;
 * ServiceMonitor, PrometheusRule, a Grafana dashboard ConfigMap, an `AnalysisTemplate` for canaries, and a `helm test` pod.
 
 Defaults are in `values.yaml`, kind overrides in `values-local.yaml`. The local overrides raise Kong's rate limit (load tests come from one IP)
 and turn on OTLP export, exporters, monitoring resources, autoscaling (2–4 pods), network policies and the Rollout.
-The chart refuses to render if `(maxReplicas + 1 surge) × config.postgresMaxPoolSize` exceeds `postgresql.maxConnections − 3`
-(defaults: pool 30 per pod, `max_connections` 200), which would otherwise fail under load with `too many clients`.
+The chart refuses to render if API pools plus all three renewal service pools (including rolling-update surge) exceed
+`postgresql.maxConnections − 3`. The default budget is 150 connections against 197 available; the local HPA profile
+raises `maxConnections` to 300.
 Kong's own values are in [deploy/kong/values.yaml](deploy/kong/values.yaml) (NodePort 30080/30443, mapped to host 9080/9443 by [deploy/kind/cluster.yaml](deploy/kind/cluster.yaml)).
+
+For an existing local cluster without monitoring/Argo, use `values-cluster.yaml`.
+See [frontend + full renewal stack on Kubernetes](docs/testing/frontend-kubernetes-renewal.md) for build/deploy
+commands, Kong routes, credentials and rollback.
 
 ### Local image registry
 
 Images go through a local registry ([deploy/registry](deploy/registry), the `kind-registry` container on `localhost:5001`, `task registry:setup`).
-The host pushes to `localhost:5001/subscription-management[-migrator]`, and each kind node's containerd maps that name to the registry container over the
+The host pushes all six `subscription-management[-migrator|-frontend|-billing|-payments|-relay]` images to
+`localhost:5001`, and each kind node's containerd maps that name to the registry container over the
 `kind` network. Deployments pin images by **digest**, so a rebuilt `dev` tag always rolls out. The registry also stores the OCI Helm chart that Argo CD syncs.
 
 ### Test scripts against the cluster
@@ -671,13 +743,16 @@ flowchart LR
   RO -. "background AnalysisRun" .-> PR[(Prometheus)]
 ```
 
-* Every publish is a new chart version that pins both image digests, so the version Argo CD shows identifies exactly what runs.
+* Every publish is a new chart version that pins all six image digests, so the version Argo CD shows identifies exactly
+  what runs.
 * With `rollout.enabled` (values-local) the API is a `Rollout`: canary steps 25/50/75% with pauses, weight = share of canary pods
   (no traffic router; Kong balances across all pods). An `AnalysisTemplate` queries Prometheus for the **canary pods only**
   (`rollouts_pod_template_hash`, set from the pod label into the OTel resource): 5xx ratio ≤ 1% and p95 < 300 ms, health probes excluded.
   One failed measurement aborts the rollout and the stable version keeps serving.
 * `task app:deploy` (plain Helm) still works on a cluster without Argo CD; once the Application exists it refuses, because Argo CD would revert it.
-  `task gitops:adopt` hands an existing Helm release over to Argo CD without deleting anything.
+  `task gitops:adopt` applies the Application with annotation tracking, retaining Helm history and PVCs.
+  Argo CD owns desired state after handoff; retained Helm history is historical. Do not run Helm upgrades/rollbacks
+  while auto-sync manages the app.
 
 ### Monitoring (Grafana, Prometheus, Loki, Tempo)
 
@@ -721,6 +796,7 @@ src/SubscriptionManagement.Billing/    JIT gRPC quotes/status, EF Core renewal s
 src/SubscriptionManagement.Payments/   JIT Marten payment streams + inline snapshots, simulated gateway
 src/SubscriptionManagement.Relay/      JIT raw SQL outbox → Wolverine/RabbitMQ and broker → API HTTP
 src/AppHost/                           Aspire: Postgres, Redis, RabbitMQ, migrator, API, s2s services + dashboard
+src/frontend/                          React + TypeScript admin UI, Vite proxy, frontend tests (started by Aspire)
 src/AppHost/observability/             OTel Collector, Prometheus, Tempo, Loki configs + Grafana provisioning/dashboards
 src/SubscriptionManagement.ServiceDefaults/  shared OpenTelemetry defaults (logs, traces, metrics over OTLP)
 tests/SubscriptionManagement.UnitTests/         domain, validators, cursor codec, problem writer

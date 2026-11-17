@@ -1,0 +1,64 @@
+{ { - if .Values.frontend.enabled } }
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { include "subs.fullname" . } }-frontend
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "frontend") | nindent 4 }}
+spec:
+  replicas: { { .Values.frontend.replicaCount } }
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" . "component" "frontend") | nindent 6 } }
+  template:
+    metadata:
+      labels:
+        { { - include "subs.labels" (dict "ctx" . "component" "frontend") | nindent 8 } }
+    spec:
+      serviceAccountName: { { include "subs.serviceAccountName" . } }
+      automountServiceAccountToken: false
+      { { - with .Values.imagePullSecrets } }
+      imagePullSecrets:
+        { { - toYaml . | nindent 8 } }
+      { { - end } }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: frontend
+          image: { { include "subs.imageRef" (dict "ctx" . "image" .Values.frontend.image) } }
+          imagePullPolicy: { { .Values.frontend.image.pullPolicy } }
+          securityContext:
+            { { - toYaml .Values.securityContext | nindent 12 } }
+          ports: [ { name: http, containerPort: 8080 } ]
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 10
+          resources:
+            { { - toYaml .Values.frontend.resources | nindent 12 } }
+          volumeMounts: [ { name: tmp, mountPath: /tmp } ]
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 32Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: { { include "subs.fullname" . } }-frontend
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "frontend") | nindent 4 }}
+spec:
+  ports: [ { name: http, port: 80, targetPort: http } ]
+  selector:
+    { { - include "subs.selectorLabels" (dict "ctx" . "component" "frontend") | nindent 4 } }
+  { { - end } }

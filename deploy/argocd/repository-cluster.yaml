@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-registry-charts
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: cluster-registry-charts
+  type: helm
+  url: oci-registry.registry.svc.cluster.local:5000/charts
+  enableOCI: "true"
+  insecureOCIForceHttp: "true"

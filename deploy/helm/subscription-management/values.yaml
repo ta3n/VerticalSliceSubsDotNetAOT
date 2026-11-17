@@ -83,6 +83,54 @@ extraEnv: []
 #  - name: DOTNET_GCHeapHardLimitPercent
 #    value: "75"
 
+# ---- Static React frontend (Kong serves / here and strips /api before forwarding to the API) ----
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: subscription-management-frontend
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+
+# ---- Renewal services (JIT) and durable messaging ----
+s2s:
+  enabled: true
+  replicaCount: 1
+  postgresMaxPoolSize: 10
+  # Disable when an external database administrator has already created billing/payments databases.
+  provisionDatabases: true
+  billing:
+    image: { repository: subscription-management-billing, tag: "", digest: "", pullPolicy: IfNotPresent }
+    renewalTimeoutSeconds: 30
+    taxRate: "0.10"
+  payments:
+    image: { repository: subscription-management-payments, tag: "", digest: "", pullPolicy: IfNotPresent }
+    declineAtOrAbove: "5000"
+    noReplyAtOrAbove: "9000"
+  relay:
+    image: { repository: subscription-management-relay, tag: "", digest: "", pullPolicy: IfNotPresent }
+    pollIntervalMs: 250
+    batchSize: 100
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 768Mi }
+  rabbitmq:
+    image: rabbitmq:4.3-management
+    auth:
+      username: subs
+      password: subs-dev-only
+      existingSecret: ""  # keys: rabbitmq-password, connection-string (full AMQP URI)
+    persistence:
+      size: 2Gi
+      storageClass: ""
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 512Mi }
+
 # ---- Schema migrator ----
 # Runs as an init container of every API pod: the API never starts against an outdated schema, and the
 # migrator's pg_advisory_lock serialises concurrent replicas (a no-op once the schema is current).

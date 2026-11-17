@@ -19,6 +19,11 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "subs.selectorLabels" (dict "ctx" . "component" "test") | nindent 14 }}
+        { { - if .Values.s2s.enabled } }
+        - podSelector:
+            matchLabels:
+              { { - include "subs.selectorLabels" (dict "ctx" . "component" "relay") | nindent 14 } }
+        { { - end } }
       ports:
         - port: http
 {{- if .Values.postgresql.enabled }}
@@ -39,6 +44,15 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "subs.selectorLabels" (dict "ctx" . "component" "api") | nindent 14 }}
+        { { - if .Values.s2s.enabled } }
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: { { .Release.Name } }
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [ billing, payments, relay ]
+        { { - end } }
       ports:
         - port: postgresql
     {{- if .Values.postgresql.metrics.enabled }}
@@ -80,5 +94,79 @@ spec:
       ports:
         - port: metrics
     {{- end }}
+  { { - end } }
+  { { - if .Values.frontend.enabled } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: { { include "subs.fullname" . } }-frontend
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" . "component" "frontend") | nindent 6 } }
+  policyTypes: [ Ingress ]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: { { .Values.networkPolicy.kongNamespace } }
+        - podSelector:
+            matchLabels:
+              { { - include "subs.selectorLabels" (dict "ctx" . "component" "test") | nindent 14 } }
+      ports: [ { port: http } ]
+  { { - end } }
+  { { - if .Values.s2s.enabled } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: { { include "subs.fullname" . } }-messaging
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "messaging") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" . "component" "messaging") | nindent 6 } }
+  policyTypes: [ Ingress ]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: { { .Release.Name } }
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [ billing, payments, relay ]
+      ports: [ { port: amqp } ]
+  { { - range $name := list "billing" "payments" "relay" } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: { { include "subs.fullname" $ } }-{{ $name }}
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" $name) | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" $ "component" $name) | nindent 6 } }
+  policyTypes: [ Ingress ]
+  ingress:
+    { { - if eq $name "billing" } }
+    - from:
+        - podSelector:
+            matchLabels:
+              { { - include "subs.selectorLabels" (dict "ctx" $ "component" "api") | nindent 14 } }
+      ports: [ { port: grpc } ]
+    { { - end } }
+    - from:
+        - podSelector:
+            matchLabels:
+              { { - include "subs.selectorLabels" (dict "ctx" $ "component" "test") | nindent 14 } }
+      ports: [ { port: http } ]
+  { { - end } }
 {{- end }}
 {{- end }}

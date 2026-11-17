@@ -8,6 +8,8 @@ configs:
     # Kong terminates the client connection and talks plain HTTP to argocd-server.
     server.insecure: true
   cm:
+    # Helm releaseName=subs differs from the Application name; selectors must keep the release's instance label.
+    application.resourceTrackingMethod: annotation
     # Re-check the OCI chart repository every minute (default 3 min); `task gitops:deploy` also forces a hard refresh.
     timeout.reconciliation: 60s
     timeout.reconciliation.jitter: 10s

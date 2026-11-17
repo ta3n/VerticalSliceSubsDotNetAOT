@@ -1,5 +1,5 @@
 # The API stack as an Argo CD Application, sourced from the chart published to the local registry (task app:publish).
-# Each publish is a new prerelease version (0.1.0-dev.<timestamp>) that pins both image digests in values-release.yaml,
+# Each publish is a new prerelease version (0.2.0-dev.<timestamp>) that pins all six image digests in values-release.yaml,
 # so the version Argo CD deploys fully identifies what runs; ">=0.1.0-0" always resolves to the newest one.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

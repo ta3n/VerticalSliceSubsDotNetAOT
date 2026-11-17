@@ -6,4 +6,5 @@ artifacts/
 .github/
 docs/
 tests/
+src/frontend/
 *.md

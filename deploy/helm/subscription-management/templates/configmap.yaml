@@ -9,6 +9,10 @@ data:
   Logging__LogLevel__Default: {{ .Values.config.logLevel | quote }}
   Cache__SubscriptionTtl: {{ .Values.config.cacheSubscriptionTtl | quote }}
   OpenApi__Enabled: {{ .Values.config.openApiEnabled | quote }}
+  { { - if .Values.s2s.enabled } }
+  Outbox__Enabled: "true"
+  Billing__GrpcAddress: { { printf "http://%s-billing:8081" (include "subs.fullname" .) | quote } }
+  { { - end } }
   {{- with (include "subs.redis.connectionString" .) }}
   ConnectionStrings__Redis: {{ . | quote }}
   {{- end }}

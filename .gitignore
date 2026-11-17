@@ -66,3 +66,13 @@ nunit-*.xml
 # Local SonarQube credentials (scripts/sonar.sh) and scanner work dir
 .sonar/
 .sonarqube/
+
+# React frontend
+node_modules/
+dist/
+*.tsbuildinfo
+src/frontend/.env
+src/frontend/.env.*
+!src/frontend/.env.example
+output/playwright/
+.playwright-cli/

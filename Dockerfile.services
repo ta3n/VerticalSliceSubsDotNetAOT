@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+# The three JIT services use Wolverine/Roslyn runtime compilation; keep them separate from the AOT API build.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY Directory.Build.props ./
+COPY src/ src/
+RUN dotnet publish src/SubscriptionManagement.Billing -c Release --no-self-contained -o /out/billing \
+ && dotnet publish src/SubscriptionManagement.Payments -c Release --no-self-contained -o /out/payments \
+ && dotnet publish src/SubscriptionManagement.Relay -c Release --no-self-contained -o /out/relay
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS runtime
+WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080
+USER $APP_UID
+EXPOSE 8080
+
+FROM runtime AS billing
+COPY --from=build /out/billing/ ./
+EXPOSE 8081
+ENTRYPOINT ["dotnet", "SubscriptionManagement.Billing.dll"]
+
+FROM runtime AS payments
+COPY --from=build /out/payments/ ./
+ENTRYPOINT ["dotnet", "SubscriptionManagement.Payments.dll"]
+
+FROM runtime AS relay
+COPY --from=build /out/relay/ ./
+ENTRYPOINT ["dotnet", "SubscriptionManagement.Relay.dll"]

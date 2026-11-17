@@ -1,0 +1,13 @@
+# Lightweight local cluster profile (OrbStack or kind); no monitoring/Argo CRDs required.
+# Build/load these image tags first, or override each repository/tag with your registry references.
+image:
+  tag: cluster-e2e
+config:
+  openApiEnabled: true
+ingress:
+  hosts:
+    - host: subs.localhost
+      paths: [ { path: /, pathType: Prefix } ]
+    - paths: [ { path: /, pathType: Prefix } ]
+networkPolicy:
+  enabled: true

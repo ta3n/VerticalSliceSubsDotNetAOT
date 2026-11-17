@@ -1,0 +1,95 @@
+{ { - if .Values.s2s.enabled } }
+apiVersion: v1
+kind: Service
+metadata:
+  name: { { include "subs.fullname" . } }-messaging
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "messaging") | nindent 4 }}
+spec:
+  clusterIP: None
+  ports: [ { name: amqp, port: 5672, targetPort: amqp } ]
+  selector:
+    { { - include "subs.selectorLabels" (dict "ctx" . "component" "messaging") | nindent 4 } }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: { { include "subs.fullname" . } }-messaging
+  labels:
+    {{- include "subs.labels" (dict "ctx" . "component" "messaging") | nindent 4 }}
+spec:
+  serviceName: { { include "subs.fullname" . } }-messaging
+  replicas: 1
+  selector:
+    matchLabels:
+      { { - include "subs.selectorLabels" (dict "ctx" . "component" "messaging") | nindent 6 } }
+  template:
+    metadata:
+      annotations:
+        checksum/secret: { { include (print $.Template.BasePath "/messaging-secret.yaml") . | sha256sum } }
+      labels:
+        { { - include "subs.labels" (dict "ctx" . "component" "messaging") | nindent 8 } }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+      # fsGroup can add group access on a reused PVC; Erlang requires an owner-only cookie.
+      initContainers:
+        - name: cookie-permissions
+          image: { { .Values.s2s.rabbitmq.image | quote } }
+          securityContext:
+            { { - toYaml .Values.securityContext | nindent 12 } }
+          command: [ sh, -ec ]
+          args:
+            - if [ -f /var/lib/rabbitmq/.erlang.cookie ]; then chmod 600 /var/lib/rabbitmq/.erlang.cookie; fi
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/rabbitmq }
+      containers:
+        - name: rabbitmq
+          image: { { .Values.s2s.rabbitmq.image | quote } }
+          securityContext:
+            { { - toYaml .Values.securityContext | nindent 12 } }
+          ports: [ { name: amqp, containerPort: 5672 } ]
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: { { .Values.s2s.rabbitmq.auth.username | quote } }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef: { name: { { include "subs.messaging.secretName" . } }, key: rabbitmq-password }
+          startupProbe:
+            exec: { command: [ rabbitmq-diagnostics, -q, ping ] }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            exec: { command: [ rabbitmq-diagnostics, -q, check_running ] }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: { command: [ rabbitmq-diagnostics, -q, ping ] }
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            { { - toYaml .Values.s2s.rabbitmq.resources | nindent 12 } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/rabbitmq }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        { { - with .Values.s2s.rabbitmq.persistence.storageClass } }
+        storageClassName: { { . | quote } }
+        { { - end } }
+        resources:
+          requests:
+            storage: { { .Values.s2s.rabbitmq.persistence.size } }
+  { { - end } }

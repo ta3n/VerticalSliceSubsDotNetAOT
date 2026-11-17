@@ -1,0 +1,40 @@
+{ { - if and .Values.frontend.enabled .Values.ingress.enabled } }
+  { { - range $route := list (dict "name" "frontend" "path" "/" "strip" "false" "service" (printf "%s-frontend" (include "subs.fullname" $))) (dict "name" "api" "path" "/api" "strip" "true" "service" (include "subs.fullname" $)) } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: { { include "subs.fullname" $ } }-{{ $route.name }}-route
+  labels:
+    {{- include "subs.labels" (dict "ctx" $ "component" $route.name) | nindent 4 }}
+  annotations:
+    konghq.com/strip-path: { { $route.strip | quote } }
+    konghq.com/preserve-host: "true"
+    { { - with (include "subs.kong.pluginNames" $) } }
+    konghq.com/plugins: { { . | quote } }
+    { { - end } }
+    { { - with $.Values.ingress.annotations } }
+    { { - toYaml . | nindent 4 } }
+    { { - end } }
+spec:
+  ingressClassName: { { $.Values.ingress.className } }
+  { { - with $.Values.ingress.tls } }
+  tls:
+    { { - toYaml . | nindent 4 } }
+  { { - end } }
+  rules:
+    { { - range $.Values.ingress.hosts } }
+    - http:
+        paths:
+          - path: { { $route.path } }
+            pathType: Prefix
+            backend:
+              service:
+                name: { { $route.service } }
+                port: { name: http }
+      { { - with .host } }
+      host: { { . | quote } }
+      { { - end } }
+    { { - end } }
+  { { - end } }
+  { { - end } }

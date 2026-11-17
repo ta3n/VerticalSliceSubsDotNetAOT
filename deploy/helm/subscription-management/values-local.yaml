@@ -7,6 +7,17 @@ migrator:
   image:
     repository: localhost:5001/subscription-management-migrator
     tag: dev
+frontend:
+  image:
+    repository: localhost:5001/subscription-management-frontend
+    tag: dev
+s2s:
+  billing:
+    image: { repository: localhost:5001/subscription-management-billing, tag: dev }
+  payments:
+    image: { repository: localhost:5001/subscription-management-payments, tag: dev }
+  relay:
+    image: { repository: localhost:5001/subscription-management-relay, tag: dev }
 
 ingress:
   hosts:
@@ -36,6 +47,7 @@ metrics:
   prometheusRule: { enabled: true }
   grafanaDashboard: { enabled: true }
 postgresql:
+  maxConnections: 300        # API HPA + the three renewal services, including rolling-update surge
   metrics: { enabled: true }
 redis:
   metrics: { enabled: true }
