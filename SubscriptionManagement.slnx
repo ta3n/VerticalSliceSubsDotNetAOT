@@ -6,6 +6,7 @@
         <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"/>
         <Project Path="src/SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj"/>
         <Project Path="src/SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj"/>
+        <Project Path="src/SubscriptionManagement.Reporting/SubscriptionManagement.Reporting.csproj"/>
         <Project Path="src/SubscriptionManagement.Secrets/SubscriptionManagement.Secrets.csproj"/>
         <Project Path="src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj"/>
         <Project Path="src/SubscriptionManagement.Api/SubscriptionManagement.Api.csproj"/>
@@ -14,6 +15,7 @@
         <Project Path="tests/SubscriptionManagement.Billing.Tests/SubscriptionManagement.Billing.Tests.csproj"/>
         <Project Path="tests/SubscriptionManagement.IntegrationTests/SubscriptionManagement.IntegrationTests.csproj"/>
         <Project Path="tests/SubscriptionManagement.Payments.Tests/SubscriptionManagement.Payments.Tests.csproj"/>
+        <Project Path="tests/SubscriptionManagement.Reporting.Tests/SubscriptionManagement.Reporting.Tests.csproj"/>
         <Project Path="tests/SubscriptionManagement.Relay.Tests/SubscriptionManagement.Relay.Tests.csproj"/>
         <Project Path="tests/SubscriptionManagement.SystemTests/SubscriptionManagement.SystemTests.csproj"/>
         <Project Path="tests/SubscriptionManagement.UnitTests/SubscriptionManagement.UnitTests.csproj"/>

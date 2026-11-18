@@ -3,6 +3,7 @@ namespace SubscriptionManagement.Contracts;
 // Messages exchanged over the broker. Each type has exactly one consuming service (named on the right): conventional
 // routing gives every type its own exchange and queue, so a second consumer would compete for the same queue.
 // "RenewalSagaId" is the invoice id; Wolverine finds the saga through that member name.
+// Kafka (see KafkaTopics) is the exception: copies of the facts also go to a topic that Reporting reads, outside this rule.
 
 // API outbox -> Relay -> broker (facts)
 public sealed record InvoiceIssued(

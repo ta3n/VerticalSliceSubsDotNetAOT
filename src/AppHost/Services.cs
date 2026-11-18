@@ -32,7 +32,10 @@ internal static class Services
         // FOR UPDATE SKIP LOCKED, so instances take different rows.
         var replicas = builder.Configuration.Required<int>("Replicas");
 
-        var billing = builder.AddDotnetProject("billing", "../SubscriptionManagement.Billing/SubscriptionManagement.Billing.csproj")
+        var billing = builder.AddDotnetProject(
+                "billing",
+                "../SubscriptionManagement.Billing/SubscriptionManagement.Billing.csproj"
+            )
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(billingDb, servicePoolSize))
             .WithReferenceRelationship(billingDb)
             .WithReference(messaging)
@@ -47,7 +50,10 @@ internal static class Services
             )
             .WithEnvironment("Billing__TaxRate", builder.Configuration.Required<string>("Billing:TaxRate"));
 
-        var payments = builder.AddDotnetProject("payments", "../SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj")
+        var payments = builder.AddDotnetProject(
+                "payments",
+                "../SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj"
+            )
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(paymentsDb, servicePoolSize))
             .WithReferenceRelationship(paymentsDb)
             .WithReference(messaging)
@@ -65,7 +71,10 @@ internal static class Services
                 builder.Configuration.Required<string>("Gateway:NoReplyAtOrAbove")
             );
 
-        var relay = builder.AddDotnetProject("relay", "../SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj")
+        var relay = builder.AddDotnetProject(
+                "relay",
+                "../SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj"
+            )
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(database, servicePoolSize))
             .WithReferenceRelationship(database)
             .WithReference(messaging)
@@ -84,7 +93,7 @@ internal static class Services
         return new S2SServices(messaging, billing, payments, relay);
     }
 
-    private static ReferenceExpression ConnectionString(
+    internal static ReferenceExpression ConnectionString(
         IResourceBuilder<PostgresDatabaseResource> database,
         int poolSize
     )

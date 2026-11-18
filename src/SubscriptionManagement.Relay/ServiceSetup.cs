@@ -1,3 +1,4 @@
+using JasperFx;
 using JasperFx.Core;
 using JasperFx.Resources;
 using Microsoft.EntityFrameworkCore;
@@ -5,11 +6,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 using RabbitMQ.Client;
+using SubscriptionManagement.Contracts;
 using SubscriptionManagement.Relay.Features.Outbox;
 using SubscriptionManagement.Relay.Infrastructure;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
 using Wolverine.ErrorHandling;
+using Wolverine.Kafka;
 using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
@@ -53,6 +56,10 @@ public static class ServiceSetup
         // The consumer span becomes a child of the publisher span, which is what Tempo pairs into a messaging edge.
         RabbitMQActivitySource.TracingOptions.UsePublisherAsParent = true;
 
+        // Off without ConnectionStrings:kafka: the Relay then only feeds RabbitMQ.
+        var kafkaEnabled =
+            !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString(KafkaTopics.ConnectionName));
+
         builder.Services.AddWolverine(
             opts =>
             {
@@ -81,10 +88,23 @@ public static class ServiceSetup
                 // ConnectionStrings:messaging. One fanout exchange and one queue per message type, named after the type.
                 opts.UseRabbitMqUsingNamedConnection("messaging").AutoProvision().UseConventionalRouting();
 
+                if (kafkaEnabled)
+                {
+                    // ConnectionStrings:kafka. The facts also go to the event stream that Reporting reads. A message
+                    // type with an explicit rule is routed only by its explicit rules, so its RabbitMQ route is restated.
+                    opts.UseKafkaUsingNamedConnection(KafkaTopics.ConnectionName).AutoProvision();
+                    foreach (var fact in new[] { typeof(InvoiceIssued), typeof(SubscriptionCanceled) })
+                    {
+                        opts.PublishMessage(fact)
+                            .ToRabbitExchange(fact.FullName!, exchange => exchange.BindQueue(fact.FullName!));
+                        opts.PublishMessage(fact).ToKafkaTopic(KafkaTopics.SubscriptionEvents);
+                    }
+                }
+
                 // The envelope tables and the broker objects are created at startup.
                 opts.Services.AddResourceSetupOnStartup();
 
-                opts.OnException<JasperFx.ConcurrencyException>()
+                opts.OnException<ConcurrencyException>()
                     .RetryWithCooldown(50.Milliseconds(), 250.Milliseconds(), 1.Seconds());
                 // Database or API outage: retry in place, then reschedule; after that the envelope is dead-lettered.
                 opts.OnException<NpgsqlException>()

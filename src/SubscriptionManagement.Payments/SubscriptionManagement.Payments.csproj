@@ -16,6 +16,7 @@
         <PackageReference Include="Marten" Version="9.59.0"/>
         <PackageReference Include="WolverineFx" Version="6.64.0"/>
         <PackageReference Include="WolverineFx.Marten" Version="6.64.0"/>
+        <PackageReference Include="WolverineFx.Kafka" Version="6.64.0"/>
         <PackageReference Include="WolverineFx.RabbitMQ" Version="6.64.0"/>
         <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.64.0"/>
     </ItemGroup>

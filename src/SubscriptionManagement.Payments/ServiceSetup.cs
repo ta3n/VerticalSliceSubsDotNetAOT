@@ -1,3 +1,4 @@
+using JasperFx;
 using JasperFx.Core;
 using JasperFx.Events.Projections;
 using JasperFx.OpenTelemetry;
@@ -14,6 +15,7 @@ using SubscriptionManagement.Payments.Features.Payments.GetPaymentEvents;
 using SubscriptionManagement.Payments.Infrastructure;
 using Wolverine;
 using Wolverine.ErrorHandling;
+using Wolverine.Kafka;
 using Wolverine.Marten;
 using Wolverine.RabbitMQ;
 
@@ -64,6 +66,10 @@ public static class ServiceSetup
             .UseLightweightSessions()
             .IntegrateWithWolverine();
 
+        // Off without ConnectionStrings:kafka: Payments then only talks RabbitMQ.
+        var kafkaEnabled =
+            !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString(KafkaTopics.ConnectionName));
+
         builder.Services.AddWolverine(
             opts =>
             {
@@ -96,12 +102,22 @@ public static class ServiceSetup
                         exchange => exchange.BindQueue(typeof(PaymentRefunded).FullName!)
                     );
 
+                if (kafkaEnabled)
+                {
+                    // ConnectionStrings:kafka. The payment outcomes also go to the event stream that Reporting reads;
+                    // their RabbitMQ routes above are explicit rules too, so both sets apply.
+                    opts.UseKafkaUsingNamedConnection(KafkaTopics.ConnectionName).AutoProvision();
+                    opts.PublishMessage<PaymentSucceeded>().ToKafkaTopic(KafkaTopics.SubscriptionEvents);
+                    opts.PublishMessage<PaymentFailed>().ToKafkaTopic(KafkaTopics.SubscriptionEvents);
+                    opts.PublishMessage<PaymentRefunded>().ToKafkaTopic(KafkaTopics.SubscriptionEvents);
+                }
+
                 // The Marten schema, the envelope tables and the broker objects are created at startup.
                 opts.Services.AddResourceSetupOnStartup();
 
                 // Two messages racing on one stream (a duplicate, or a cancel against its charge): the loser of the version
                 // check, or of the insert when both start the stream, runs again and decides on what the winner stored.
-                opts.OnException<JasperFx.ConcurrencyException>()
+                opts.OnException<ConcurrencyException>()
                     .Or<ExistingStreamIdCollisionException>()
                     .RetryWithCooldown(50.Milliseconds(), 250.Milliseconds(), 1.Seconds());
                 // Database outage: retry in place, then reschedule; after that the envelope is dead-lettered.

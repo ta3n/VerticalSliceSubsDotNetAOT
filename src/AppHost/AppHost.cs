@@ -9,6 +9,7 @@
 // Operational settings (connection limits, ports, load-test sizes) live in appsettings.json; see Settings.cs.
 
 using AppHost;
+using Aspire.Hosting.Dotnet;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var (maxConnections, apiPoolSize, servicePoolSize) = builder.Configuration.PostgresConnectionLimits();
@@ -42,7 +43,10 @@ var stack = builder.Configuration.Required<bool>("Observability:Enabled")
     : null;
 
 // The services read ConnectionStrings:Postgres / ConnectionStrings:Redis, hence the explicit connection names.
-var migrator = builder.AddDotnetProject("migrator", "../SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj")
+var migrator = builder.AddDotnetProject(
+        "migrator",
+        "../SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"
+    )
     .WithReference(database, "Postgres")
     .WaitFor(database);
 
@@ -55,7 +59,10 @@ var apiPostgres = pgbouncer is null
     )
     : PostgresCluster.ApiConnectionString(pgbouncer, postgres, database, apiPoolSize);
 
-var api = builder.AddDotnetProject("subscription-management", "../SubscriptionManagement.Api/SubscriptionManagement.Api.csproj")
+var api = builder.AddDotnetProject(
+        "subscription-management",
+        "../SubscriptionManagement.Api/SubscriptionManagement.Api.csproj"
+    )
     .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
     .WithReferenceRelationship(database)
     .WaitFor(database)
@@ -71,6 +78,9 @@ var api = builder.AddDotnetProject("subscription-management", "../SubscriptionMa
     .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "Scalar API reference" });
 
 var services = builder.AddS2SServices(postgres, database, migrator, api, servicePoolSize);
+var reporting = builder.Configuration.Required<bool>("Kafka:Enabled")
+    ? builder.AddEventStream(postgres, services, servicePoolSize)
+    : null;
 if (pgbouncer is not null) api.WaitFor(pgbouncer);
 api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc"))
     .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
@@ -109,13 +119,15 @@ if (stack is not null)
     services.Billing.WaitFor(stack.Collector);
     services.Payments.WaitFor(stack.Collector);
     services.Relay.WaitFor(stack.Collector);
+    reporting?.WaitFor(stack.Collector);
 }
 
 // k6 scenarios from scripts/*-test.js as on-demand resources (▶ in the dashboard); see LoadTests.cs.
 builder.AddK6Suite(api, stack, services);
 
 if (stack is not null && builder.ExecutionContext.IsPublishMode)
-    foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay })
+    foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay, reporting }
+        .OfType<IResourceBuilder<DotnetProjectResource>>())
         project.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", stack.Collector.GetEndpoint("http"))
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
 
