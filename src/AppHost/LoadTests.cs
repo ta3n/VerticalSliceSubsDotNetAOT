@@ -1,3 +1,5 @@
+using Aspire.Hosting.Dotnet;
+
 namespace AppHost;
 
 /// <summary>
@@ -39,7 +41,7 @@ internal static class LoadTests
 
     public static void AddK6Suite(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<ProjectResource> api,
+        IResourceBuilder<DotnetProjectResource> api,
         ObservabilityStack? stack,
         S2SServices services
     )

@@ -1,6 +1,10 @@
+using SubscriptionManagement.Secrets;
 using SubscriptionManagement.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Secrets of the Bitwarden project become configuration (only when the AppHost enabled Bitwarden).
+builder.AddBitwardenSecrets();
 
 builder.Logging.AddJsonConsole(o => o.IncludeScopes = true);
 

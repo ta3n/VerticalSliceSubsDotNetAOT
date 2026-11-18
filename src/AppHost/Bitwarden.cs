@@ -1,3 +1,5 @@
+using Aspire.Hosting.Dotnet;
+
 namespace AppHost;
 
 /// <summary>
@@ -28,8 +30,8 @@ internal static class Bitwarden
     /// Gives the project the client settings (<c>Aspire:Bitwarden:SecretManager:bitwarden:*</c>) and holds it back until
     /// the one-shot provisioning of the project and its managed secrets has finished.
     /// </summary>
-    public static IResourceBuilder<ProjectResource> WithBitwarden(
-        this IResourceBuilder<ProjectResource> project,
+    public static IResourceBuilder<DotnetProjectResource> WithBitwarden(
+        this IResourceBuilder<DotnetProjectResource> project,
         IResourceBuilder<BitwardenSecretManagerResource> bitwarden
     )
     {

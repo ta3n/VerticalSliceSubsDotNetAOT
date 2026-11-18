@@ -1,12 +1,12 @@
-using Projects;
+using Aspire.Hosting.Dotnet;
 
 namespace AppHost;
 
 internal sealed record S2SServices(
     IResourceBuilder<RabbitMQServerResource> Messaging,
-    IResourceBuilder<ProjectResource> Billing,
-    IResourceBuilder<ProjectResource> Payments,
-    IResourceBuilder<ProjectResource> Relay
+    IResourceBuilder<DotnetProjectResource> Billing,
+    IResourceBuilder<DotnetProjectResource> Payments,
+    IResourceBuilder<DotnetProjectResource> Relay
 );
 
 internal static class Services
@@ -15,8 +15,8 @@ internal static class Services
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<PostgresServerResource> postgres,
         IResourceBuilder<PostgresDatabaseResource> database,
-        IResourceBuilder<ProjectResource> migrator,
-        IResourceBuilder<ProjectResource> api,
+        IResourceBuilder<DotnetProjectResource> migrator,
+        IResourceBuilder<DotnetProjectResource> api,
         int servicePoolSize
     )
     {
@@ -32,7 +32,7 @@ internal static class Services
         // FOR UPDATE SKIP LOCKED, so instances take different rows.
         var replicas = builder.Configuration.Required<int>("Replicas");
 
-        var billing = builder.AddProject<SubscriptionManagement_Billing>("billing")
+        var billing = builder.AddDotnetProject("billing", "../SubscriptionManagement.Billing/SubscriptionManagement.Billing.csproj")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(billingDb, servicePoolSize))
             .WithReferenceRelationship(billingDb)
             .WithReference(messaging)
@@ -47,7 +47,7 @@ internal static class Services
             )
             .WithEnvironment("Billing__TaxRate", builder.Configuration.Required<string>("Billing:TaxRate"));
 
-        var payments = builder.AddProject<SubscriptionManagement_Payments>("payments")
+        var payments = builder.AddDotnetProject("payments", "../SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(paymentsDb, servicePoolSize))
             .WithReferenceRelationship(paymentsDb)
             .WithReference(messaging)
@@ -65,7 +65,7 @@ internal static class Services
                 builder.Configuration.Required<string>("Gateway:NoReplyAtOrAbove")
             );
 
-        var relay = builder.AddProject<SubscriptionManagement_Relay>("relay")
+        var relay = builder.AddDotnetProject("relay", "../SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj")
             .WithEnvironment("ConnectionStrings__Postgres", ConnectionString(database, servicePoolSize))
             .WithReferenceRelationship(database)
             .WithReference(messaging)

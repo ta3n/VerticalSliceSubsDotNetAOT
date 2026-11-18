@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\SubscriptionManagement.Contracts\SubscriptionManagement.Contracts.csproj"/>
+        <ProjectReference Include="..\SubscriptionManagement.Secrets\SubscriptionManagement.Secrets.csproj"/>
         <ProjectReference Include="..\SubscriptionManagement.ServiceDefaults\SubscriptionManagement.ServiceDefaults.csproj"/>
     </ItemGroup>
 

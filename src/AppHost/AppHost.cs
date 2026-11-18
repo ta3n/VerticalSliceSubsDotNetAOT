@@ -9,7 +9,6 @@
 // Operational settings (connection limits, ports, load-test sizes) live in appsettings.json; see Settings.cs.
 
 using AppHost;
-using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var (maxConnections, apiPoolSize, servicePoolSize) = builder.Configuration.PostgresConnectionLimits();
@@ -30,6 +29,12 @@ var pgbouncer = builder.Configuration.Required<bool>("PgBouncer:Enabled") ? buil
 var redis = builder.AddRedis("redis")
     .WithImageTag("7-alpine");
 
+// Local tooling only (kept out of published manifests): RedisInsight UI and redis-cli in the dashboard terminal.
+if (builder.ExecutionContext.IsRunMode)
+{
+    redis.WithRedisInsight().WithRepl();
+}
+
 // Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry. Declared before
 // the projects: the Kubernetes publisher resolves the collector's OTLP endpoint for each project in model order.
 var stack = builder.Configuration.Required<bool>("Observability:Enabled")
@@ -37,7 +42,7 @@ var stack = builder.Configuration.Required<bool>("Observability:Enabled")
     : null;
 
 // The services read ConnectionStrings:Postgres / ConnectionStrings:Redis, hence the explicit connection names.
-var migrator = builder.AddProject<SubscriptionManagement_Migrator>("migrator")
+var migrator = builder.AddDotnetProject("migrator", "../SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj")
     .WithReference(database, "Postgres")
     .WaitFor(database);
 
@@ -50,7 +55,7 @@ var apiPostgres = pgbouncer is null
     )
     : PostgresCluster.ApiConnectionString(pgbouncer, postgres, database, apiPoolSize);
 
-var api = builder.AddProject<SubscriptionManagement_Api>("subscription-management")
+var api = builder.AddDotnetProject("subscription-management", "../SubscriptionManagement.Api/SubscriptionManagement.Api.csproj")
     .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
     .WithReferenceRelationship(database)
     .WaitFor(database)
@@ -78,6 +83,10 @@ if (builder.ExecutionContext.IsRunMode)
         .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
         .WaitFor(api);
+
+// Local entry point in front of the API (run mode only: the Kubernetes publisher is not set up for it, see Gateway.cs).
+if (builder.ExecutionContext.IsRunMode)
+    builder.AddGateway(api).WaitFor(api);
 
 // Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
 // Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.

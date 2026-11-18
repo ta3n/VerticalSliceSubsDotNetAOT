@@ -6,6 +6,7 @@
         <Project Path="src/SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"/>
         <Project Path="src/SubscriptionManagement.Payments/SubscriptionManagement.Payments.csproj"/>
         <Project Path="src/SubscriptionManagement.Relay/SubscriptionManagement.Relay.csproj"/>
+        <Project Path="src/SubscriptionManagement.Secrets/SubscriptionManagement.Secrets.csproj"/>
         <Project Path="src/SubscriptionManagement.ServiceDefaults/SubscriptionManagement.ServiceDefaults.csproj"/>
         <Project Path="src/SubscriptionManagement.Api/SubscriptionManagement.Api.csproj"/>
     </Folder>
