@@ -85,7 +85,10 @@ public sealed class RenewalSaga : Saga
         ILogger<RenewalSaga> logger
     )
     {
-        if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
+        if (State != RenewalState.AwaitingPayment)
+        {
+            return Ignore(message, logger);
+        }
 
         MoveTo(RenewalState.Settling, null, time);
         return [new SettleInvoice(Id, PaymentId)];
@@ -98,7 +101,10 @@ public sealed class RenewalSaga : Saga
         ILogger<RenewalSaga> logger
     )
     {
-        if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
+        if (State != RenewalState.AwaitingPayment)
+        {
+            return Ignore(message, logger);
+        }
 
         MoveTo(RenewalState.Declined, message.Reason, time);
         return [new CancelRenewal(Id, SubscriptionId, message.Reason)];
@@ -114,7 +120,10 @@ public sealed class RenewalSaga : Saga
         ILogger<RenewalSaga> logger
     )
     {
-        if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
+        if (State != RenewalState.AwaitingPayment)
+        {
+            return Ignore(message, logger);
+        }
 
         MoveTo(RenewalState.TimedOut, TimeoutReason, time);
         return [new CancelPayment(PaymentId, TimeoutReason), new CancelRenewal(Id, SubscriptionId, TimeoutReason)];
@@ -127,7 +136,10 @@ public sealed class RenewalSaga : Saga
         ILogger<RenewalSaga> logger
     )
     {
-        if (State != RenewalState.Settling) return Ignore(message, logger);
+        if (State != RenewalState.Settling)
+        {
+            return Ignore(message, logger);
+        }
 
         MoveTo(RenewalState.Completed, null, time);
         return [];
@@ -140,7 +152,10 @@ public sealed class RenewalSaga : Saga
         ILogger<RenewalSaga> logger
     )
     {
-        if (State != RenewalState.Settling) return Ignore(message, logger);
+        if (State != RenewalState.Settling)
+        {
+            return Ignore(message, logger);
+        }
 
         MoveTo(RenewalState.Compensated, message.Reason, time);
         return [new CancelPayment(PaymentId, message.Reason)];
@@ -195,12 +210,15 @@ public sealed class RenewalSaga : Saga
     )
     {
         if (logger.IsEnabled(LogLevel.Information))
+        {
             logger.LogInformation(
                 "Renewal {InvoiceId} is {State}; ignoring {MessageType}.",
                 Id,
                 State,
                 message.GetType().Name
             );
+        }
+
         return [];
     }
 }

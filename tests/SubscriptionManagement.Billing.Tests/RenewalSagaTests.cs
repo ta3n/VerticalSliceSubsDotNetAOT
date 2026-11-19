@@ -135,7 +135,9 @@ public class RenewalSagaTests
         foreach (var state in Enum.GetValues<RenewalState>())
         foreach (var message in MessageNames)
             if (!acting.Contains((state, message)))
+            {
                 data.Add(state, message);
+            }
 
         return data;
     }

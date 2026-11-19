@@ -72,22 +72,29 @@ public static class ProblemWriter
         writer.WriteString("type", TypeBase + slug);
         writer.WriteString("title", title);
         writer.WriteNumber("status", status);
-        if (detail is not null) writer.WriteString("detail", detail);
+        if (detail is not null)
+        {
+            writer.WriteString("detail", detail);
+        }
 
         writer.WriteString("instance", context.Request.Path.Value);
         writer.WriteString("timestamp", timeProvider.GetUtcNow().UtcDateTime);
         writer.WriteString("traceId", context.TraceIdentifier);
 
         if (extensions is not null)
+        {
             foreach (var (key, value) in extensions)
             {
                 if (Reserved.Contains(key))
                     // RFC 9457 §3.2: extensions must not redefine standard members (would emit duplicate keys).
+                {
                     throw new InvalidOperationException($"Problem extension '{key}' collides with a standard member.");
+                }
 
                 writer.WritePropertyName(key);
                 WriteValue(writer, value);
             }
+        }
 
         if (errors is not null)
         {

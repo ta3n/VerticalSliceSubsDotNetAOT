@@ -32,7 +32,9 @@ public static class ServiceSetup
     {
         var connectionString = builder.Configuration.GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+        }
 
         // One pool for EF Core and Wolverine's message store: the AppHost budgets a single pool per service.
         var dataSource = NpgsqlDataSource.Create(connectionString);
@@ -43,13 +45,17 @@ public static class ServiceSetup
         var options = builder.Configuration.GetSection(RelayOptions.SectionName).Get<RelayOptions>()
             ?? new RelayOptions();
         if (options.PollIntervalMs <= 0 || options.BatchSize <= 0)
+        {
             throw new InvalidOperationException("Relay:PollIntervalMs and Relay:BatchSize must be positive.");
+        }
 
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(TimeProvider.System);
 
         if (!Uri.TryCreate(builder.Configuration["Api:BaseUrl"], UriKind.Absolute, out var apiBaseUrl))
+        {
             throw new InvalidOperationException("Api:BaseUrl is not configured.");
+        }
 
         builder.Services.AddHttpClient<ApiClient>(client => client.BaseAddress = apiBaseUrl);
 

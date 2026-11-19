@@ -34,7 +34,10 @@ public static class AccessTokenAuth
     ) where TBuilder : IHostApplicationBuilder
     {
         var authority = builder.Configuration["Auth:Authority"];
-        if (string.IsNullOrWhiteSpace(authority)) return builder;
+        if (string.IsNullOrWhiteSpace(authority))
+        {
+            return builder;
+        }
 
         builder.Services.AddSingleton<Enabled>();
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -64,7 +67,10 @@ public static class AccessTokenAuth
         this WebApplication app
     )
     {
-        if (app.Services.GetService<Enabled>() is null) return app;
+        if (app.Services.GetService<Enabled>() is null)
+        {
+            return app;
+        }
 
         app.UseAuthentication();
         app.UseAuthorization();
@@ -80,7 +86,10 @@ public static class AccessTokenAuth
                 var readOnly = metadata?.GetMetadata<ReadOnlyRequest>() is not null;
                 if (anonymous
                     || (context.User.Identity?.IsAuthenticated == true
-                        && (isRead || readOnly || context.User.IsInRole(AdminRole)))) return next(context);
+                        && (isRead || readOnly || context.User.IsInRole(AdminRole))))
+                {
+                    return next(context);
+                }
 
                 // Authenticated (the fallback policy ran), but a viewer may only read.
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;

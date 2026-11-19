@@ -29,7 +29,9 @@ public static class ServiceSetup
     {
         var connectionString = builder.Configuration.GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+        }
 
         // One pool for EF Core and Wolverine's message store: the AppHost budgets a single pool per service.
         var dataSource = NpgsqlDataSource.Create(connectionString);
@@ -124,7 +126,9 @@ public static class ServiceSetup
     {
         for (var inner = exception.InnerException; inner is not null; inner = inner.InnerException)
             if (inner is NpgsqlException { IsTransient: true })
+            {
                 return true;
+            }
 
         return false;
     }

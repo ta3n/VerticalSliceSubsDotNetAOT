@@ -29,8 +29,9 @@ public class ProblemWriterTests
     [Fact]
     public async Task Writes_the_common_members_extensions_and_errors()
     {
+        var traceId = $"trace-{Guid.NewGuid():N}";
         var context = NewContext();
-        context.TraceIdentifier = "trace-1";
+        context.TraceIdentifier = traceId;
         context.Request.Path = "/subscriptions";
         context.Response.Body = new MemoryStream();
         var problem = new ApiProblemException(
@@ -50,7 +51,7 @@ public class ProblemWriterTests
         Assert.Equal("https://api.demo/errors/validation", root.GetProperty("type").GetString());
         Assert.Equal(400, root.GetProperty("status").GetInt32());
         Assert.Equal("/subscriptions", root.GetProperty("instance").GetString());
-        Assert.Equal("trace-1", root.GetProperty("traceId").GetString());
+        Assert.Equal(traceId, root.GetProperty("traceId").GetString());
         Assert.Equal(3, root.GetProperty("n").GetInt32());
         Assert.Equal("must be greater than 0", root.GetProperty("errors").GetProperty("price")[0].GetString());
         Assert.Equal("application/problem+json", context.Response.ContentType);

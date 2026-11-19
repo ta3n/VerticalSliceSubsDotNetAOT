@@ -34,7 +34,10 @@ public static partial class MigrationRunner
         foreach (var name in assembly.GetManifestResourceNames())
         {
             var match = FileNamePattern().Match(name);
-            if (!match.Success) continue;
+            if (!match.Success)
+            {
+                continue;
+            }
 
             using var stream = assembly.GetManifestResourceStream(name)!;
             using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -79,7 +82,10 @@ public static partial class MigrationRunner
                 .Build();
 
             var result = await Task.Run(engine.PerformUpgrade, ct);
-            if (!result.Successful) ExceptionDispatchInfo.Capture(result.Error).Throw();
+            if (!result.Successful)
+            {
+                ExceptionDispatchInfo.Capture(result.Error).Throw();
+            }
 
             foreach (var script in result.Scripts)
             {

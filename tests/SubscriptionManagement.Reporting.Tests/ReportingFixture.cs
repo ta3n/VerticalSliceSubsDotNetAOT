@@ -95,7 +95,11 @@ public sealed class ReportingFixture : IAsyncLifetime
         while (DateTime.UtcNow < deadline)
         {
             last = await Client.GetFromJsonAsync<RevenueSummary>("/reporting/revenue");
-            if (last is not null && done(last)) return last;
+            if (last is not null && done(last))
+            {
+                return last;
+            }
+
             await Task.Delay(250);
         }
 

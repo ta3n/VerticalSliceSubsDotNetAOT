@@ -21,7 +21,9 @@ public static class ListInvoicesBySubscriptionHandler
             async (connection, token) =>
             {
                 if (!await SubscriptionStore.ExistsAsync(connection, query.SubscriptionId, token))
+                {
                     throw SubscriptionProblems.NotFound(query.SubscriptionId);
+                }
 
                 var invoices = await InvoiceStore.ListBySubscriptionAsync(connection, query.SubscriptionId, token);
                 return new InvoiceList(invoices.Select(InvoiceResponse.From).ToList());

@@ -72,7 +72,7 @@ var api = builder.AddDotnetProject(
     .WithHttpHealthCheck("/health/ready")
     // Two instances (Replicas) behind Aspire's round-robin endpoint proxy; each owns its Npgsql pool.
     .WithReplicas(builder.Configuration.Required<int>("Replicas"))
-    // No appsettings hot-reload under the AppHost: it needs an inotify instance per file, and a desktop with a few
+    // No appsettings hot-reload under the AppHost: it needs an notify instance per file, and a desktop with a few
     // IDEs open is often at the per-user limit (128) — the API then crashes at startup with an IOException.
     .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
     .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "Scalar API reference" });
@@ -81,7 +81,11 @@ var services = builder.AddS2SServices(postgres, database, migrator, api, service
 var reporting = builder.Configuration.Required<bool>("Kafka:Enabled")
     ? builder.AddEventStream(postgres, services, servicePoolSize)
     : null;
-if (pgbouncer is not null) api.WaitFor(pgbouncer);
+if (pgbouncer is not null)
+{
+    api.WaitFor(pgbouncer);
+}
+
 api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc"))
     .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
     .WaitFor(services.Billing);
@@ -108,17 +112,24 @@ if (builder.ExecutionContext.IsRunMode)
         .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
         .WaitFor(api);
     if (reporting is not null)
+    {
         frontend.WithEnvironment("REPORTING_PROXY_TARGET", reporting.GetEndpoint("http")).WaitFor(reporting);
+    }
+
     if (keycloak is not null)
+    {
         frontend.WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint(Identity.OidcEndpoint))
             .WithEnvironment("VITE_KEYCLOAK_REALM", Identity.Realm)
             .WithEnvironment("VITE_KEYCLOAK_CLIENT_ID", "frontend")
             .WaitFor(keycloak);
+    }
 }
 
 // Local entry point in front of the API (run mode only: the Kubernetes publisher is not set up for it, see Gateway.cs).
 if (builder.ExecutionContext.IsRunMode)
+{
     builder.AddGateway(api, reporting).WaitFor(api);
+}
 
 // Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
 // Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.
@@ -133,7 +144,9 @@ if (builder.Configuration.Required<bool>("Bitwarden:Enabled"))
 
 // Kubernetes environment for `aspire publish` / `aspire deploy` (Helm chart); see KubernetesPublishing.cs. Off by default.
 if (builder.Configuration.Required<bool>("Kubernetes:Enabled"))
+{
     builder.AddKubernetes();
+}
 
 if (stack is not null)
 {
@@ -148,10 +161,12 @@ if (stack is not null)
 builder.AddK6Suite(api, stack, services);
 
 if (stack is not null && builder.ExecutionContext.IsPublishMode)
+{
     foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay, reporting }
         .OfType<IResourceBuilder<DotnetProjectResource>>())
         project.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", stack.Collector.GetEndpoint("http"))
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+}
 
 // The Kubernetes publisher has no bind mounts: the config files travel as ConfigMaps instead (ConfigFiles.cs).
 builder.PublishBindMountsAsConfigMaps();

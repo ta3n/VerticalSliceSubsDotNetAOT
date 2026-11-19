@@ -278,7 +278,10 @@ public sealed class RenewalApiTests : ApiTestBase
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
             ActivityStopped = activity =>
             {
-                if (activity.TraceId == traceId) stopped.TrySetResult(activity);
+                if (activity.TraceId == traceId)
+                {
+                    stopped.TrySetResult(activity);
+                }
             }
         };
         ActivitySource.AddActivityListener(listener);

@@ -18,7 +18,9 @@ internal static partial class ConfigFiles
     )
     {
         if (!builder.ExecutionContext.IsPublishMode)
+        {
             return;
+        }
 
         foreach (var container in builder.Resources.OfType<ContainerResource>().ToList())
         {
@@ -68,7 +70,10 @@ internal static partial class ConfigFiles
         pod.Volumes.Add(new() { Name = name, ConfigMap = source });
         var mount = new VolumeMountV1 { Name = name, MountPath = target, ReadOnly = true };
         if (isFile)
+        {
             mount.SubPath = Path.GetFileName(path);
+        }
+
         pod.Containers[0].VolumeMounts.Add(mount);
     }
 

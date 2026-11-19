@@ -26,7 +26,9 @@ public static class ServiceSetup
     {
         var connectionString = builder.Configuration.GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+        }
 
         var dataSource = NpgsqlDataSource.Create(connectionString);
         builder.Services.AddSingleton(dataSource);

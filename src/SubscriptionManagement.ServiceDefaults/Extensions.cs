@@ -41,7 +41,10 @@ public static class ServiceDefaultsExtensions
     )
         where TBuilder : IHostApplicationBuilder
     {
-        if (string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"])) return builder;
+        if (string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            return builder;
+        }
 
         var configuredName = builder.Configuration["OTEL_SERVICE_NAME"];
 

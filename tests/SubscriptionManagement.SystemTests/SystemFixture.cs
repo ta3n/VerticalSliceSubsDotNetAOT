@@ -102,7 +102,7 @@ public sealed class SystemFixture : IAsyncLifetime
             builder =>
             {
                 // Read while Program.cs builds the app, so these go in as host settings.
-                builder.UseSetting("Billing:GrpcAddress", "http://billing.test");
+                builder.UseSetting("Billing:GrpcAddress", "https://billing.test");
                 builder.UseSetting("Outbox:Enabled", "true");
                 builder.ConfigureAppConfiguration(
                     (_, config) => config.AddInMemoryCollection(
@@ -132,12 +132,15 @@ public sealed class SystemFixture : IAsyncLifetime
     /// <summary>The Relay in this process. Stopped and started again by the outbox durability test.</summary>
     public async Task StartRelayAsync()
     {
-        if (_relay is not null) return;
+        if (_relay is not null)
+        {
+            return;
+        }
 
         var apiServer = ApiFactory.Server;
         _relay = await StartServiceAsync(
             ApiConnectionString,
-            new Dictionary<string, string?> { ["Api:BaseUrl"] = "http://api.test", ["Relay:PollIntervalMs"] = "100" },
+            new Dictionary<string, string?> { ["Api:BaseUrl"] = "https://api.test", ["Relay:PollIntervalMs"] = "100" },
             builder =>
             {
                 builder.AddRelay();
@@ -150,7 +153,10 @@ public sealed class SystemFixture : IAsyncLifetime
 
     public async Task StopRelayAsync()
     {
-        if (_relay is null) return;
+        if (_relay is null)
+        {
+            return;
+        }
 
         var relay = _relay;
         _relay = null;
@@ -196,7 +202,10 @@ public sealed class SystemFixture : IAsyncLifetime
                 async () =>
                 {
                     var response = await Api.GetAsync($"/invoices/{invoiceId}/renewal");
-                    if (!response.IsSuccessStatusCode) return (false, default(JsonElement));
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return (false, default(JsonElement));
+                    }
 
                     var body = await response.Content.ReadFromJsonAsync<JsonElement>();
                     return (SystemTestBase.Terminal.Contains(body.GetProperty("state").GetString()), body);
@@ -242,13 +251,22 @@ public sealed class SystemFixture : IAsyncLifetime
     {
         Api?.Dispose();
         await StopRelayAsync();
-        if (ApiFactory is not null) await ApiFactory.DisposeAsync();
+        if (ApiFactory is not null)
+        {
+            await ApiFactory.DisposeAsync();
+        }
 
         Billing?.Dispose();
         Payments?.Dispose();
-        if (_billing is not null) await _billing.DisposeAsync();
+        if (_billing is not null)
+        {
+            await _billing.DisposeAsync();
+        }
 
-        if (_payments is not null) await _payments.DisposeAsync();
+        if (_payments is not null)
+        {
+            await _payments.DisposeAsync();
+        }
 
         await _broker.DisposeAsync();
         await _postgres.DisposeAsync();
@@ -269,7 +287,9 @@ internal sealed class TraceparentHandler(
     )
     {
         if (Activity.Current?.Id is { } id && !request.Headers.Contains("traceparent"))
+        {
             request.Headers.Add("traceparent", id);
+        }
 
         return base.SendAsync(request, ct);
     }

@@ -55,7 +55,10 @@ public abstract class ApiTestBase(
         Assert.False(string.IsNullOrEmpty(body.GetProperty("title").GetString()));
         Assert.False(string.IsNullOrEmpty(body.GetProperty("traceId").GetString()));
         Assert.True(body.TryGetProperty("timestamp", out _));
-        if (path is not null) Assert.Equal(path, body.GetProperty("instance").GetString());
+        if (path is not null)
+        {
+            Assert.Equal(path, body.GetProperty("instance").GetString());
+        }
 
         return body;
     }

@@ -96,7 +96,10 @@ public sealed class OutboxDrain(
             (NpgsqlTransaction)transaction.GetDbTransaction(),
             ct
         );
-        if (rows.Count == 0) return 0;
+        if (rows.Count == 0)
+        {
+            return 0;
+        }
 
         foreach (var row in rows)
         {
@@ -127,7 +130,10 @@ public sealed class OutboxDrain(
     )
     {
         var now = time.GetUtcNow();
-        if (now < _nextUnknownTypeCheck) return;
+        if (now < _nextUnknownTypeCheck)
+        {
+            return;
+        }
 
         await using var command = new NpgsqlCommand(
             "SELECT count(*), min(type) FROM outbox_messages WHERE NOT (type = ANY($1))",
@@ -139,11 +145,13 @@ public sealed class OutboxDrain(
         await reader.ReadAsync(ct);
         var count = reader.GetInt64(0);
         if (count > 0)
+        {
             logger.LogWarning(
                 "Outbox has {Count} rows with unknown message types (example: {MessageType}); leaving them for a compatible Relay version.",
                 count,
                 reader.GetString(1)
             );
+        }
 
         // Bound both the query and the warning to once a minute, including while known rows keep the drain busy.
         _nextUnknownTypeCheck = now.AddMinutes(1);

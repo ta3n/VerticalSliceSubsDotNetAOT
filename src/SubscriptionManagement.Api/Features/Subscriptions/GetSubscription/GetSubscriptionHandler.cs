@@ -17,7 +17,10 @@ public static class GetSubscriptionHandler
         CancellationToken ct
     )
     {
-        if (await cache.GetAsync(query.Id, ct) is { } cached) return cached;
+        if (await cache.GetAsync(query.Id, ct) is { } cached)
+        {
+            return cached;
+        }
 
         var subscription = await db.WithConnectionAsync(
                 (connection, token) => SubscriptionStore.FindAsync(connection, query.Id, token),

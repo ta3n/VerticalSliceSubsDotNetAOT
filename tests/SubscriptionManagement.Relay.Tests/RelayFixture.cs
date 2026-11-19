@@ -55,7 +55,7 @@ public sealed class RelayFixture : IAsyncLifetime
                 ["ConnectionStrings:Postgres"] = PostgresConnectionString,
                 // Wolverine requires the named connection to exist; with the transports disabled nothing connects to it.
                 ["ConnectionStrings:messaging"] = "amqp://guest:guest@127.0.0.1:1",
-                ["Api:BaseUrl"] = "http://api.test"
+                ["Api:BaseUrl"] = "https://api.test"
             }
         );
 
@@ -132,7 +132,10 @@ public sealed class RelayFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         Client?.Dispose();
-        if (App is not null) await App.DisposeAsync();
+        if (App is not null)
+        {
+            await App.DisposeAsync();
+        }
 
         await _postgres.DisposeAsync();
     }

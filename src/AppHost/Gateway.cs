@@ -24,7 +24,10 @@ internal static class Gateway
                 yarp =>
                 {
                     yarp.AddRoute("/api/{**catch-all}", api).WithTransformPathRemovePrefix("/api");
-                    if (reporting is not null) yarp.AddRoute("/reporting/{**catch-all}", reporting);
+                    if (reporting is not null)
+                    {
+                        yarp.AddRoute("/reporting/{**catch-all}", reporting);
+                    }
                 }
             );
     }

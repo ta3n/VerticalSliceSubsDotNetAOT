@@ -28,12 +28,17 @@ public static class SearchSubscriptionsHandler
     {
         SubscriptionStatus? status = null;
         if (!string.IsNullOrWhiteSpace(query.Status))
+        {
             status = SubscriptionStatusNames.TryParse(query.Status, out var parsed)
                 ? parsed
                 : throw SubscriptionProblems.InvalidStatusFilter(query.Status);
+        }
 
         (DateOnly, Guid)? after = null;
-        if (!string.IsNullOrWhiteSpace(query.Cursor)) after = SearchCursor.Decode(query.Cursor);
+        if (!string.IsNullOrWhiteSpace(query.Cursor))
+        {
+            after = SearchCursor.Decode(query.Cursor);
+        }
 
         // Out-of-range limits fall back to the default rather than failing (reference behaviour).
         var limit = query.Limit is > 0 and <= MaxLimit ? query.Limit.Value : DefaultLimit;

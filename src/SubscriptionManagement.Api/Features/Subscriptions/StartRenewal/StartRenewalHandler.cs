@@ -33,7 +33,9 @@ public static class StartRenewalHandler
     )
     {
         if (!outbox.Enabled)
+        {
             throw BillingProblems.NotConfigured(); // without a Relay the invoice would never be collected
+        }
 
         // Quote before the transaction so no row lock is held across the remote call. The unlocked read may be
         // stale by the time the row is locked, which is fine: the quote depends only on the price, which never changes.

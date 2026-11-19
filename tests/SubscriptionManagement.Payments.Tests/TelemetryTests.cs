@@ -32,7 +32,10 @@ public class TelemetryTests(
         using var meters = new MeterListener();
         meters.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == "Marten") listener.EnableMeasurementEvents(instrument);
+            if (instrument.Meter.Name == "Marten")
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
         };
         meters.SetMeasurementEventCallback<long>(
             (instrument, _, tags, _) =>

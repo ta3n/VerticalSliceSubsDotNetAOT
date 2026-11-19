@@ -86,7 +86,10 @@ public sealed class Subscription
 
     public void Cancel()
     {
-        if (Status == SubscriptionStatus.Canceled) throw SubscriptionProblems.AlreadyCanceled();
+        if (Status == SubscriptionStatus.Canceled)
+        {
+            throw SubscriptionProblems.AlreadyCanceled();
+        }
 
         Status = SubscriptionStatus.Canceled;
     }
@@ -94,7 +97,9 @@ public sealed class Subscription
     public void Pause()
     {
         if (Status != SubscriptionStatus.Active)
+        {
             throw SubscriptionProblems.InvalidTransition(Status, SubscriptionStatus.Paused);
+        }
 
         Status = SubscriptionStatus.Paused;
     }
@@ -102,7 +107,9 @@ public sealed class Subscription
     public void Resume()
     {
         if (Status != SubscriptionStatus.Paused)
+        {
             throw SubscriptionProblems.InvalidTransition(Status, SubscriptionStatus.Active);
+        }
 
         Status = SubscriptionStatus.Active;
     }
@@ -111,7 +118,9 @@ public sealed class Subscription
     public BilledPeriod Renew()
     {
         if (Status != SubscriptionStatus.Active)
+        {
             throw SubscriptionProblems.InvalidTransition(Status, SubscriptionStatus.Active);
+        }
 
         var period = new BilledPeriod(CurrentPeriodEnd, CurrentPeriodEnd.AddMonths(1));
         CurrentPeriodStart = period.Start;

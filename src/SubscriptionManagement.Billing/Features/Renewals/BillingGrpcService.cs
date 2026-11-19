@@ -23,23 +23,34 @@ public sealed class BillingGrpcService(
         ServerCallContext context
     )
     {
-        if (!Guid.TryParse(request.SubscriptionId, out _)) throw Invalid("subscription_id must be a UUID.");
+        if (!Guid.TryParse(request.SubscriptionId, out _))
+        {
+            throw Invalid("subscription_id must be a UUID.");
+        }
 
         if (!decimal.TryParse(
                 request.Price,
                 NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture,
                 out var price
-            )) throw Invalid("price must be a non-negative decimal.");
+            ))
+        {
+            throw Invalid("price must be a non-negative decimal.");
+        }
 
-        if (string.IsNullOrWhiteSpace(request.Currency)) throw Invalid("currency is required.");
+        if (string.IsNullOrWhiteSpace(request.Currency))
+        {
+            throw Invalid("currency is required.");
+        }
 
         if (!TryParseDate(request.PeriodStart, out var periodStart)
             || !TryParseDate(request.PeriodEnd, out var periodEnd)
             || periodEnd <= periodStart)
+        {
             throw Invalid(
                 $"period_start and period_end must be {DateFormat} dates, with period_end after period_start."
             );
+        }
 
         RenewalQuote quote;
         try
@@ -68,7 +79,10 @@ public sealed class BillingGrpcService(
         ServerCallContext context
     )
     {
-        if (!Guid.TryParse(request.InvoiceId, out var invoiceId)) throw Invalid("invoice_id must be a UUID.");
+        if (!Guid.TryParse(request.InvoiceId, out var invoiceId))
+        {
+            throw Invalid("invoice_id must be a UUID.");
+        }
 
         var saga = await db.RenewalSagas.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == invoiceId, context.CancellationToken)

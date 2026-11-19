@@ -29,7 +29,10 @@ public static class PaymentDecider
     )
     {
         // Any existing stream makes this a no-op: a redelivered charge, or a charge overtaken by its cancel.
-        if (state is not null) return Decision.None;
+        if (state is not null)
+        {
+            return Decision.None;
+        }
 
         var requested = new ChargeRequested(
             command.RenewalSagaId,
@@ -39,13 +42,18 @@ public static class PaymentDecider
             command.PeriodEnd
         );
 
-        if (command.Amount >= gateway.NoReplyAtOrAbove) return new([requested], []);
+        if (command.Amount >= gateway.NoReplyAtOrAbove)
+        {
+            return new([requested], []);
+        }
 
         if (command.Amount >= gateway.DeclineAtOrAbove)
+        {
             return new(
                 [requested, new ChargeDeclined(CardDeclined)],
                 [new PaymentFailed(command.RenewalSagaId, command.PaymentId, CardDeclined)]
             );
+        }
 
         return new(
             [requested, new ChargeCaptured()],

@@ -55,7 +55,10 @@ internal sealed class SchemaMigrationsJournal(
         connection.Open();
         using (var exists = new NpgsqlCommand("SELECT to_regclass('schema_migrations') IS NOT NULL", connection))
         {
-            if (!(bool)exists.ExecuteScalar()!) return [];
+            if (!(bool)exists.ExecuteScalar()!)
+            {
+                return [];
+            }
         }
 
         using var command = new NpgsqlCommand("SELECT version, description, checksum FROM schema_migrations", connection);
@@ -65,12 +68,17 @@ internal sealed class SchemaMigrationsJournal(
         {
             var version = reader.GetInt32(0);
             var migration = known.FirstOrDefault(m => m.Version == version);
-            if (migration is null) continue;
+            if (migration is null)
+            {
+                continue;
+            }
 
             if (!string.Equals(reader.GetString(2), migration.Checksum, StringComparison.Ordinal))
+            {
                 throw new InvalidOperationException(
                     $"Migration V{version} ({reader.GetString(1)}) was modified after it was applied."
                 );
+            }
 
             names.Add(MigrationRunner.ScriptName(migration));
         }

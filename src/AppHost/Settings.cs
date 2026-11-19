@@ -52,6 +52,7 @@ internal static class Settings
                 || bouncerPoolSize < 1
                 || serverConnections >= available
                 || (configuration.Required<bool>("PgBouncer:Enabled") && replicas * (long)poolSize > maxClients))
+            {
                 throw new InvalidOperationException(
                     $"Positive replicas and pool sizes are required, PgBouncer:PoolSize ({bouncerPoolSize}) + Replicas "
                     + $"({replicas}) × 3 × Services:PostgresMaxPoolSize ({servicePoolSize}) must be below {available} "
@@ -60,6 +61,7 @@ internal static class Settings
                     + $"({replicas}) × Api:PostgresMaxPoolSize ({poolSize}) must not exceed PgBouncer:MaxClientConnections "
                     + $"({maxClients})."
                 );
+            }
 
             return (maxConnections, poolSize, servicePoolSize);
         }

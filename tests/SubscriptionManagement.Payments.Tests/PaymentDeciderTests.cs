@@ -31,7 +31,10 @@ public class PaymentDeciderTests
         params object[] events
     )
     {
-        if (events.Length == 0) return null;
+        if (events.Length == 0)
+        {
+            return null;
+        }
 
         var payment = new Payment { Id = PaymentId };
         foreach (var e in events)

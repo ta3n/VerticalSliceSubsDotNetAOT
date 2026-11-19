@@ -71,7 +71,7 @@ public class CancelRenewalHandlerTests
     {
         return CancelRenewalHandler.Handle(
             _command,
-            new ApiClient(new HttpClient(_api) { BaseAddress = new Uri("http://api.test") }),
+            new ApiClient(new HttpClient(_api) { BaseAddress = new Uri("https://api.test") }),
             default
         );
     }

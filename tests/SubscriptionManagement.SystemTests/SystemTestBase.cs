@@ -35,7 +35,10 @@ public abstract class SystemTestBase(
     {
         var subscriptionId = (await CreateSubscriptionAsync(price)).GetProperty("id").GetString()!;
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/subscriptions/{subscriptionId}/renewals");
-        if (traceparent is not null) request.Headers.Add("traceparent", traceparent);
+        if (traceparent is not null)
+        {
+            request.Headers.Add("traceparent", traceparent);
+        }
 
         var response = await System.Api.SendAsync(request);
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
@@ -55,7 +58,10 @@ public abstract class SystemTestBase(
             {
                 // 404 until Billing has consumed InvoiceIssued: the saga row does not exist yet.
                 var response = await System.Api.GetAsync($"/invoices/{renewal.InvoiceId}/renewal");
-                if (!response.IsSuccessStatusCode) return (false, default(JsonElement));
+                if (!response.IsSuccessStatusCode)
+                {
+                    return (false, default(JsonElement));
+                }
 
                 var status = await response.Content.ReadFromJsonAsync<JsonElement>();
                 return (Terminal.Contains(status.GetProperty("state").GetString()), status);
@@ -118,7 +124,10 @@ public abstract class SystemTestBase(
             async () =>
             {
                 var response = await System.Payments.GetAsync($"/payments/{paymentId}/events");
-                if (!response.IsSuccessStatusCode) return (false, default(JsonElement));
+                if (!response.IsSuccessStatusCode)
+                {
+                    return (false, default(JsonElement));
+                }
 
                 var events = await response.Content.ReadFromJsonAsync<JsonElement>();
                 var types = events.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("type").GetString());

@@ -63,7 +63,10 @@ public class DbContextPoolingTests(
             await using var scope = fixture.App.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
             Assert.Empty(db.ChangeTracker.Entries());
-            if (ReferenceEquals(db, dirty)) return;
+            if (ReferenceEquals(db, dirty))
+            {
+                return;
+            }
         }
 
         Assert.Fail("The context was never leased again: it is not pooled.");

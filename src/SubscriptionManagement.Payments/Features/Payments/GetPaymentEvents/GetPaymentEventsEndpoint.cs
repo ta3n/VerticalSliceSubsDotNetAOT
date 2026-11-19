@@ -29,7 +29,10 @@ public static class GetPaymentEventsEndpoint
             ) =>
             {
                 var events = await session.Events.FetchStreamAsync(id, token: ct);
-                if (events.Count == 0) return PaymentProblems.NotFound(id);
+                if (events.Count == 0)
+                {
+                    return PaymentProblems.NotFound(id);
+                }
 
                 return TypedResults.Ok(
                     new PaymentEventList(

@@ -343,8 +343,8 @@ tasks:
     silent: true
     cmds:
       - |
-        for repo in $(curl -fsS http://{{.REGISTRY}}/v2/_catalog | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["repositories"]))'); do
-          for tag in $(curl -fsS "http://{{.REGISTRY}}/v2/$repo/tags/list" | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["tags"] or []))'); do
+        for repo in $(deploy/registry/request.sh '{{.REGISTRY}}' /v2/_catalog -fsS | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["repositories"]))'); do
+          for tag in $(deploy/registry/request.sh '{{.REGISTRY}}' "/v2/$repo/tags/list" -fsS | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["tags"] or []))'); do
             printf '%-60s %s\n' "{{.REGISTRY}}/$repo:$tag" "$(deploy/registry/digest.sh {{.REGISTRY}} "$repo" "$tag")"
           done
         done

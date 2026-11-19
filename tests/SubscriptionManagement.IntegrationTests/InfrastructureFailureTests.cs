@@ -152,8 +152,10 @@ public sealed class InfrastructureFailureTests(
         {
             yield return e;
             if (e is AggregateException aggregate)
+            {
                 foreach (var inner in aggregate.InnerExceptions.SelectMany(Enumerate))
                     yield return inner;
+            }
         }
     }
 }

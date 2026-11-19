@@ -24,7 +24,10 @@ public static class SettleInvoiceValidator
     )
     {
         var errors = new ValidationErrors();
-        if (command.PaymentId is null) errors.Add("paymentId", "must not be null");
+        if (command.PaymentId is null)
+        {
+            errors.Add("paymentId", "must not be null");
+        }
 
         errors.ThrowIfAny();
     }

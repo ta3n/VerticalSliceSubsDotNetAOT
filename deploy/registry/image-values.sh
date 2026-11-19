@@ -8,8 +8,11 @@ emit_image() {
   case "$registry/$repository:$tag" in
     *[!a-zA-Z0-9._:/-]*) echo "Invalid image reference" >&2; exit 1 ;;
   esac
-  digest=$("$script_dir/digest.sh" "$registry" "$repository" "$tag")
-  { [ "${#digest}" -eq 71 ] && printf '%s' "$digest" | grep -Eq '^sha256:[a-f0-9]{64}$'; } || { echo "Missing/invalid digest for $repository:$tag" >&2; exit 1; }
+  if ! digest=$("$script_dir/digest.sh" "$registry" "$repository" "$tag") ||
+    ! { [ "${#digest}" -eq 71 ] && printf '%s' "$digest" | grep -Eq '^sha256:[a-f0-9]{64}$'; }; then
+    echo "Missing/invalid digest for $repository:$tag" >&2
+    exit 1
+  fi
   printf '%srepository: "%s/%s"\n%stag: "%s"\n%sdigest: "%s"\n' "$indent" "$registry" "$repository" "$indent" "$tag" "$indent" "$digest"
 }
 printf 'image:\n'

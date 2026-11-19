@@ -30,7 +30,11 @@ public class KafkaRoutingTests(
             ["ConnectionStrings:Postgres"] = fixture.PostgresConnectionString,
             ["ConnectionStrings:messaging"] = "amqp://guest:guest@127.0.0.1:1"
         };
-        if (kafka) settings["ConnectionStrings:kafka"] = "127.0.0.1:1";
+        if (kafka)
+        {
+            settings["ConnectionStrings:kafka"] = "127.0.0.1:1";
+        }
+
         builder.Configuration.AddInMemoryCollection(settings);
         builder.AddPayments();
         builder.Services.DisableAllExternalWolverineTransports();

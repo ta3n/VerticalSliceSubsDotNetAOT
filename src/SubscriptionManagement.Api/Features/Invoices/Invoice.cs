@@ -180,7 +180,10 @@ public sealed class Invoice
         DateTime nowUtc
     )
     {
-        if (Status != InvoiceStatus.Open) throw InvoiceProblems.NotPayable(Id, Status);
+        if (Status != InvoiceStatus.Open)
+        {
+            throw InvoiceProblems.NotPayable(Id, Status);
+        }
 
         Status = InvoiceStatus.Paid;
         PaidAt = Truncate(nowUtc);
@@ -195,9 +198,15 @@ public sealed class Invoice
         DateTime nowUtc
     )
     {
-        if (Status == InvoiceStatus.Paid && PaymentId == paymentId) return;
+        if (Status == InvoiceStatus.Paid && PaymentId == paymentId)
+        {
+            return;
+        }
 
-        if (Status != InvoiceStatus.Open) throw InvoiceProblems.NotPayable(Id, Status);
+        if (Status != InvoiceStatus.Open)
+        {
+            throw InvoiceProblems.NotPayable(Id, Status);
+        }
 
         Status = InvoiceStatus.Paid;
         PaidAt = Truncate(nowUtc);
@@ -207,7 +216,10 @@ public sealed class Invoice
     /// <summary>Cancels an unpaid invoice. Voiding a void invoice changes nothing; a paid invoice cannot be voided.</summary>
     public void Void()
     {
-        if (Status == InvoiceStatus.Paid) throw InvoiceProblems.NotVoidable(Id, Status);
+        if (Status == InvoiceStatus.Paid)
+        {
+            throw InvoiceProblems.NotVoidable(Id, Status);
+        }
 
         Status = InvoiceStatus.Void;
     }

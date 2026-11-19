@@ -82,7 +82,10 @@ public sealed class BillingFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         Client?.Dispose();
-        if (App is not null) await App.DisposeAsync();
+        if (App is not null)
+        {
+            await App.DisposeAsync();
+        }
 
         await _postgres.DisposeAsync();
     }

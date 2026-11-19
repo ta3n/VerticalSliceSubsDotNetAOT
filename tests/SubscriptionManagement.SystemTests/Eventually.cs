@@ -20,9 +20,15 @@ public static class Eventually
         while (true)
         {
             (var done, last) = await probe();
-            if (done) return last;
+            if (done)
+            {
+                return last;
+            }
 
-            if (DateTime.UtcNow >= deadline) break;
+            if (DateTime.UtcNow >= deadline)
+            {
+                break;
+            }
 
             await Task.Delay(100);
         }

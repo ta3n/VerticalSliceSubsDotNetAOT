@@ -262,15 +262,18 @@ public class OutboxDrainTests(
             Func<TState, Exception?, string> formatter
         )
         {
-            if (logLevel == LogLevel.Warning) Warnings.Add(formatter(state, exception));
+            if (logLevel == LogLevel.Warning)
+            {
+                Warnings.Add(formatter(state, exception));
+            }
         }
     }
 
     [Fact]
     public async Task The_relay_span_continues_the_trace_of_the_row_and_becomes_the_parent_of_the_envelope()
     {
-        const string traceId = "0af7651916cd43dd8448eb211c80319c";
-        const string spanId = "b7ad6b7169203331";
+        var traceId = ActivityTraceId.CreateRandom();
+        var spanId = ActivitySpanId.CreateRandom();
         var traced = new InvoiceIssued(
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -299,18 +302,18 @@ public class OutboxDrainTests(
         var tracedSpan = spans[0];
         Assert.Equal("relay InvoiceIssued", tracedSpan.OperationName);
         Assert.Equal(ActivityKind.Internal, tracedSpan.Kind);
-        Assert.Equal(traceId, tracedSpan.TraceId.ToString());
-        Assert.Equal(spanId, tracedSpan.ParentSpanId.ToString());
+        Assert.Equal(traceId, tracedSpan.TraceId);
+        Assert.Equal(spanId, tracedSpan.ParentSpanId);
         Assert.Equal(tracedRow, tracedSpan.GetTagItem("outbox.message.id"));
         // Wolverine sends the envelope's ParentId as the "parent-id" header; the consumer's span hangs under it.
         var tracedEnvelope = session.Sent.SingleEnvelope<InvoiceIssued>();
         Assert.Equal(tracedSpan.Id, tracedEnvelope.ParentId);
-        Assert.Equal(traceId, tracedEnvelope.CorrelationId);
+        Assert.Equal(traceId.ToString(), tracedEnvelope.CorrelationId);
 
         // A row written without a trace starts one of its own instead of joining its neighbour's, in the same batch.
         var untracedSpan = spans[1];
         Assert.Equal("relay SubscriptionCanceled", untracedSpan.OperationName);
-        Assert.NotEqual(traceId, untracedSpan.TraceId.ToString());
+        Assert.NotEqual(traceId, untracedSpan.TraceId);
         Assert.Equal(default, untracedSpan.ParentSpanId);
         Assert.Equal(untracedRow, untracedSpan.GetTagItem("outbox.message.id"));
         var untracedEnvelope = session.Sent.SingleEnvelope<SubscriptionCanceled>();
@@ -446,7 +449,10 @@ public class OutboxDrainTests(
             EnvelopeRecord record
         )
         {
-            if (record.MessageEventType == MessageEventType.Sent) Interlocked.Increment(ref _sent);
+            if (record.MessageEventType == MessageEventType.Sent)
+            {
+                Interlocked.Increment(ref _sent);
+            }
         }
 
         public bool IsCompleted()

@@ -71,7 +71,10 @@ internal static class Observability
         // The Kubernetes publisher cannot resolve the collector's "grpc" endpoint for the toolkit's forwarding; AppHost.cs
         // gives each published project its OTLP address instead.
         if (!builder.ExecutionContext.IsPublishMode)
+        {
             collector.WithAppForwarding();
+        }
+
         collector
             .WithEnvironment("ASPIRE_OTLP_INSECURE", DashboardOtlpIsPlainHttp(builder) ? "true" : "false")
             .WithEnvironment("PROMETHEUS_ENDPOINT", prometheusHttp)

@@ -67,7 +67,10 @@ public sealed class AuthenticationTests(
     {
         var client = factory.CreateClient();
         if (token is not null)
+        {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
         return client;
     }
 

@@ -21,7 +21,10 @@ public static class BitwardenSecrets
     ) where TBuilder : IHostApplicationBuilder
     {
         var section = builder.Configuration.GetSection($"Aspire:Bitwarden:SecretManager:{ConnectionName}");
-        if (!section.Exists()) return;
+        if (!section.Exists())
+        {
+            return;
+        }
 
         // Secrets are config, so they must be in place before the services read it; the client Aspire registers is for
         // the app (health check, later reads) and this one is only used, and disposed, for the initial load.

@@ -149,14 +149,15 @@ public sealed class PlatformTests(
     [Fact]
     public async Task An_inbound_trace_id_is_echoed_and_appears_in_problems()
     {
+        var traceId = $"caller-trace-{Guid.NewGuid():N}";
         var request = new HttpRequestMessage(HttpMethod.Get, $"/subscriptions/{Guid.NewGuid()}");
-        request.Headers.Add("X-Trace-Id", "caller-trace-42");
+        request.Headers.Add("X-Trace-Id", traceId);
 
         var response = await Client.SendAsync(request);
 
-        Assert.Equal("caller-trace-42", response.Headers.GetValues("X-Trace-Id").Single());
+        Assert.Equal(traceId, response.Headers.GetValues("X-Trace-Id").Single());
         var problem = await AssertProblemAsync(response, HttpStatusCode.NotFound, "subscription-not-found");
-        Assert.Equal("caller-trace-42", problem.GetProperty("traceId").GetString());
+        Assert.Equal(traceId, problem.GetProperty("traceId").GetString());
     }
 
     [Fact]

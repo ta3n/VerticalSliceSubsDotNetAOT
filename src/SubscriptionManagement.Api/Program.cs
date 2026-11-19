@@ -30,7 +30,10 @@ using SubscriptionManagement.Infrastructure.Billing;
 
 // `SubscriptionManagement healthcheck [url]` probes the liveness endpoint and exits 0/1. It exists because the
 // minimal runtime-deps image has no curl/wget for a container HEALTHCHECK.
-if (args is ["healthcheck", ..]) return await HealthProbe.RunAsync(args);
+if (args is ["healthcheck", ..])
+{
+    return await HealthProbe.RunAsync(args);
+}
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -56,7 +59,9 @@ builder.Services.AddSingleton(
     {
         var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+        }
 
         return NpgsqlDataSource.Create(connectionString);
     }
@@ -125,7 +130,10 @@ builder.AddAccessTokenAuth();
 
 // API description + Scalar UI; off unless OpenApi:Enabled=true (enabled in appsettings.Development.json).
 var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
-if (openApiEnabled) builder.Services.AddOpenApi();
+if (openApiEnabled)
+{
+    builder.Services.AddOpenApi();
+}
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddHealthChecks()

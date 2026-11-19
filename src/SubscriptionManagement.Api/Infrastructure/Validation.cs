@@ -10,7 +10,10 @@ public sealed class ValidationErrors
         string message
     )
     {
-        if (!_errors.TryGetValue(field, out var list)) _errors[field] = list = [];
+        if (!_errors.TryGetValue(field, out var list))
+        {
+            _errors[field] = list = [];
+        }
 
         list.Add(message);
     }
@@ -22,15 +25,22 @@ public sealed class ValidationErrors
     )
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             Add(field, "must not be blank");
-        else if (value.Length > maxLength) Add(field, $"size must be between 0 and {maxLength}");
+        }
+        else if (value.Length > maxLength)
+        {
+            Add(field, $"size must be between 0 and {maxLength}");
+        }
     }
 
     public void ThrowIfAny()
     {
         if (_errors.Count > 0)
+        {
             throw ApiProblemException.Validation(
                 _errors.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray(), StringComparer.Ordinal)
             );
+        }
     }
 }

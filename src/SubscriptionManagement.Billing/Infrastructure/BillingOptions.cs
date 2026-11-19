@@ -20,14 +20,20 @@ public sealed record BillingOptions(
         var section = configuration.GetSection(SectionName);
 
         var timeoutSeconds = section.GetValue<int>("RenewalTimeoutSeconds");
-        if (timeoutSeconds <= 0) throw new InvalidOperationException("Billing:RenewalTimeoutSeconds must be positive.");
+        if (timeoutSeconds <= 0)
+        {
+            throw new InvalidOperationException("Billing:RenewalTimeoutSeconds must be positive.");
+        }
 
         if (!decimal.TryParse(
                 section["TaxRate"],
                 NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture,
                 out var taxRate
-            )) throw new InvalidOperationException("Billing:TaxRate must be a non-negative decimal such as 0.10.");
+            ))
+        {
+            throw new InvalidOperationException("Billing:TaxRate must be a non-negative decimal such as 0.10.");
+        }
 
         return new BillingOptions(TimeSpan.FromSeconds(timeoutSeconds), taxRate);
     }

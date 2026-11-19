@@ -36,7 +36,9 @@ public static class SearchCursor
                     out var date
                 )
                 && Guid.TryParse(parts[1], out var id))
+            {
                 return (date, id);
+            }
         }
         catch (FormatException)
         {

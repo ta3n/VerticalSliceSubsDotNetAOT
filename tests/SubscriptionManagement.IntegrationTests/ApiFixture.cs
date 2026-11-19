@@ -67,13 +67,19 @@ public sealed class ApiFixture : IAsyncLifetime
                             { ["ConnectionStrings:Postgres"] = postgres ?? PostgresConnectionString };
                         // Always set explicitly: appsettings.Development.json points at localhost:6379 for local runs.
                         values["ConnectionStrings:Redis"] = redis ? RedisConnectionString : "";
-                        if (billing is not null) values["Outbox:Enabled"] = "true";
+                        if (billing is not null)
+                        {
+                            values["Outbox:Enabled"] = "true";
+                        }
 
                         config.AddInMemoryCollection(values);
                     }
                 );
 
-                if (billing is { } gateway) builder.ConfigureTestServices(services => services.AddSingleton(gateway));
+                if (billing is { } gateway)
+                {
+                    builder.ConfigureTestServices(services => services.AddSingleton(gateway));
+                }
             }
         );
     }
@@ -135,7 +141,10 @@ public sealed class ApiFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         Client?.Dispose();
-        if (Factory is not null) await Factory.DisposeAsync();
+        if (Factory is not null)
+        {
+            await Factory.DisposeAsync();
+        }
 
         Redis?.Dispose();
         await _postgres.DisposeAsync();

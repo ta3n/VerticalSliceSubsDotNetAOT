@@ -32,7 +32,9 @@ public static class ServiceSetup
     {
         var connectionString = builder.Configuration.GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+        }
 
         // One pool for Marten and Wolverine's message store: the AppHost budgets a single pool per service.
         var dataSource = NpgsqlDataSource.Create(connectionString);

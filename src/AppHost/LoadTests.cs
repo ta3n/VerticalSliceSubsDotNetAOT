@@ -91,7 +91,10 @@ internal static class LoadTests
             {
                 // The plain-HTTP endpoint of Identity.cs, at the address a container reaches the host by.
                 var keycloak = Find(builder, "keycloak");
-                if (keycloak is not null) k6.WaitFor(builder.CreateResourceBuilder(keycloak));
+                if (keycloak is not null)
+                {
+                    k6.WaitFor(builder.CreateResourceBuilder(keycloak));
+                }
 
                 k6.WithEnvironment("KEYCLOAK_URL", "http://host.docker.internal:8081")
                     .WithEnvironment("KEYCLOAK_REALM", Identity.Realm)
@@ -103,13 +106,18 @@ internal static class LoadTests
             }
 
             if (name == "bigdata" && reporting is not null)
+            {
                 k6.WithEnvironment("REPORTING_URL", builder.CreateResourceBuilder(reporting).GetEndpoint("http"))
                     .WaitFor(builder.CreateResourceBuilder(reporting));
+            }
 
             if (name is "saga" or "endpoints" or "mq")
             {
                 // The endpoints suite also drives the s2s routes; its knobs are under LoadTest:endpoints.
-                if (name == "endpoints") k6.WithEnvironment("S2S", "true");
+                if (name == "endpoints")
+                {
+                    k6.WithEnvironment("S2S", "true");
+                }
 
                 k6.WithEnvironment("BILLING_URL", services.Billing.GetEndpoint("http"))
                     .WithEnvironment("PAYMENTS_URL", services.Payments.GetEndpoint("http"))
@@ -120,6 +128,7 @@ internal static class LoadTests
 
             if (stack is not null)
                 // Client-side metrics → Prometheus remote write → Grafana "Load test (k6)" dashboard.
+            {
                 k6.WithEnvironment("K6_OUT", "experimental-prometheus-rw")
                     .WithEnvironment(
                         "K6_PROMETHEUS_RW_SERVER_URL",
@@ -130,8 +139,12 @@ internal static class LoadTests
                     .WithEnvironment("K6_PROMETHEUS_RW_STALE_MARKERS", "true")
                     .WithEnvironment("K6_SYSTEM_TAGS", K6SystemTags)
                     .WaitFor(stack.Prometheus);
+            }
 
-            if (!autoStart.Contains(name)) k6.WithExplicitStart();
+            if (!autoStart.Contains(name))
+            {
+                k6.WithExplicitStart();
+            }
         }
     }
 

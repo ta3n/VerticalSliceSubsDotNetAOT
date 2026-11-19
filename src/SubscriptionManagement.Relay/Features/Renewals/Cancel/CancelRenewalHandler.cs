@@ -17,7 +17,10 @@ public static class CancelRenewalHandler
     )
     {
         // 409: the invoice was paid by other means, so the subscription keeps running. 404: there is nothing to give up on.
-        if (await api.VoidInvoiceAsync(command.InvoiceId, ct) != HttpStatusCode.OK) return;
+        if (await api.VoidInvoiceAsync(command.InvoiceId, ct) != HttpStatusCode.OK)
+        {
+            return;
+        }
 
         // 404 and 409 (already paused or canceled) leave nothing to pause.
         await api.PauseSubscriptionAsync(command.SubscriptionId, ct);
