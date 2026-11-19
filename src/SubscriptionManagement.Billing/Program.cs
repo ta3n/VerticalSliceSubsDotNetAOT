@@ -14,9 +14,9 @@ builder.Logging.AddJsonConsole(o => o.IncludeScopes = true);
 // OpenTelemetry over OTLP when OTEL_EXPORTER_OTLP_ENDPOINT is set (see SubscriptionManagement.ServiceDefaults), plus
 // Wolverine's handler spans and the RabbitMQ client's publish/deliver spans.
 builder.AddServiceDefaults(
-    ServiceSetup.ServiceName,
-    ["Wolverine", "RabbitMQ.Client.Publisher", "RabbitMQ.Client.Subscriber"],
-    ["Wolverine*"]
+  ServiceSetup.ServiceName,
+  ["Wolverine", "RabbitMQ.Client.Publisher", "RabbitMQ.Client.Subscriber"],
+  ["Wolverine*"]
 );
 
 // Access-token (Keycloak) authentication; off unless Auth:Authority is set, by the Aspire AppHost.

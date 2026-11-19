@@ -17,83 +17,79 @@ namespace SubscriptionManagement.Billing.Tests;
 /// </summary>
 public sealed class BillingFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17").Build();
+  public const int RenewalTimeoutSeconds = 3600;
+  private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17").Build();
 
-    public string PostgresConnectionString => _postgres.GetConnectionString();
-    public WebApplication App { get; private set; } = null!;
-    public HttpClient Client { get; private set; } = null!;
+  public string PostgresConnectionString => _postgres.GetConnectionString();
+  public WebApplication App { get; private set; } = null!;
+  public HttpClient Client { get; private set; } = null!;
 
-    public const int RenewalTimeoutSeconds = 3600;
+  public async Task InitializeAsync()
+  {
+    await _postgres.StartAsync();
 
-    public async Task InitializeAsync()
-    {
-        await _postgres.StartAsync();
+    // The content root is the test output directory, where the service's appsettings.json is copied to.
+    var builder =
+      WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = AppContext.BaseDirectory });
+    builder.WebHost.UseTestServer();
+    builder.Configuration.AddInMemoryCollection(
+      new Dictionary<string, string?>
+      {
+        ["Logging:LogLevel:Default"] = "Warning",
+        ["ConnectionStrings:Postgres"] = PostgresConnectionString,
+        // Wolverine requires the named connection to exist; with the transports disabled nothing connects to it.
+        ["ConnectionStrings:messaging"] = "amqp://guest:guest@127.0.0.1:1",
+        // Far beyond the length of a test run: a renewal timeout only fires when a test plays it.
+        ["Billing:RenewalTimeoutSeconds"] = RenewalTimeoutSeconds.ToString()
+      }
+    );
 
-        // The content root is the test output directory, where the service's appsettings.json is copied to.
-        var builder =
-            WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = AppContext.BaseDirectory });
-        builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["Logging:LogLevel:Default"] = "Warning",
-                ["ConnectionStrings:Postgres"] = PostgresConnectionString,
-                // Wolverine requires the named connection to exist; with the transports disabled nothing connects to it.
-                ["ConnectionStrings:messaging"] = "amqp://guest:guest@127.0.0.1:1",
-                // Far beyond the length of a test run: a renewal timeout only fires when a test plays it.
-                ["Billing:RenewalTimeoutSeconds"] = RenewalTimeoutSeconds.ToString()
-            }
-        );
+    builder.AddBilling();
+    builder.Services.DisableAllExternalWolverineTransports();
 
-        builder.AddBilling();
-        builder.Services.DisableAllExternalWolverineTransports();
+    App = builder.Build();
+    App.MapBilling();
+    await App.StartAsync();
+    Client = App.GetTestClient();
+  }
 
-        App = builder.Build();
-        App.MapBilling();
-        await App.StartAsync();
-        Client = App.GetTestClient();
-    }
+  public async Task DisposeAsync()
+  {
+    Client?.Dispose();
+    if (App is not null) await App.DisposeAsync();
 
-    /// <summary>
-    /// A tracked session: it completes when the message and everything it cascades into have been handled, and
-    /// records what was sent. The timeout is generous because the first use of a handler compiles it.
-    /// </summary>
-    public TrackedSessionConfiguration Track()
-    {
-        return App.TrackActivity(TimeSpan.FromSeconds(30));
-    }
+    await _postgres.DisposeAsync();
+  }
 
-    /// <summary>Runs a query on a fresh <see cref="BillingDbContext"/>, i.e. against what is committed.</summary>
-    public async Task<T> QueryAsync<T>(
-        Func<BillingDbContext, Task<T>> query
-    )
-    {
-        await using var scope = App.Services.CreateAsyncScope();
-        return await query(scope.ServiceProvider.GetRequiredService<BillingDbContext>());
-    }
+  /// <summary>
+  /// A tracked session: it completes when the message and everything it cascades into have been handled, and
+  /// records what was sent. The timeout is generous because the first use of a handler compiles it.
+  /// </summary>
+  public TrackedSessionConfiguration Track()
+  {
+    return App.TrackActivity(TimeSpan.FromSeconds(30));
+  }
 
-    public async Task<NpgsqlConnection> OpenDbAsync()
-    {
-        var connection = new NpgsqlConnection(PostgresConnectionString);
-        await connection.OpenAsync();
-        return connection;
-    }
+  /// <summary>Runs a query on a fresh <see cref="BillingDbContext"/>, i.e. against what is committed.</summary>
+  public async Task<T> QueryAsync<T>(
+    Func<BillingDbContext, Task<T>> query
+  )
+  {
+    await using var scope = App.Services.CreateAsyncScope();
+    return await query(scope.ServiceProvider.GetRequiredService<BillingDbContext>());
+  }
 
-    public async Task DisposeAsync()
-    {
-        Client?.Dispose();
-        if (App is not null)
-        {
-            await App.DisposeAsync();
-        }
-
-        await _postgres.DisposeAsync();
-    }
+  public async Task<NpgsqlConnection> OpenDbAsync()
+  {
+    var connection = new NpgsqlConnection(PostgresConnectionString);
+    await connection.OpenAsync();
+    return connection;
+  }
 }
 
 /// <summary>All Billing tests share one database and one host, and run sequentially.</summary>
 [CollectionDefinition(Name)]
 public sealed class BillingCollection : ICollectionFixture<BillingFixture>
 {
-    public const string Name = "billing";
+  public const string Name = "billing";
 }

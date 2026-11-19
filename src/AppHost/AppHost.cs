@@ -17,10 +17,10 @@ var (maxConnections, apiPoolSize, servicePoolSize) = builder.Configuration.Postg
 // Image tags match compose.yaml / the integration tests; the data volume keeps data across AppHost restarts.
 // Postgres:MaxConnections replaces the image default (100) so the API pool below fits; keep in step with compose.yaml.
 var postgres = builder.AddPostgres("postgres")
-    .WithImageTag("17")
-    .WithArgs("-c", $"max_connections={maxConnections}")
-    .WithReplication()
-    .WithDataVolume();
+  .WithImageTag("17")
+  .WithArgs("-c", $"max_connections={maxConnections}")
+  .WithReplication()
+  .WithDataVolume();
 var database = postgres.AddDatabase("subscriptions");
 
 // Two streaming replicas (primary + 2 = 3 PostgreSQL instances) and PgBouncer in front of the primary for the API.
@@ -28,145 +28,127 @@ var standbys = builder.AddStandbys(postgres, maxConnections);
 var pgbouncer = builder.Configuration.Required<bool>("PgBouncer:Enabled") ? builder.AddPgBouncer(postgres) : null;
 
 var redis = builder.AddRedis("redis")
-    .WithImageTag("7-alpine");
+  .WithImageTag("7-alpine");
 
 // Local tooling only (kept out of published manifests): RedisInsight UI and redis-cli in the dashboard terminal.
-if (builder.ExecutionContext.IsRunMode)
-{
-    redis.WithRedisInsight().WithRepl();
-}
+if (builder.ExecutionContext.IsRunMode) redis.WithRedisInsight().WithRepl();
 
 // Prometheus/Tempo/Loki/Grafana + exporters; without it only the Aspire dashboard receives telemetry. Declared before
 // the projects: the Kubernetes publisher resolves the collector's OTLP endpoint for each project in model order.
 var stack = builder.Configuration.Required<bool>("Observability:Enabled")
-    ? builder.AddObservabilityStack(postgres, redis, standbys, pgbouncer)
-    : null;
+  ? builder.AddObservabilityStack(postgres, redis, standbys, pgbouncer)
+  : null;
 
 // The services read ConnectionStrings:Postgres / ConnectionStrings:Redis, hence the explicit connection names.
 var migrator = builder.AddDotnetProject(
-        "migrator",
-        "../SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"
-    )
-    .WithReference(database, "Postgres")
-    .WaitFor(database);
+    "migrator",
+    "../SubscriptionManagement.Migrator/SubscriptionManagement.Migrator.csproj"
+  )
+  .WithReference(database, "Postgres")
+  .WaitFor(database);
 
 // The API connects through PgBouncer (transaction pooling) unless PgBouncer:Enabled=false: its Npgsql pool
 // (Api:PostgresMaxPoolSize) is then only the client side, PgBouncer:PoolSize server connections do the work. The
 // migrator and the s2s services always stay on the primary.
 var apiPostgres = pgbouncer is null
-    ? ReferenceExpression.Create(
-        $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}"
-    )
-    : PostgresCluster.ApiConnectionString(pgbouncer, postgres, database, apiPoolSize);
+  ? ReferenceExpression.Create(
+    $"{database.Resource.ConnectionStringExpression};Maximum Pool Size={apiPoolSize.ToString()}"
+  )
+  : PostgresCluster.ApiConnectionString(pgbouncer, postgres, database, apiPoolSize);
 
 var api = builder.AddDotnetProject(
-        "subscription-management",
-        "../SubscriptionManagement.Api/SubscriptionManagement.Api.csproj"
-    )
-    .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
-    .WithReferenceRelationship(database)
-    .WaitFor(database)
-    .WithReference(redis, "Redis")
-    .WaitFor(redis)
-    .WaitForCompletion(migrator)
-    .WithHttpHealthCheck("/health/ready")
-    // Two instances (Replicas) behind Aspire's round-robin endpoint proxy; each owns its Npgsql pool.
-    .WithReplicas(builder.Configuration.Required<int>("Replicas"))
-    // No appsettings hot-reload under the AppHost: it needs an notify instance per file, and a desktop with a few
-    // IDEs open is often at the per-user limit (128) — the API then crashes at startup with an IOException.
-    .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
-    .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "Scalar API reference" });
+    "subscription-management",
+    "../SubscriptionManagement.Api/SubscriptionManagement.Api.csproj"
+  )
+  .WithEnvironment("ConnectionStrings__Postgres", apiPostgres)
+  .WithReferenceRelationship(database)
+  .WaitFor(database)
+  .WithReference(redis, "Redis")
+  .WaitFor(redis)
+  .WaitForCompletion(migrator)
+  .WithHttpHealthCheck("/health/ready")
+  // Two instances (Replicas) behind Aspire's round-robin endpoint proxy; each owns its Npgsql pool.
+  .WithReplicas(builder.Configuration.Required<int>("Replicas"))
+  // No appsettings hot-reload under the AppHost: it needs an notify instance per file, and a desktop with a few
+  // IDEs open is often at the per-user limit (128) — the API then crashes at startup with an IOException.
+  .WithEnvironment("DOTNET_hostBuilder__reloadConfigOnChange", "false")
+  .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "Scalar API reference" });
 
 var services = builder.AddS2SServices(postgres, database, migrator, api, servicePoolSize);
 var reporting = builder.Configuration.Required<bool>("Kafka:Enabled")
-    ? builder.AddEventStream(postgres, services, servicePoolSize)
-    : null;
-if (pgbouncer is not null)
-{
-    api.WaitFor(pgbouncer);
-}
+  ? builder.AddEventStream(postgres, services, servicePoolSize)
+  : null;
+if (pgbouncer is not null) api.WaitFor(pgbouncer);
 
 api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc"))
-    .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
-    .WaitFor(services.Billing);
+  .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
+  .WaitFor(services.Billing);
 
 // Keycloak (run mode only, see Identity.cs): the services validate its access tokens and the frontend logs in with it.
 var keycloak = builder.ExecutionContext.IsRunMode && builder.Configuration.Required<bool>("Keycloak:Enabled")
-    ? builder.AddIdentity()
-    : null;
+  ? builder.AddIdentity()
+  : null;
 if (keycloak is not null)
 {
-    api.WithIdentity(keycloak);
-    services.Billing.WithIdentity(keycloak);
-    services.Payments.WithIdentity(keycloak);
-    reporting?.WithIdentity(keycloak);
+  api.WithIdentity(keycloak);
+  services.Billing.WithIdentity(keycloak);
+  services.Payments.WithIdentity(keycloak);
+  reporting?.WithIdentity(keycloak);
 }
 
 // The Vite proxy stays server-side; the browser calls /api (the API) and /reporting (Reporting) on the frontend's own
 // origin. The Keycloak settings reach the browser as VITE_* variables.
 if (builder.ExecutionContext.IsRunMode)
 {
-    var frontend = builder.AddViteApp("frontend", "../frontend")
-        .WithNpm(installCommand: "ci")
-        .WithEndpoint("http", endpoint => endpoint.Port = 5173)
-        .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
-        .WaitFor(api);
-    if (reporting is not null)
-    {
-        frontend.WithEnvironment("REPORTING_PROXY_TARGET", reporting.GetEndpoint("http")).WaitFor(reporting);
-    }
+  var frontend = builder.AddViteApp("frontend", "../frontend")
+    .WithNpm(installCommand: "ci")
+    .WithEndpoint("http", endpoint => endpoint.Port = 5173)
+    .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
+    .WaitFor(api);
+  if (reporting is not null)
+    frontend.WithEnvironment("REPORTING_PROXY_TARGET", reporting.GetEndpoint("http")).WaitFor(reporting);
 
-    if (keycloak is not null)
-    {
-        frontend.WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint(Identity.OidcEndpoint))
-            .WithEnvironment("VITE_KEYCLOAK_REALM", Identity.Realm)
-            .WithEnvironment("VITE_KEYCLOAK_CLIENT_ID", "frontend")
-            .WaitFor(keycloak);
-    }
+  if (keycloak is not null)
+    frontend.WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint(Identity.OidcEndpoint))
+      .WithEnvironment("VITE_KEYCLOAK_REALM", Identity.Realm)
+      .WithEnvironment("VITE_KEYCLOAK_CLIENT_ID", "frontend")
+      .WaitFor(keycloak);
 }
 
 // Local entry point in front of the API (run mode only: the Kubernetes publisher is not set up for it, see Gateway.cs).
-if (builder.ExecutionContext.IsRunMode)
-{
-    builder.AddGateway(api, reporting).WaitFor(api);
-}
+if (builder.ExecutionContext.IsRunMode) builder.AddGateway(api, reporting).WaitFor(api);
 
 // Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
 // Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.
 if (builder.Configuration.Required<bool>("Bitwarden:Enabled"))
 {
-    var bitwarden = builder.AddBitwarden();
-    api.WithBitwarden(bitwarden);
-    services.Billing.WithBitwarden(bitwarden);
-    services.Payments.WithBitwarden(bitwarden);
-    services.Relay.WithBitwarden(bitwarden);
+  var bitwarden = builder.AddBitwarden();
+  api.WithBitwarden(bitwarden);
+  services.Billing.WithBitwarden(bitwarden);
+  services.Payments.WithBitwarden(bitwarden);
+  services.Relay.WithBitwarden(bitwarden);
 }
 
 // Kubernetes environment for `aspire publish` / `aspire deploy` (Helm chart); see KubernetesPublishing.cs. Off by default.
-if (builder.Configuration.Required<bool>("Kubernetes:Enabled"))
-{
-    builder.AddKubernetes();
-}
+if (builder.Configuration.Required<bool>("Kubernetes:Enabled")) builder.AddKubernetes();
 
 if (stack is not null)
 {
-    api.WaitFor(stack.Collector);
-    services.Billing.WaitFor(stack.Collector);
-    services.Payments.WaitFor(stack.Collector);
-    services.Relay.WaitFor(stack.Collector);
-    reporting?.WaitFor(stack.Collector);
+  api.WaitFor(stack.Collector);
+  services.Billing.WaitFor(stack.Collector);
+  services.Payments.WaitFor(stack.Collector);
+  services.Relay.WaitFor(stack.Collector);
+  reporting?.WaitFor(stack.Collector);
 }
 
 // k6 scenarios from scripts/*-test.js as on-demand resources (▶ in the dashboard); see LoadTests.cs.
 builder.AddK6Suite(api, stack, services);
 
 if (stack is not null && builder.ExecutionContext.IsPublishMode)
-{
-    foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay, reporting }
-        .OfType<IResourceBuilder<DotnetProjectResource>>())
-        project.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", stack.Collector.GetEndpoint("http"))
-            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
-}
+  foreach (var project in new[] { migrator, api, services.Billing, services.Payments, services.Relay, reporting }
+    .OfType<IResourceBuilder<DotnetProjectResource>>())
+    project.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", stack.Collector.GetEndpoint("http"))
+      .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
 
 // The Kubernetes publisher has no bind mounts: the config files travel as ConfigMaps instead (ConfigFiles.cs).
 builder.PublishBindMountsAsConfigMaps();

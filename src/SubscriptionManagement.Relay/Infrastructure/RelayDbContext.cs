@@ -7,5 +7,5 @@ namespace SubscriptionManagement.Relay.Infrastructure;
 /// same transaction as its raw SQL on <c>outbox_messages</c> (a table owned by the migrator).
 /// </summary>
 public sealed class RelayDbContext(
-    DbContextOptions<RelayDbContext> options
+  DbContextOptions<RelayDbContext> options
 ) : DbContext(options);

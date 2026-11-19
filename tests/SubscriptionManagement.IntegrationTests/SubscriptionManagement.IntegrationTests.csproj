@@ -1,35 +1,35 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="6.0.4"/>
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12"/>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
-        <PackageReference Include="Testcontainers.Keycloak" Version="4.15.0"/>
-        <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0"/>
-        <PackageReference Include="Testcontainers.Redis" Version="4.15.0"/>
-        <PackageReference Include="xunit" Version="2.9.3"/>
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4"/>
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4"/>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12"/>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
+    <PackageReference Include="Testcontainers.Keycloak" Version="4.15.0"/>
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0"/>
+    <PackageReference Include="Testcontainers.Redis" Version="4.15.0"/>
+    <PackageReference Include="xunit" Version="2.9.3"/>
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4"/>
+  </ItemGroup>
 
-    <ItemGroup>
-        <Using Include="Xunit"/>
-    </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit"/>
+  </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj"/>
-        <ProjectReference Include="..\..\src\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj"/>
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj"/>
+    <ProjectReference Include="..\..\src\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj"/>
+  </ItemGroup>
 
-    <!-- The realm the AppHost imports into Keycloak; the authentication tests import the same file. -->
-    <ItemGroup>
-        <None Include="..\..\src\AppHost\keycloak\subscriptions-realm.json" Link="keycloak\subscriptions-realm.json" CopyToOutputDirectory="PreserveNewest"/>
-    </ItemGroup>
+  <!-- The realm the AppHost imports into Keycloak; the authentication tests import the same file. -->
+  <ItemGroup>
+    <None Include="..\..\src\AppHost\keycloak\subscriptions-realm.json" Link="keycloak\subscriptions-realm.json" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 
 </Project>

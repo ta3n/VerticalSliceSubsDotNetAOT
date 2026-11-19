@@ -5,23 +5,23 @@ namespace SubscriptionManagement.Payments.Features.Payments;
 //   ChargeCaptured. A stream may also consist of a single ChargeCanceled (cancel before charge).
 
 public sealed record ChargeRequested(
-    Guid InvoiceId,
-    Guid SubscriptionId,
-    decimal Amount,
-    string Currency,
-    DateOnly PeriodEnd
+  Guid InvoiceId,
+  Guid SubscriptionId,
+  decimal Amount,
+  string Currency,
+  DateOnly PeriodEnd
 );
 
 public sealed record ChargeCaptured;
 
 public sealed record ChargeDeclined(
-    string Reason
+  string Reason
 );
 
 public sealed record ChargeCanceled(
-    string Reason
+  string Reason
 );
 
 public sealed record ChargeRefunded(
-    string Reason
+  string Reason
 );

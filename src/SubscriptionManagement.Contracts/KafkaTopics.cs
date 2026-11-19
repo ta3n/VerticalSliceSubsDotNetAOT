@@ -6,13 +6,13 @@ namespace SubscriptionManagement.Contracts;
 /// </summary>
 public static class KafkaTopics
 {
-    /// <summary>
-    /// Copies of the facts <see cref="InvoiceIssued" />, <see cref="SubscriptionCanceled" />,
-    /// <see cref="PaymentSucceeded" />, <see cref="PaymentFailed" /> and <see cref="PaymentRefunded" />, published by
-    /// the Relay and Payments next to their RabbitMQ route and read by Reporting.
-    /// </summary>
-    public const string SubscriptionEvents = "subscription-events";
+  /// <summary>
+  /// Copies of the facts <see cref="InvoiceIssued" />, <see cref="SubscriptionCanceled" />,
+  /// <see cref="PaymentSucceeded" />, <see cref="PaymentFailed" /> and <see cref="PaymentRefunded" />, published by
+  /// the Relay and Payments next to their RabbitMQ route and read by Reporting.
+  /// </summary>
+  public const string SubscriptionEvents = "subscription-events";
 
-    /// <summary>Name of the connection (<c>ConnectionStrings:kafka</c>), i.e. of the AppHost resource.</summary>
-    public const string ConnectionName = "kafka";
+  /// <summary>Name of the connection (<c>ConnectionStrings:kafka</c>), i.e. of the AppHost resource.</summary>
+  public const string ConnectionName = "kafka";
 }

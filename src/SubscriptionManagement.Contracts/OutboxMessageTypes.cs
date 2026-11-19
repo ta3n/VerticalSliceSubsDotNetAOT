@@ -6,6 +6,6 @@ namespace SubscriptionManagement.Contracts;
 /// </summary>
 public static class OutboxMessageTypes
 {
-    public const string InvoiceIssued = nameof(Contracts.InvoiceIssued);
-    public const string SubscriptionCanceled = nameof(Contracts.SubscriptionCanceled);
+  public const string InvoiceIssued = nameof(Contracts.InvoiceIssued);
+  public const string SubscriptionCanceled = nameof(Contracts.SubscriptionCanceled);
 }

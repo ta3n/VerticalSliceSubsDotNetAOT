@@ -7,208 +7,205 @@ namespace AppHost;
 /// </summary>
 internal static class Observability
 {
-    private const string ConfigDir = "observability";
+  private const string ConfigDir = "observability";
 
-    public static ObservabilityStack AddObservabilityStack(
-        this IDistributedApplicationBuilder builder,
-        IResourceBuilder<PostgresServerResource> postgres,
-        IResourceBuilder<RedisResource> redis,
-        IReadOnlyList<IResourceBuilder<ContainerResource>> standbys,
-        IResourceBuilder<ContainerResource>? pgbouncer
-    )
+  public static ObservabilityStack AddObservabilityStack(
+    this IDistributedApplicationBuilder builder,
+    IResourceBuilder<PostgresServerResource> postgres,
+    IResourceBuilder<RedisResource> redis,
+    IReadOnlyList<IResourceBuilder<ContainerResource>> standbys,
+    IResourceBuilder<ContainerResource>? pgbouncer
+  )
+  {
+    // Fixed host ports so bookmarks and the k6 scripts on the host (scripts/.env.aspire) keep working.
+    var settings = builder.Configuration.GetSection("Observability");
+    var grafanaPort = settings.Required<int>("GrafanaPort");
+    var prometheusPort = settings.Required<int>("PrometheusPort");
+
+    var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.16.0")
+      .WithBindMount($"{ConfigDir}/prometheus.yml", "/etc/prometheus/prometheus.yml", true)
+      .WithArgs(
+        "--config.file=/etc/prometheus/prometheus.yml",
+        "--storage.tsdb.path=/prometheus",
+        $"--storage.tsdb.retention.time={settings.Required<string>("PrometheusRetention")}",
+        "--web.enable-otlp-receiver",
+        "--web.enable-remote-write-receiver",
+        "--enable-feature=exemplar-storage"
+      )
+      .WithHttpEndpoint(prometheusPort, 9090)
+      .WithHttpHealthCheck("/-/ready")
+      .WithIconName("ChartMultiple");
+    var prometheusHttp = prometheus.GetEndpoint("http");
+
+    var tempo = builder.AddContainer("tempo", "grafana/tempo", "2.10.10")
+      .WithBindMount($"{ConfigDir}/tempo.yaml", "/etc/tempo/tempo.yaml", true)
+      .WithArgs("-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true")
+      .WithEnvironment(
+        "PROMETHEUS_REMOTE_WRITE_URL",
+        ReferenceExpression.Create($"{prometheusHttp}/api/v1/write")
+      )
+      .WithHttpEndpoint(targetPort: 3200)
+      .WithEndpoint(targetPort: 4317, name: "otlp-grpc", scheme: "http")
+      .WithHttpHealthCheck("/ready")
+      .WaitFor(prometheus)
+      .WithIconName("BranchFork");
+
+    var loki = builder.AddContainer("loki", "grafana/loki", "3.7.10")
+      .WithBindMount($"{ConfigDir}/loki.yaml", "/etc/loki/loki.yaml", true)
+      .WithArgs("-config.file=/etc/loki/loki.yaml")
+      .WithHttpEndpoint(targetPort: 3100)
+      .WithHttpHealthCheck("/ready")
+      .WithIconName("DocumentText");
+
+    // Receivers stay on plain HTTP even under the https profile: the .NET exporters would otherwise need a
+    // trusted dev certificate. AppForwarding points every resource's OTLP exporter at the collector.
+    var collector = builder.AddOpenTelemetryCollector(
+        "otel-collector",
+        s =>
+        {
+          s.CollectorTag = "0.165.0";
+          s.ForceNonSecureReceiver = true;
+        }
+      )
+      .WithConfig($"{ConfigDir}/otel-collector.yaml");
+    // The Kubernetes publisher cannot resolve the collector's "grpc" endpoint for the toolkit's forwarding; AppHost.cs
+    // gives each published project its OTLP address instead.
+    if (!builder.ExecutionContext.IsPublishMode) collector.WithAppForwarding();
+
+    collector
+      .WithEnvironment("ASPIRE_OTLP_INSECURE", DashboardOtlpIsPlainHttp(builder) ? "true" : "false")
+      .WithEnvironment("PROMETHEUS_ENDPOINT", prometheusHttp)
+      .WithEnvironment("TEMPO_OTLP_ENDPOINT", tempo.GetEndpoint("otlp-grpc"))
+      .WithEnvironment("LOKI_ENDPOINT", loki.GetEndpoint("http"))
+      .WithEndpoint(targetPort: 8888, name: "metrics", scheme: "http")
+      .WaitFor(prometheus)
+      .WaitFor(tempo)
+      .WaitFor(loki);
+
+    // Server-side PostgreSQL / Redis metrics (connections, TPS, locks, cache hits, memory ...), scraped by Prometheus.
+    builder.AddContainer("postgres-exporter", "prometheuscommunity/postgres-exporter", "v0.20.1")
+      .WithEnvironment(
+        "DATA_SOURCE_NAME",
+        ReferenceExpression.Create($"{postgres.Resource.UriExpression}/postgres?sslmode=disable")
+      )
+      .WithHttpEndpoint(targetPort: 9187)
+      .WithHttpHealthCheck("/metrics")
+      .WithParentRelationship(postgres)
+      .WaitFor(postgres);
+
+    // One exporter per standby (replication lag in seconds and the standby's own state) and one for PgBouncer's admin
+    // console (pools, waiting clients, query/wait time). Prometheus scrapes them under the names in prometheus.yml.
+    for (var i = 0; i < standbys.Count; i++)
     {
-        // Fixed host ports so bookmarks and the k6 scripts on the host (scripts/.env.aspire) keep working.
-        var settings = builder.Configuration.GetSection("Observability");
-        var grafanaPort = settings.Required<int>("GrafanaPort");
-        var prometheusPort = settings.Required<int>("PrometheusPort");
-
-        var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.16.0")
-            .WithBindMount($"{ConfigDir}/prometheus.yml", "/etc/prometheus/prometheus.yml", true)
-            .WithArgs(
-                "--config.file=/etc/prometheus/prometheus.yml",
-                "--storage.tsdb.path=/prometheus",
-                $"--storage.tsdb.retention.time={settings.Required<string>("PrometheusRetention")}",
-                "--web.enable-otlp-receiver",
-                "--web.enable-remote-write-receiver",
-                "--enable-feature=exemplar-storage"
-            )
-            .WithHttpEndpoint(prometheusPort, 9090)
-            .WithHttpHealthCheck("/-/ready")
-            .WithIconName("ChartMultiple");
-        var prometheusHttp = prometheus.GetEndpoint("http");
-
-        var tempo = builder.AddContainer("tempo", "grafana/tempo", "2.10.10")
-            .WithBindMount($"{ConfigDir}/tempo.yaml", "/etc/tempo/tempo.yaml", true)
-            .WithArgs("-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true")
-            .WithEnvironment(
-                "PROMETHEUS_REMOTE_WRITE_URL",
-                ReferenceExpression.Create($"{prometheusHttp}/api/v1/write")
-            )
-            .WithHttpEndpoint(targetPort: 3200)
-            .WithEndpoint(targetPort: 4317, name: "otlp-grpc", scheme: "http")
-            .WithHttpHealthCheck("/ready")
-            .WaitFor(prometheus)
-            .WithIconName("BranchFork");
-
-        var loki = builder.AddContainer("loki", "grafana/loki", "3.7.10")
-            .WithBindMount($"{ConfigDir}/loki.yaml", "/etc/loki/loki.yaml", true)
-            .WithArgs("-config.file=/etc/loki/loki.yaml")
-            .WithHttpEndpoint(targetPort: 3100)
-            .WithHttpHealthCheck("/ready")
-            .WithIconName("DocumentText");
-
-        // Receivers stay on plain HTTP even under the https profile: the .NET exporters would otherwise need a
-        // trusted dev certificate. AppForwarding points every resource's OTLP exporter at the collector.
-        var collector = builder.AddOpenTelemetryCollector(
-                "otel-collector",
-                s =>
-                {
-                    s.CollectorTag = "0.165.0";
-                    s.ForceNonSecureReceiver = true;
-                }
-            )
-            .WithConfig($"{ConfigDir}/otel-collector.yaml");
-        // The Kubernetes publisher cannot resolve the collector's "grpc" endpoint for the toolkit's forwarding; AppHost.cs
-        // gives each published project its OTLP address instead.
-        if (!builder.ExecutionContext.IsPublishMode)
-        {
-            collector.WithAppForwarding();
-        }
-
-        collector
-            .WithEnvironment("ASPIRE_OTLP_INSECURE", DashboardOtlpIsPlainHttp(builder) ? "true" : "false")
-            .WithEnvironment("PROMETHEUS_ENDPOINT", prometheusHttp)
-            .WithEnvironment("TEMPO_OTLP_ENDPOINT", tempo.GetEndpoint("otlp-grpc"))
-            .WithEnvironment("LOKI_ENDPOINT", loki.GetEndpoint("http"))
-            .WithEndpoint(targetPort: 8888, name: "metrics", scheme: "http")
-            .WaitFor(prometheus)
-            .WaitFor(tempo)
-            .WaitFor(loki);
-
-        // Server-side PostgreSQL / Redis metrics (connections, TPS, locks, cache hits, memory ...), scraped by Prometheus.
-        builder.AddContainer("postgres-exporter", "prometheuscommunity/postgres-exporter", "v0.20.1")
-            .WithEnvironment(
-                "DATA_SOURCE_NAME",
-                ReferenceExpression.Create($"{postgres.Resource.UriExpression}/postgres?sslmode=disable")
-            )
-            .WithHttpEndpoint(targetPort: 9187)
-            .WithHttpHealthCheck("/metrics")
-            .WithParentRelationship(postgres)
-            .WaitFor(postgres);
-
-        // One exporter per standby (replication lag in seconds and the standby's own state) and one for PgBouncer's admin
-        // console (pools, waiting clients, query/wait time). Prometheus scrapes them under the names in prometheus.yml.
-        for (var i = 0; i < standbys.Count; i++)
-        {
-            var standby = standbys[i];
-            var endpoint = standby.GetEndpoint("tcp");
-            builder.AddContainer(
-                    $"postgres-exporter-replica-{(i + 1).ToString()}",
-                    "prometheuscommunity/postgres-exporter",
-                    "v0.20.1"
-                )
-                .WithEnvironment(
-                    "DATA_SOURCE_NAME",
-                    ReferenceExpression.Create(
-                        $"postgresql://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/postgres?sslmode=disable"
-                    )
-                )
-                .WithHttpEndpoint(targetPort: 9187)
-                .WithHttpHealthCheck("/metrics")
-                .WithParentRelationship(standby)
-                .WaitFor(standby);
-        }
-
-        if (pgbouncer is not null)
-        {
-            var endpoint = pgbouncer.GetEndpoint("tcp");
-            builder.AddContainer("pgbouncer-exporter", "prometheuscommunity/pgbouncer-exporter", "v0.12.0")
-                .WithEnvironment(
-                    "PGBOUNCER_EXPORTER_CONNECTION_STRING",
-                    ReferenceExpression.Create(
-                        $"postgres://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/pgbouncer?sslmode=disable"
-                    )
-                )
-                .WithHttpEndpoint(targetPort: 9127)
-                .WithHttpHealthCheck("/metrics")
-                .WithParentRelationship(pgbouncer)
-                .WaitFor(pgbouncer);
-        }
-
-        builder.AddContainer("redis-exporter", "oliver006/redis_exporter", "v1.97.0")
-            .WithEnvironment("REDIS_ADDR", redis.Resource.UriExpression)
-            .WithHttpEndpoint(targetPort: 9121)
-            .WithHttpHealthCheck("/metrics")
-            .WithParentRelationship(redis)
-            .WaitFor(redis);
-
-        // Image renderer (headless Chromium) as a separate service: Grafana's "Export as image" / the /render API and
-        // alert screenshots call it, and it calls back into Grafana to load the panel. Both sides share a token that
-        // is generated per run.
-        var rendererToken = builder.AddParameter(
-            "grafana-renderer-token",
-            new GenerateParameterDefault { MinLength = 32, Special = false },
-            true
-        );
-        var renderer = builder.AddContainer("grafana-renderer", "grafana/grafana-image-renderer", "v5.12.11")
-            .WithEnvironment("AUTH_TOKEN", rendererToken)
-            .WithEnvironment("API_SILENCE_REQUEST_LOG_PATH", "/healthz")
-            .WithHttpEndpoint(targetPort: 8081)
-            .WithHttpHealthCheck("/healthz")
-            .WithIconName("Image");
-
-        var grafana = builder.AddContainer("grafana", "grafana/grafana", "13.2.6")
-            .WithBindMount($"{ConfigDir}/grafana/provisioning", "/etc/grafana/provisioning", true)
-            .WithBindMount($"{ConfigDir}/grafana/dashboards", "/var/lib/grafana/dashboards", true)
-            .WithEnvironment("PROMETHEUS_URL", prometheusHttp)
-            .WithEnvironment("TEMPO_URL", tempo.GetEndpoint("http"))
-            .WithEnvironment("LOKI_URL", loki.GetEndpoint("http"))
-            // Local tool: anonymous viewing (+ Explore); sign in as admin/admin to edit dashboards.
-            .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
-            .WithEnvironment("GF_USERS_VIEWERS_CAN_EDIT", "true")
-            .WithEnvironment("GF_SECURITY_ADMIN_USER", "admin")
-            .WithEnvironment("GF_SECURITY_ADMIN_PASSWORD", "admin")
-            .WithEnvironment("GF_ANALYTICS_REPORTING_ENABLED", "false")
-            .WithEnvironment("GF_NEWS_NEWS_FEED_ENABLED", "false")
-            .WithEnvironment(
-                "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH",
-                "/var/lib/grafana/dashboards/service-overview.json"
-            )
-            .WithEnvironment(
-                "GF_RENDERING_SERVER_URL",
-                ReferenceExpression.Create($"{renderer.GetEndpoint("http")}/render")
-            )
-            .WithEnvironment("GF_RENDERING_RENDERER_TOKEN", rendererToken)
-            .WithHttpEndpoint(grafanaPort, 3000)
-            .WithHttpHealthCheck("/api/health")
-            .WithUrlForEndpoint("http", u => u.DisplayText = "Grafana")
-            .WaitFor(prometheus)
-            .WaitFor(tempo)
-            .WaitFor(loki)
-            .WaitFor(renderer)
-            .WithIconName("DataArea");
-        // The address the renderer uses to reach Grafana (container network), not the host URL.
-        grafana.WithEnvironment(
-            "GF_RENDERING_CALLBACK_URL",
-            ReferenceExpression.Create($"{grafana.GetEndpoint("http")}/")
-        );
-        renderer.WithParentRelationship(grafana);
-
-        return new ObservabilityStack(collector, prometheus, grafana);
+      var standby = standbys[i];
+      var endpoint = standby.GetEndpoint("tcp");
+      builder.AddContainer(
+          $"postgres-exporter-replica-{(i + 1).ToString()}",
+          "prometheuscommunity/postgres-exporter",
+          "v0.20.1"
+        )
+        .WithEnvironment(
+          "DATA_SOURCE_NAME",
+          ReferenceExpression.Create(
+            $"postgresql://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/postgres?sslmode=disable"
+          )
+        )
+        .WithHttpEndpoint(targetPort: 9187)
+        .WithHttpHealthCheck("/metrics")
+        .WithParentRelationship(standby)
+        .WaitFor(standby);
     }
 
-    private static bool DashboardOtlpIsPlainHttp(
-        IDistributedApplicationBuilder builder
-    )
+    if (pgbouncer is not null)
     {
-        return builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"]
-                ?.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-            == true;
+      var endpoint = pgbouncer.GetEndpoint("tcp");
+      builder.AddContainer("pgbouncer-exporter", "prometheuscommunity/pgbouncer-exporter", "v0.12.0")
+        .WithEnvironment(
+          "PGBOUNCER_EXPORTER_CONNECTION_STRING",
+          ReferenceExpression.Create(
+            $"postgres://postgres:{postgres.Resource.PasswordParameter:uri}@{endpoint.Property(EndpointProperty.Host)}:{endpoint.Property(EndpointProperty.Port)}/pgbouncer?sslmode=disable"
+          )
+        )
+        .WithHttpEndpoint(targetPort: 9127)
+        .WithHttpHealthCheck("/metrics")
+        .WithParentRelationship(pgbouncer)
+        .WaitFor(pgbouncer);
     }
+
+    builder.AddContainer("redis-exporter", "oliver006/redis_exporter", "v1.97.0")
+      .WithEnvironment("REDIS_ADDR", redis.Resource.UriExpression)
+      .WithHttpEndpoint(targetPort: 9121)
+      .WithHttpHealthCheck("/metrics")
+      .WithParentRelationship(redis)
+      .WaitFor(redis);
+
+    // Image renderer (headless Chromium) as a separate service: Grafana's "Export as image" / the /render API and
+    // alert screenshots call it, and it calls back into Grafana to load the panel. Both sides share a token that
+    // is generated per run.
+    var rendererToken = builder.AddParameter(
+      "grafana-renderer-token",
+      new GenerateParameterDefault { MinLength = 32, Special = false },
+      true
+    );
+    var renderer = builder.AddContainer("grafana-renderer", "grafana/grafana-image-renderer", "v5.12.11")
+      .WithEnvironment("AUTH_TOKEN", rendererToken)
+      .WithEnvironment("API_SILENCE_REQUEST_LOG_PATH", "/healthz")
+      .WithHttpEndpoint(targetPort: 8081)
+      .WithHttpHealthCheck("/healthz")
+      .WithIconName("Image");
+
+    var grafana = builder.AddContainer("grafana", "grafana/grafana", "13.2.6")
+      .WithBindMount($"{ConfigDir}/grafana/provisioning", "/etc/grafana/provisioning", true)
+      .WithBindMount($"{ConfigDir}/grafana/dashboards", "/var/lib/grafana/dashboards", true)
+      .WithEnvironment("PROMETHEUS_URL", prometheusHttp)
+      .WithEnvironment("TEMPO_URL", tempo.GetEndpoint("http"))
+      .WithEnvironment("LOKI_URL", loki.GetEndpoint("http"))
+      // Local tool: anonymous viewing (+ Explore); sign in as admin/admin to edit dashboards.
+      .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
+      .WithEnvironment("GF_USERS_VIEWERS_CAN_EDIT", "true")
+      .WithEnvironment("GF_SECURITY_ADMIN_USER", "admin")
+      .WithEnvironment("GF_SECURITY_ADMIN_PASSWORD", "admin")
+      .WithEnvironment("GF_ANALYTICS_REPORTING_ENABLED", "false")
+      .WithEnvironment("GF_NEWS_NEWS_FEED_ENABLED", "false")
+      .WithEnvironment(
+        "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH",
+        "/var/lib/grafana/dashboards/service-overview.json"
+      )
+      .WithEnvironment(
+        "GF_RENDERING_SERVER_URL",
+        ReferenceExpression.Create($"{renderer.GetEndpoint("http")}/render")
+      )
+      .WithEnvironment("GF_RENDERING_RENDERER_TOKEN", rendererToken)
+      .WithHttpEndpoint(grafanaPort, 3000)
+      .WithHttpHealthCheck("/api/health")
+      .WithUrlForEndpoint("http", u => u.DisplayText = "Grafana")
+      .WaitFor(prometheus)
+      .WaitFor(tempo)
+      .WaitFor(loki)
+      .WaitFor(renderer)
+      .WithIconName("DataArea");
+    // The address the renderer uses to reach Grafana (container network), not the host URL.
+    grafana.WithEnvironment(
+      "GF_RENDERING_CALLBACK_URL",
+      ReferenceExpression.Create($"{grafana.GetEndpoint("http")}/")
+    );
+    renderer.WithParentRelationship(grafana);
+
+    return new ObservabilityStack(collector, prometheus, grafana);
+  }
+
+  private static bool DashboardOtlpIsPlainHttp(
+    IDistributedApplicationBuilder builder
+  )
+  {
+    return builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"]
+        ?.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+      == true;
+  }
 }
 
 internal sealed record ObservabilityStack(
-    IResourceBuilder<OpenTelemetryCollectorResource> Collector,
-    IResourceBuilder<ContainerResource> Prometheus,
-    IResourceBuilder<ContainerResource> Grafana
+  IResourceBuilder<OpenTelemetryCollectorResource> Collector,
+  IResourceBuilder<ContainerResource> Prometheus,
+  IResourceBuilder<ContainerResource> Grafana
 );

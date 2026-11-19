@@ -14,27 +14,27 @@ namespace AppHost;
 /// </summary>
 internal static class Bitwarden
 {
-    public static IResourceBuilder<BitwardenSecretManagerResource> AddBitwarden(
-        this IDistributedApplicationBuilder builder
-    )
-    {
-        // A name creates the project, a GUID adopts an existing one (a name does not look up a remote project).
-        var project = builder.AddParameter("bitwarden-project");
-        var organizationId = builder.AddParameter("bitwarden-organization-id");
-        var accessToken = builder.AddParameter("bitwarden-access-token", true);
+  public static IResourceBuilder<BitwardenSecretManagerResource> AddBitwarden(
+    this IDistributedApplicationBuilder builder
+  )
+  {
+    // A name creates the project, a GUID adopts an existing one (a name does not look up a remote project).
+    var project = builder.AddParameter("bitwarden-project");
+    var organizationId = builder.AddParameter("bitwarden-organization-id");
+    var accessToken = builder.AddParameter("bitwarden-access-token", true);
 
-        return builder.AddBitwardenSecretManager("bitwarden", project, organizationId, accessToken);
-    }
+    return builder.AddBitwardenSecretManager("bitwarden", project, organizationId, accessToken);
+  }
 
-    /// <summary>
-    /// Gives the project the client settings (<c>Aspire:Bitwarden:SecretManager:bitwarden:*</c>) and holds it back until
-    /// the one-shot provisioning of the project and its managed secrets has finished.
-    /// </summary>
-    public static IResourceBuilder<DotnetProjectResource> WithBitwarden(
-        this IResourceBuilder<DotnetProjectResource> project,
-        IResourceBuilder<BitwardenSecretManagerResource> bitwarden
-    )
-    {
-        return project.WithReference(bitwarden).WaitForCompletion(bitwarden);
-    }
+  /// <summary>
+  /// Gives the project the client settings (<c>Aspire:Bitwarden:SecretManager:bitwarden:*</c>) and holds it back until
+  /// the one-shot provisioning of the project and its managed secrets has finished.
+  /// </summary>
+  public static IResourceBuilder<DotnetProjectResource> WithBitwarden(
+    this IResourceBuilder<DotnetProjectResource> project,
+    IResourceBuilder<BitwardenSecretManagerResource> bitwarden
+  )
+  {
+    return project.WithReference(bitwarden).WaitForCompletion(bitwarden);
+  }
 }

@@ -6,80 +6,80 @@ using Npgsql;
 namespace SubscriptionManagement.Infrastructure;
 
 public sealed class DatabaseHealthCheck(
-    NpgsqlDataSource dataSource
+  NpgsqlDataSource dataSource
 ) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken ct = default
-    )
+  public async Task<HealthCheckResult> CheckHealthAsync(
+    HealthCheckContext context,
+    CancellationToken ct = default
+  )
+  {
+    try
     {
-        try
-        {
-            await using var command = dataSource.CreateCommand("SELECT 1");
-            await command.ExecuteScalarAsync(ct);
-            return HealthCheckResult.Healthy();
-        }
-        catch (Exception ex)
-        {
-            return HealthCheckResult.Unhealthy("database unreachable", ex);
-        }
+      await using var command = dataSource.CreateCommand("SELECT 1");
+      await command.ExecuteScalarAsync(ct);
+      return HealthCheckResult.Healthy();
     }
+    catch (Exception ex)
+    {
+      return HealthCheckResult.Unhealthy("database unreachable", ex);
+    }
+  }
 }
 
 public sealed class CacheHealthCheck(
-    IDistributedCache cache
+  IDistributedCache cache
 ) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken ct = default
-    )
+  public async Task<HealthCheckResult> CheckHealthAsync(
+    HealthCheckContext context,
+    CancellationToken ct = default
+  )
+  {
+    try
     {
-        try
-        {
-            await cache.GetAsync("health-probe", ct);
-            return HealthCheckResult.Healthy();
-        }
-        catch (Exception ex)
-        {
-            return HealthCheckResult.Unhealthy("cache unreachable", ex);
-        }
+      await cache.GetAsync("health-probe", ct);
+      return HealthCheckResult.Healthy();
     }
+    catch (Exception ex)
+    {
+      return HealthCheckResult.Unhealthy("cache unreachable", ex);
+    }
+  }
 }
 
 public static class HealthEndpoints
 {
-    /// <summary>
-    /// <c>/health/live</c>: process is up. <c>/health/ready</c>: database only (Redis is optional and must
-    /// not take the instance out of rotation, as in the Java reference). <c>/health</c>: all components.
-    /// </summary>
-    public static void MapHealth(
-        this IEndpointRouteBuilder app
-    )
+  /// <summary>
+  /// <c>/health/live</c>: process is up. <c>/health/ready</c>: database only (Redis is optional and must
+  /// not take the instance out of rotation, as in the Java reference). <c>/health</c>: all components.
+  /// </summary>
+  public static void MapHealth(
+    this IEndpointRouteBuilder app
+  )
+  {
+    app.MapHealthChecks("/health/live", new() { Predicate = _ => false, ResponseWriter = Write }).AllowAnonymous();
+    app.MapHealthChecks(
+        "/health/ready",
+        new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write }
+      )
+      .AllowAnonymous();
+    app.MapHealthChecks("/health", new() { ResponseWriter = Write }).AllowAnonymous();
+  }
+
+  private static async Task Write(
+    HttpContext context,
+    HealthReport report
+  )
+  {
+    context.Response.ContentType = "application/json";
+    await using (var writer = new Utf8JsonWriter(context.Response.BodyWriter))
     {
-        app.MapHealthChecks("/health/live", new() { Predicate = _ => false, ResponseWriter = Write }).AllowAnonymous();
-        app.MapHealthChecks(
-                "/health/ready",
-                new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write }
-            )
-            .AllowAnonymous();
-        app.MapHealthChecks("/health", new() { ResponseWriter = Write }).AllowAnonymous();
+      writer.WriteStartObject();
+      writer.WriteString("status", report.Status == HealthStatus.Healthy ? "UP" : "DOWN");
+      writer.WriteEndObject();
     }
 
-    private static async Task Write(
-        HttpContext context,
-        HealthReport report
-    )
-    {
-        context.Response.ContentType = "application/json";
-        await using (var writer = new Utf8JsonWriter(context.Response.BodyWriter))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("status", report.Status == HealthStatus.Healthy ? "UP" : "DOWN");
-            writer.WriteEndObject();
-        }
-
-        await context.Response.BodyWriter.FlushAsync(context.RequestAborted);
-    }
+    await context.Response.BodyWriter.FlushAsync(context.RequestAborted);
+  }
 }

@@ -7,17 +7,17 @@ namespace SubscriptionManagement.Billing.Features.Renewals;
 /// <summary>Stored by name in <c>renewal_sagas.state</c> and returned as-is by <c>GetRenewal</c>.</summary>
 public enum RenewalState
 {
-    AwaitingPayment,
-    Settling,
-    Declined,
-    TimedOut,
-    Completed,
-    Compensated
+  AwaitingPayment,
+  Settling,
+  Declined,
+  TimedOut,
+  Completed,
+  Compensated
 }
 
 /// <summary>Scheduled when the saga starts. Handled by Billing itself, so it never leaves the local queue.</summary>
 public sealed record RenewalTimeout(
-    Guid RenewalSagaId
+  Guid RenewalSagaId
 );
 
 /// <summary>
@@ -33,192 +33,175 @@ public sealed record RenewalTimeout(
 /// </summary>
 public sealed class RenewalSaga : Saga
 {
-    public const string TimeoutReason = "Payment was not confirmed in time.";
+  public const string TimeoutReason = "Payment was not confirmed in time.";
 
-    public Guid Id { get; set; }
-    public Guid SubscriptionId { get; set; }
-    public Guid PaymentId { get; set; }
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "";
-    public RenewalState State { get; set; }
-    public string? FailureReason { get; set; }
-    public DateTimeOffset UpdatedAt { get; set; }
+  public Guid Id { get; set; }
+  public Guid SubscriptionId { get; set; }
+  public Guid PaymentId { get; set; }
+  public decimal Amount { get; set; }
+  public string Currency { get; set; } = "";
+  public RenewalState State { get; set; }
+  public string? FailureReason { get; set; }
+  public DateTimeOffset UpdatedAt { get; set; }
 
-    /// <summary>none + InvoiceIssued: request the charge and start the clock.</summary>
-    public static (RenewalSaga, OutgoingMessages) Start(
-        InvoiceIssued issued,
-        BillingOptions options,
-        TimeProvider time
-    )
+  /// <summary>none + InvoiceIssued: request the charge and start the clock.</summary>
+  public static (RenewalSaga, OutgoingMessages) Start(
+    InvoiceIssued issued,
+    BillingOptions options,
+    TimeProvider time
+  )
+  {
+    var saga = new RenewalSaga
     {
-        var saga = new RenewalSaga
-        {
-            Id = issued.InvoiceId,
-            SubscriptionId = issued.SubscriptionId,
-            PaymentId = Guid.NewGuid(),
-            Amount = issued.Amount,
-            Currency = issued.Currency,
-            State = RenewalState.AwaitingPayment,
-            UpdatedAt = time.GetUtcNow()
-        };
+      Id = issued.InvoiceId,
+      SubscriptionId = issued.SubscriptionId,
+      PaymentId = Guid.NewGuid(),
+      Amount = issued.Amount,
+      Currency = issued.Currency,
+      State = RenewalState.AwaitingPayment,
+      UpdatedAt = time.GetUtcNow()
+    };
 
-        var messages = new OutgoingMessages
-        {
-            new ChargePayment(
-                saga.Id,
-                saga.PaymentId,
-                saga.SubscriptionId,
-                saga.Amount,
-                saga.Currency,
-                issued.PeriodEnd
-            )
-        };
-        messages.Delay(new RenewalTimeout(saga.Id), options.RenewalTimeout);
-
-        return (saga, messages);
-    }
-
-    /// <summary>AwaitingPayment + PaymentSucceeded: the money is captured, mark the invoice paid.</summary>
-    public OutgoingMessages Handle(
-        PaymentSucceeded message,
-        TimeProvider time,
-        ILogger<RenewalSaga> logger
-    )
+    var messages = new OutgoingMessages
     {
-        if (State != RenewalState.AwaitingPayment)
-        {
-            return Ignore(message, logger);
-        }
+      new ChargePayment(
+        saga.Id,
+        saga.PaymentId,
+        saga.SubscriptionId,
+        saga.Amount,
+        saga.Currency,
+        issued.PeriodEnd
+      )
+    };
+    messages.Delay(new RenewalTimeout(saga.Id), options.RenewalTimeout);
 
-        MoveTo(RenewalState.Settling, null, time);
-        return [new SettleInvoice(Id, PaymentId)];
-    }
+    return (saga, messages);
+  }
 
-    /// <summary>AwaitingPayment + PaymentFailed: nothing was captured, cancel the renewal.</summary>
-    public OutgoingMessages Handle(
-        PaymentFailed message,
-        TimeProvider time,
-        ILogger<RenewalSaga> logger
-    )
-    {
-        if (State != RenewalState.AwaitingPayment)
-        {
-            return Ignore(message, logger);
-        }
+  /// <summary>AwaitingPayment + PaymentSucceeded: the money is captured, mark the invoice paid.</summary>
+  public OutgoingMessages Handle(
+    PaymentSucceeded message,
+    TimeProvider time,
+    ILogger<RenewalSaga> logger
+  )
+  {
+    if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
 
-        MoveTo(RenewalState.Declined, message.Reason, time);
-        return [new CancelRenewal(Id, SubscriptionId, message.Reason)];
-    }
+    MoveTo(RenewalState.Settling, null, time);
+    return [new SettleInvoice(Id, PaymentId)];
+  }
 
-    /// <summary>
-    /// AwaitingPayment + RenewalTimeout: no reply, so cancel both sides. Once the payment is confirmed the timeout no
-    /// longer acts: canceling in Settling would refund a payment whose invoice is about to be marked paid.
-    /// </summary>
-    public OutgoingMessages Handle(
-        RenewalTimeout message,
-        TimeProvider time,
-        ILogger<RenewalSaga> logger
-    )
-    {
-        if (State != RenewalState.AwaitingPayment)
-        {
-            return Ignore(message, logger);
-        }
+  /// <summary>AwaitingPayment + PaymentFailed: nothing was captured, cancel the renewal.</summary>
+  public OutgoingMessages Handle(
+    PaymentFailed message,
+    TimeProvider time,
+    ILogger<RenewalSaga> logger
+  )
+  {
+    if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
 
-        MoveTo(RenewalState.TimedOut, TimeoutReason, time);
-        return [new CancelPayment(PaymentId, TimeoutReason), new CancelRenewal(Id, SubscriptionId, TimeoutReason)];
-    }
+    MoveTo(RenewalState.Declined, message.Reason, time);
+    return [new CancelRenewal(Id, SubscriptionId, message.Reason)];
+  }
 
-    /// <summary>Settling + InvoiceSettled: done.</summary>
-    public OutgoingMessages Handle(
-        InvoiceSettled message,
-        TimeProvider time,
-        ILogger<RenewalSaga> logger
-    )
-    {
-        if (State != RenewalState.Settling)
-        {
-            return Ignore(message, logger);
-        }
+  /// <summary>
+  /// AwaitingPayment + RenewalTimeout: no reply, so cancel both sides. Once the payment is confirmed the timeout no
+  /// longer acts: canceling in Settling would refund a payment whose invoice is about to be marked paid.
+  /// </summary>
+  public OutgoingMessages Handle(
+    RenewalTimeout message,
+    TimeProvider time,
+    ILogger<RenewalSaga> logger
+  )
+  {
+    if (State != RenewalState.AwaitingPayment) return Ignore(message, logger);
 
-        MoveTo(RenewalState.Completed, null, time);
-        return [];
-    }
+    MoveTo(RenewalState.TimedOut, TimeoutReason, time);
+    return [new CancelPayment(PaymentId, TimeoutReason), new CancelRenewal(Id, SubscriptionId, TimeoutReason)];
+  }
 
-    /// <summary>Settling + InvoiceSettlementRejected: the invoice cannot take the payment, give the money back.</summary>
-    public OutgoingMessages Handle(
-        InvoiceSettlementRejected message,
-        TimeProvider time,
-        ILogger<RenewalSaga> logger
-    )
-    {
-        if (State != RenewalState.Settling)
-        {
-            return Ignore(message, logger);
-        }
+  /// <summary>Settling + InvoiceSettled: done.</summary>
+  public OutgoingMessages Handle(
+    InvoiceSettled message,
+    TimeProvider time,
+    ILogger<RenewalSaga> logger
+  )
+  {
+    if (State != RenewalState.Settling) return Ignore(message, logger);
 
-        MoveTo(RenewalState.Compensated, message.Reason, time);
-        return [new CancelPayment(PaymentId, message.Reason)];
-    }
+    MoveTo(RenewalState.Completed, null, time);
+    return [];
+  }
 
-    // A reply or timeout for an invoice that never started a saga. Without these Wolverine fails the message.
-    public static void NotFound(
-        PaymentSucceeded message
-    )
-    {
-    }
+  /// <summary>Settling + InvoiceSettlementRejected: the invoice cannot take the payment, give the money back.</summary>
+  public OutgoingMessages Handle(
+    InvoiceSettlementRejected message,
+    TimeProvider time,
+    ILogger<RenewalSaga> logger
+  )
+  {
+    if (State != RenewalState.Settling) return Ignore(message, logger);
 
-    public static void NotFound(
-        PaymentFailed message
-    )
-    {
-    }
+    MoveTo(RenewalState.Compensated, message.Reason, time);
+    return [new CancelPayment(PaymentId, message.Reason)];
+  }
 
-    public static void NotFound(
-        RenewalTimeout message
-    )
-    {
-    }
+  // A reply or timeout for an invoice that never started a saga. Without these Wolverine fails the message.
+  public static void NotFound(
+    PaymentSucceeded message
+  )
+  {
+  }
 
-    public static void NotFound(
-        InvoiceSettled message
-    )
-    {
-    }
+  public static void NotFound(
+    PaymentFailed message
+  )
+  {
+  }
 
-    public static void NotFound(
-        InvoiceSettlementRejected message
-    )
-    {
-    }
+  public static void NotFound(
+    RenewalTimeout message
+  )
+  {
+  }
 
-    private void MoveTo(
-        RenewalState next,
-        string? failureReason,
-        TimeProvider time
-    )
-    {
-        State = next;
-        FailureReason = failureReason;
-        UpdatedAt = time.GetUtcNow();
-    }
+  public static void NotFound(
+    InvoiceSettled message
+  )
+  {
+  }
 
-    // Any other state/message pair: a duplicate, or the loser of a race. Nothing changes, so nothing is written.
-    private OutgoingMessages Ignore(
-        object message,
-        ILogger logger
-    )
-    {
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.LogInformation(
-                "Renewal {InvoiceId} is {State}; ignoring {MessageType}.",
-                Id,
-                State,
-                message.GetType().Name
-            );
-        }
+  public static void NotFound(
+    InvoiceSettlementRejected message
+  )
+  {
+  }
 
-        return [];
-    }
+  private void MoveTo(
+    RenewalState next,
+    string? failureReason,
+    TimeProvider time
+  )
+  {
+    State = next;
+    FailureReason = failureReason;
+    UpdatedAt = time.GetUtcNow();
+  }
+
+  // Any other state/message pair: a duplicate, or the loser of a race. Nothing changes, so nothing is written.
+  private OutgoingMessages Ignore(
+    object message,
+    ILogger logger
+  )
+  {
+    if (logger.IsEnabled(LogLevel.Information))
+      logger.LogInformation(
+        "Renewal {InvoiceId} is {State}; ignoring {MessageType}.",
+        Id,
+        State,
+        message.GetType().Name
+      );
+
+    return [];
+  }
 }

@@ -11,50 +11,50 @@ namespace SubscriptionManagement.Relay.Infrastructure;
 /// <see cref="HttpRequestException"/> for anything else, which is what Wolverine's error policy retries.
 /// </remarks>
 public sealed class ApiClient(
-    HttpClient http
+  HttpClient http
 )
 {
-    public Task<HttpStatusCode> SettleInvoiceAsync(
-        Guid invoiceId,
-        Guid paymentId,
-        CancellationToken ct
-    )
-    {
-        return PostAsync($"/invoices/{invoiceId}/settle", JsonContent.Create(new SettleInvoiceRequest(paymentId)), ct);
-    }
+  public Task<HttpStatusCode> SettleInvoiceAsync(
+    Guid invoiceId,
+    Guid paymentId,
+    CancellationToken ct
+  )
+  {
+    return PostAsync($"/invoices/{invoiceId}/settle", JsonContent.Create(new SettleInvoiceRequest(paymentId)), ct);
+  }
 
-    public Task<HttpStatusCode> VoidInvoiceAsync(
-        Guid invoiceId,
-        CancellationToken ct
-    )
-    {
-        return PostAsync($"/invoices/{invoiceId}/void", null, ct);
-    }
+  public Task<HttpStatusCode> VoidInvoiceAsync(
+    Guid invoiceId,
+    CancellationToken ct
+  )
+  {
+    return PostAsync($"/invoices/{invoiceId}/void", null, ct);
+  }
 
-    public Task<HttpStatusCode> PauseSubscriptionAsync(
-        Guid subscriptionId,
-        CancellationToken ct
-    )
-    {
-        return PostAsync($"/subscriptions/{subscriptionId}/pause", null, ct);
-    }
+  public Task<HttpStatusCode> PauseSubscriptionAsync(
+    Guid subscriptionId,
+    CancellationToken ct
+  )
+  {
+    return PostAsync($"/subscriptions/{subscriptionId}/pause", null, ct);
+  }
 
-    private async Task<HttpStatusCode> PostAsync(
-        string path,
-        HttpContent? content,
-        CancellationToken ct
-    )
+  private async Task<HttpStatusCode> PostAsync(
+    string path,
+    HttpContent? content,
+    CancellationToken ct
+  )
+  {
+    using var response = await http.PostAsync(path, content, ct);
+    return response.StatusCode switch
     {
-        using var response = await http.PostAsync(path, content, ct);
-        return response.StatusCode switch
-        {
-            HttpStatusCode.OK or HttpStatusCode.NotFound or HttpStatusCode.Conflict => response.StatusCode,
-            var status => throw new HttpRequestException($"POST {path} answered {(int)status}.", null, status)
-        };
-    }
+      HttpStatusCode.OK or HttpStatusCode.NotFound or HttpStatusCode.Conflict => response.StatusCode,
+      var status => throw new HttpRequestException($"POST {path} answered {(int)status}.", null, status)
+    };
+  }
 
-    /// <summary>Body of <c>POST /invoices/{id}/settle</c>; serialized camelCase (<c>paymentId</c>).</summary>
-    private sealed record SettleInvoiceRequest(
-        Guid PaymentId
-    );
+  /// <summary>Body of <c>POST /invoices/{id}/settle</c>; serialized camelCase (<c>paymentId</c>).</summary>
+  private sealed record SettleInvoiceRequest(
+    Guid PaymentId
+  );
 }

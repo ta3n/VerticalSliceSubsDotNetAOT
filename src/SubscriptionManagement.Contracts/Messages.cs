@@ -7,74 +7,74 @@ namespace SubscriptionManagement.Contracts;
 
 // API outbox -> Relay -> broker (facts)
 public sealed record InvoiceIssued(
-    Guid InvoiceId,
-    Guid SubscriptionId,
-    decimal Amount,
-    string Currency,
-    DateOnly PeriodStart,
-    DateOnly PeriodEnd
+  Guid InvoiceId,
+  Guid SubscriptionId,
+  decimal Amount,
+  string Currency,
+  DateOnly PeriodStart,
+  DateOnly PeriodEnd
 ); // -> billing
 
 public sealed record SubscriptionCanceled(
-    Guid SubscriptionId,
-    DateOnly CanceledOn
+  Guid SubscriptionId,
+  DateOnly CanceledOn
 ); // -> payments
 
 // billing -> payments (commands)
 public sealed record ChargePayment(
-    Guid RenewalSagaId,
-    Guid PaymentId,
-    Guid SubscriptionId,
-    decimal Amount,
-    string Currency,
-    DateOnly PeriodEnd
+  Guid RenewalSagaId,
+  Guid PaymentId,
+  Guid SubscriptionId,
+  decimal Amount,
+  string Currency,
+  DateOnly PeriodEnd
 );
 
 public sealed record CancelPayment(
-    Guid PaymentId,
-    string Reason
+  Guid PaymentId,
+  string Reason
 );
 
 // payments -> billing (replies)
 public sealed record PaymentSucceeded(
-    Guid RenewalSagaId,
-    Guid PaymentId
+  Guid RenewalSagaId,
+  Guid PaymentId
 );
 
 public sealed record PaymentFailed(
-    Guid RenewalSagaId,
-    Guid PaymentId,
-    string Reason
+  Guid RenewalSagaId,
+  Guid PaymentId,
+  string Reason
 );
 
 // billing -> relay (commands)
 public sealed record SettleInvoice(
-    Guid RenewalSagaId,
-    Guid PaymentId
+  Guid RenewalSagaId,
+  Guid PaymentId
 );
 
 public sealed record CancelRenewal(
-    Guid InvoiceId,
-    Guid SubscriptionId,
-    string Reason
+  Guid InvoiceId,
+  Guid SubscriptionId,
+  string Reason
 );
 
 // relay -> billing (replies)
 public sealed record InvoiceSettled(
-    Guid RenewalSagaId
+  Guid RenewalSagaId
 );
 
 public sealed record InvoiceSettlementRejected(
-    Guid RenewalSagaId,
-    string Reason
+  Guid RenewalSagaId,
+  string Reason
 );
 
 // payments -> billing (fact)
 public sealed record PaymentRefunded(
-    Guid PaymentId,
-    Guid InvoiceId,
-    Guid SubscriptionId,
-    decimal Amount,
-    string Currency,
-    string Reason
+  Guid PaymentId,
+  Guid InvoiceId,
+  Guid SubscriptionId,
+  decimal Amount,
+  string Currency,
+  string Reason
 );

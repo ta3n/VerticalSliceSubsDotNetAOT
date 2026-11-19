@@ -13,72 +13,69 @@ namespace SubscriptionManagement.Billing.Tests;
 /// </summary>
 [Collection(BillingCollection.Name)]
 public class DbContextPoolingTests(
-    BillingFixture fixture
+  BillingFixture fixture
 )
 {
-    private const int Scopes = 50;
+  private const int Scopes = 50;
 
-    [Fact]
-    public async Task Sequential_scopes_reuse_pooled_instances()
+  [Fact]
+  public async Task Sequential_scopes_reuse_pooled_instances()
+  {
+    var seen = new HashSet<BillingDbContext>(ReferenceEqualityComparer.Instance);
+    for (var i = 0; i < Scopes; i++)
     {
-        var seen = new HashSet<BillingDbContext>(ReferenceEqualityComparer.Instance);
-        for (var i = 0; i < Scopes; i++)
-        {
-            await using var scope = fixture.App.Services.CreateAsyncScope();
-            seen.Add(scope.ServiceProvider.GetRequiredService<BillingDbContext>());
-        }
-
-        // Without pooling every scope builds its own context: Scopes different instances. The pool may already hold
-        // several idle ones (earlier tests ran handlers in parallel), but each is leased more than once.
-        Assert.True(seen.Count < Scopes, $"{seen.Count} different contexts in {Scopes} scopes: nothing was reused.");
+      await using var scope = fixture.App.Services.CreateAsyncScope();
+      seen.Add(scope.ServiceProvider.GetRequiredService<BillingDbContext>());
     }
 
-    [Fact]
-    public async Task A_reused_context_starts_clean()
+    // Without pooling every scope builds its own context: Scopes different instances. The pool may already hold
+    // several idle ones (earlier tests ran handlers in parallel), but each is leased more than once.
+    Assert.True(seen.Count < Scopes, $"{seen.Count} different contexts in {Scopes} scopes: nothing was reused.");
+  }
+
+  [Fact]
+  public async Task A_reused_context_starts_clean()
+  {
+    BillingDbContext dirty;
+    await using (var scope = fixture.App.Services.CreateAsyncScope())
     {
-        BillingDbContext dirty;
-        await using (var scope = fixture.App.Services.CreateAsyncScope())
+      dirty = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
+      dirty.CreditNotes.Add(
+        new()
         {
-            dirty = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
-            dirty.CreditNotes.Add(
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    PaymentId = Guid.NewGuid(),
-                    InvoiceId = Guid.NewGuid(),
-                    SubscriptionId = Guid.NewGuid(),
-                    Amount = 1m,
-                    Currency = "USD",
-                    Reason = "pooling",
-                    IssuedAt = DateTimeOffset.UtcNow
-                }
-            );
-            Assert.Single(dirty.ChangeTracker.Entries<CreditNote>());
-            // Disposed without SaveChanges: the pending insert must not leak into the next lease.
+          Id = Guid.NewGuid(),
+          PaymentId = Guid.NewGuid(),
+          InvoiceId = Guid.NewGuid(),
+          SubscriptionId = Guid.NewGuid(),
+          Amount = 1m,
+          Currency = "USD",
+          Reason = "pooling",
+          IssuedAt = DateTimeOffset.UtcNow
         }
-
-        // The idle instances come back in turn, so the dirty one is leased again within a few scopes.
-        for (var i = 0; i < Scopes; i++)
-        {
-            await using var scope = fixture.App.Services.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
-            Assert.Empty(db.ChangeTracker.Entries());
-            if (ReferenceEquals(db, dirty))
-            {
-                return;
-            }
-        }
-
-        Assert.Fail("The context was never leased again: it is not pooled.");
+      );
+      Assert.Single(dirty.ChangeTracker.Entries<CreditNote>());
+      // Disposed without SaveChanges: the pending insert must not leak into the next lease.
     }
 
-    [Fact]
-    public async Task The_pooled_context_keeps_the_Wolverine_model()
+    // The idle instances come back in turn, so the dirty one is leased again within a few scopes.
+    for (var i = 0; i < Scopes; i++)
     {
-        await using var scope = fixture.App.Services.CreateAsyncScope();
-        var model = scope.ServiceProvider.GetRequiredService<BillingDbContext>().Model;
-
-        // Mapped by WolverineModelCustomizer, which only runs when the pool is built on Wolverine's own options.
-        Assert.Contains(model.GetEntityTypes(), entity => entity.GetSchema() == "wolverine");
+      await using var scope = fixture.App.Services.CreateAsyncScope();
+      var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
+      Assert.Empty(db.ChangeTracker.Entries());
+      if (ReferenceEquals(db, dirty)) return;
     }
+
+    Assert.Fail("The context was never leased again: it is not pooled.");
+  }
+
+  [Fact]
+  public async Task The_pooled_context_keeps_the_Wolverine_model()
+  {
+    await using var scope = fixture.App.Services.CreateAsyncScope();
+    var model = scope.ServiceProvider.GetRequiredService<BillingDbContext>().Model;
+
+    // Mapped by WolverineModelCustomizer, which only runs when the pool is built on Wolverine's own options.
+    Assert.Contains(model.GetEntityTypes(), entity => entity.GetSchema() == "wolverine");
+  }
 }
