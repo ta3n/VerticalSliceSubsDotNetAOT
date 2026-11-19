@@ -14,11 +14,25 @@
 //        BASE_URL / BILLING_URL / PAYMENTS_URL / HTTP_TIMEOUT as in the other scripts.
 // Passes when every check passes, <1% of requests fail, p95 < 1 s and every route was called at least once (calls_*).
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { Counter, Trend } from 'k6/metrics';
+import {check, sleep} from 'k6';
+import {Counter, Trend} from 'k6/metrics';
 import {
-  BASE, MISSING_ID, api, env, envNumber, expectProblem, expectStatus, fullLifecycle, params, pick, planBody,
-  seedSubscriptions, subscriptionBody, trackCalls, unique,
+  api,
+  authHeaders,
+  BASE,
+  env,
+  envNumber,
+  expectProblem,
+  expectStatus,
+  fullLifecycle,
+  MISSING_ID,
+  params,
+  pick,
+  planBody,
+  seedSubscriptions,
+  subscriptionBody,
+  trackCalls,
+  unique,
 } from './lib/api.js';
 
 const vus = envNumber('ENDPOINTS_VUS', 40);
@@ -165,7 +179,7 @@ export function errors() {
   expectProblem(api.searchSubscriptions({ cursor: 'not-a-cursor' }, [400]), 400, 'invalid-cursor');
   expectStatus(http.get(`${BASE}/subscriptions/not-a-guid`, params('GET /subscriptions/{id}', [400])), 400, 'errors: malformed id 400');
   expectStatus(http.get(`${BASE}/no-such-route`, params('GET /no-such-route', [404])), 404, 'errors: unknown route 404');
-  const notJson = Object.assign(params('POST /subscriptions', [415]), { headers: { 'Content-Type': 'text/plain' } });
+  const notJson = Object.assign(params('POST /subscriptions', [415]), {headers: Object.assign({}, authHeaders(), {'Content-Type': 'text/plain'})});
   expectStatus(http.post(`${BASE}/subscriptions`, 'serviceName=x', notJson), 415, 'errors: non-JSON body 415');
 
   const created = api.createSubscription(subscriptionBody(unique('Endpoints-errors')));

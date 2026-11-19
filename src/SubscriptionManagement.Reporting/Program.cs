@@ -12,9 +12,14 @@ builder.Logging.AddJsonConsole(o => o.IncludeScopes = true);
 // Wolverine's handler spans.
 builder.AddServiceDefaults(ServiceSetup.ServiceName, ["Wolverine"], ["Wolverine*"]);
 
+// Access-token (Keycloak) authentication; off unless Auth:Authority is set, by the Aspire AppHost.
+builder.AddAccessTokenAuth();
+
 builder.AddReporting();
 
 var app = builder.Build();
+
+app.UseAccessTokenAuth();
 
 app.MapReporting();
 

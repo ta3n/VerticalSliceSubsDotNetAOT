@@ -6,8 +6,8 @@
 // A request whose non-2xx status is the *correct* outcome passes the statuses it expects, so it does not count as
 // http_req_failed.
 import http from 'k6/http';
-import { check } from 'k6';
-import { Counter, Trend } from 'k6/metrics';
+import {check} from 'k6';
+import {Counter, Trend} from 'k6/metrics';
 
 function withoutTrailingSlashes(url) {
   let end = url.length;
@@ -21,12 +21,52 @@ export const PAYMENTS = withoutTrailingSlashes(__ENV.PAYMENTS_URL || 'http://loc
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const TIMEOUT = __ENV.HTTP_TIMEOUT || '10s';
 
+// ---------------------------------------------------------------- authentication (Keycloak)
+// With KEYCLOAK_URL set, every request made through params() carries a bearer token of the `loadtest` client
+// (client-credentials grant; its service account has the `admin` role, so writes are allowed). Unset = no header, as
+// before. The token is cached per VU and renewed 30 s before it expires; a failed fetch is retried after 5 s, and the
+// requests in between go out without a token (they show up as 401s, which is the honest signal).
+//   KEYCLOAK_URL (unset: auth off) · KEYCLOAK_REALM (subscriptions) · KEYCLOAK_CLIENT_ID (loadtest) · KEYCLOAK_CLIENT_SECRET
+const KEYCLOAK_URL = withoutTrailingSlashes(__ENV.KEYCLOAK_URL || '');
+const KEYCLOAK_REALM = __ENV.KEYCLOAK_REALM || 'subscriptions';
+const KEYCLOAK_CLIENT_ID = __ENV.KEYCLOAK_CLIENT_ID || 'loadtest';
+const KEYCLOAK_CLIENT_SECRET = __ENV.KEYCLOAK_CLIENT_SECRET || '';
+const TOKEN_REFRESH_MARGIN_MS = 30000;
+const TOKEN_RETRY_MS = 5000;
+let token = null;
+let tokenExpiresAt = 0;
+let nextTokenAttempt = 0;
+
+function accessToken() {
+  const now = Date.now();
+  if (token && now < tokenExpiresAt - TOKEN_REFRESH_MARGIN_MS) return token;
+  if (now < nextTokenAttempt) return token && now < tokenExpiresAt ? token : null;
+  const res = http.post(
+      `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+      {grant_type: 'client_credentials', client_id: KEYCLOAK_CLIENT_ID, client_secret: KEYCLOAK_CLIENT_SECRET},
+      {tags: {endpoint: 'POST /token'}, timeout: TIMEOUT, responseCallback: http.expectedStatuses(200)});
+  if (res.status !== 200) {
+    nextTokenAttempt = now + TOKEN_RETRY_MS;
+    return token && now < tokenExpiresAt ? token : null;
+  }
+  token = res.json('access_token');
+  tokenExpiresAt = now + Number(res.json('expires_in') || 60) * 1000;
+  return token;
+}
+
+/** `{ Authorization: 'Bearer ...' }` when authentication is on, otherwise `{}`. Merge it into hand-built headers. */
+export function authHeaders() {
+  if (!KEYCLOAK_URL) return {};
+  const bearer = accessToken();
+  return bearer ? {Authorization: `Bearer ${bearer}`} : {};
+}
+
 /** Wall-clock time of one create → pause → resume → renew → pay → cancel journey. */
 export const lifecycleDuration = new Trend('lifecycle_duration', true);
 
-/** Request params: JSON headers, the `endpoint` tag and, for expected error responses, the accepted statuses. */
+/** Request params: JSON headers, the bearer token (when auth is on), the `endpoint` tag and, for expected error responses, the accepted statuses. */
 export function params(endpoint, expected, headers) {
-  const p = { headers: headers ? Object.assign({}, JSON_HEADERS, headers) : JSON_HEADERS, tags: { endpoint }, timeout: TIMEOUT };
+  const p = {headers: Object.assign({}, JSON_HEADERS, authHeaders(), headers), tags: {endpoint}, timeout: TIMEOUT};
   if (expected) p.responseCallback = http.expectedStatuses(...expected);
   return p;
 }

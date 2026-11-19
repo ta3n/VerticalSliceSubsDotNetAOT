@@ -617,7 +617,7 @@ tasks:
       - scripts/stress-test.sh
 
   k6:
-    desc: "Any k6 scenario through Kong: task k6 -- <smoke|load|stress|spike|soak|rampup|breakpoint|contention|pagination>"
+    desc: "Any k6 scenario through Kong: task k6 -- <smoke|load|stress|spike|soak|rampup|breakpoint|contention|pagination|saga|mq|endpoints|bigdata>"
     cmds:
       - scripts/k6-test.sh {{.CLI_ARGS}}
 
@@ -644,6 +644,14 @@ tasks:
     env: { ENV_FILE: scripts/.env.aspire }
     cmds:
       - scripts/k6-test.sh {{.CLI_ARGS}}
+
+  aspire:bigdata:
+    desc: "Big-data k6 run (seed, renew, cancel, read + Reporting lag) against the Aspire-hosted API: BIGDATA_PROFILE=small|medium|large task aspire:bigdata (Grafana: Big data dashboard)"
+    # Task-level dotenv: beats the global scripts/.env (Kong on :9080), still loses to variables set in the shell.
+    dotenv: [ scripts/.env.aspire ]
+    env: { ENV_FILE: scripts/.env.aspire }
+    cmds:
+      - scripts/k6-test.sh bigdata
 
   aspire:load-test:
     desc: "k6 load test against the Aspire-hosted API (results in Grafana: Load test dashboard)"

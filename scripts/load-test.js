@@ -1,10 +1,13 @@
 // k6 load test against the running stack (podman compose up). Run through scripts/load-test.sh.
 import http from 'k6/http';
-import { check } from 'k6';
-import { Trend } from 'k6/metrics';
+import {check} from 'k6';
+import {Trend} from 'k6/metrics';
+import {authHeaders} from './lib/api.js';
 
 const BASE = __ENV.BASE_URL || 'http://localhost:8080';
-const JSON_HDR = { headers: { 'Content-Type': 'application/json' } };
+// Fresh per call: the bearer token (KEYCLOAK_URL set, see lib/api.js) is renewed before it expires.
+const JSON_HDR = () => ({headers: Object.assign({'Content-Type': 'application/json'}, authHeaders())});
+const AUTH_HDR = () => ({headers: authHeaders()});
 const lifecycle = new Trend('lifecycle_duration', true);
 
 const dur = __ENV.DURATION || '20s';
@@ -34,33 +37,36 @@ export const options = {
 const body = (n) => JSON.stringify({ serviceName: `Load-${n}`, price: 9900 + (n % 100), startDate: '2026-09-05', trialEndsAt: '2026-09-12' });
 
 export function setup() {
-  const r = http.post(`${BASE}/subscriptions`, body(0), JSON_HDR);
+    const r = http.post(`${BASE}/subscriptions`, body(0), JSON_HDR());
   if (r.status !== 201) throw new Error(`setup failed: ${r.status} ${r.body}`);
   return { id: r.json('id') };
 }
 
 export function readPlans() {
-  check(http.get(`${BASE}/plans`), { 'plans 200': (r) => r.status === 200 });
+    check(http.get(`${BASE}/plans`, AUTH_HDR()), {'plans 200': (r) => r.status === 200});
 }
 export function readSubscription(d) {
-  check(http.get(`${BASE}/subscriptions/${d.id}`), { 'get 200': (r) => r.status === 200 });
+    check(http.get(`${BASE}/subscriptions/${d.id}`, AUTH_HDR()), {'get 200': (r) => r.status === 200});
 }
 export function createSubscription() {
-  check(http.post(`${BASE}/subscriptions`, body(__VU * 1000 + __ITER), JSON_HDR), { 'create 201': (r) => r.status === 201 });
+    check(http.post(`${BASE}/subscriptions`, body(__VU * 1000 + __ITER), JSON_HDR()), {'create 201': (r) => r.status === 201});
 }
 export function fullLifecycle() {
   const t0 = Date.now();
-  const c = http.post(`${BASE}/subscriptions`, body(__VU * 1000 + __ITER), JSON_HDR);
+    const c = http.post(`${BASE}/subscriptions`, body(__VU * 1000 + __ITER), JSON_HDR());
   if (!check(c, { 'create 201': (r) => r.status === 201 })) return;
   const id = c.json('id');
-  check(http.post(`${BASE}/subscriptions/${id}/pause`), { 'pause 200': (r) => r.status === 200 });
-  check(http.post(`${BASE}/subscriptions/${id}/resume`), { 'resume 200': (r) => r.status === 200 });
-  const rn = http.post(`${BASE}/subscriptions/${id}/renew`);
+    check(http.post(`${BASE}/subscriptions/${id}/pause`, null, AUTH_HDR()), {'pause 200': (r) => r.status === 200});
+    check(http.post(`${BASE}/subscriptions/${id}/resume`, null, AUTH_HDR()), {'resume 200': (r) => r.status === 200});
+    const rn = http.post(`${BASE}/subscriptions/${id}/renew`, null, AUTH_HDR());
   check(rn, { 'renew 200': (r) => r.status === 200 });
-  if (rn.status === 200) check(http.post(`${BASE}/invoices/${rn.json('invoice.id')}/pay`), { 'pay 200': (r) => r.status === 200 });
-  check(http.del(`${BASE}/subscriptions/${id}`), { 'cancel 204': (r) => r.status === 204 });
+    if (rn.status === 200) check(http.post(`${BASE}/invoices/${rn.json('invoice.id')}/pay`, null, AUTH_HDR()), {'pay 200': (r) => r.status === 200});
+    check(http.del(`${BASE}/subscriptions/${id}`, null, AUTH_HDR()), {'cancel 204': (r) => r.status === 204});
   lifecycle.add(Date.now() - t0);
 }
 export function search() {
-  check(http.post(`${BASE}/subscriptions/search`, JSON.stringify({ status: 'ACTIVE', limit: 20 }), JSON_HDR), { 'search 200': (r) => r.status === 200 });
+    check(http.post(`${BASE}/subscriptions/search`, JSON.stringify({
+        status: 'ACTIVE',
+        limit: 20
+    }), JSON_HDR()), {'search 200': (r) => r.status === 200});
 }

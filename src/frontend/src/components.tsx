@@ -1,11 +1,14 @@
 import {type ReactNode, useEffect, useId, useRef} from 'react';
 import {ApiError} from './api';
 
-export function Icon({name}: { name: 'subscriptions' | 'plans' | 'invoices' | 'plus' | 'arrow' | 'refresh' }) {
+export function Icon({name}: {
+    name: 'subscriptions' | 'plans' | 'invoices' | 'reports' | 'plus' | 'arrow' | 'refresh'
+}) {
     const paths = {
         subscriptions: 'M4 5h16v14H4z M4 10h16 M8 15h4',
         plans: 'M4 4h7l9 9-7 7-9-9z M8 8h.01',
         invoices: 'M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6',
+        reports: 'M4 20V10 M10 20V4 M16 20v-7 M3 20h18',
         plus: 'M12 5v14 M5 12h14',
         arrow: 'M5 12h14 M13 6l6 6-6 6',
         refresh: 'M20 7v5h-5 M4 17v-5h5 M6 7a7 7 0 0 1 12-1l2 6 M4 12l2 6a7 7 0 0 0 12-1',
@@ -93,6 +96,10 @@ export function money(amount: number, currency = 'USD') {
     } catch {
         return `${new Intl.NumberFormat('vi-VN', {maximumFractionDigits: 4}).format(amount)} ${currency}`;
     }
+}
+
+export function percent(value: number) {
+    return new Intl.NumberFormat('vi-VN', {style: 'percent', maximumFractionDigits: 1}).format(value);
 }
 
 export function date(value: string | null) {

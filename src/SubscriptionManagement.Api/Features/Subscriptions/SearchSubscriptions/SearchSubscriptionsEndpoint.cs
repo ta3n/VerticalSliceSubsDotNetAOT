@@ -9,15 +9,16 @@ public static class SearchSubscriptionsEndpoint
     )
     {
         app.MapPost(
-            "/subscriptions/search",
-            async (SearchSubscriptionsQuery? query, NpgsqlDataSource db, CancellationToken ct) =>
-                TypedResults.Ok(
-                    await SearchSubscriptionsHandler.Handle(
-                        query ?? new SearchSubscriptionsQuery(null, null, null),
-                        db,
-                        ct
+                "/subscriptions/search",
+                async (SearchSubscriptionsQuery? query, NpgsqlDataSource db, CancellationToken ct) =>
+                    TypedResults.Ok(
+                        await SearchSubscriptionsHandler.Handle(
+                            query ?? new SearchSubscriptionsQuery(null, null, null),
+                            db,
+                            ct
+                        )
                     )
-                )
-        );
+            )
+            .AsReadOnlyRequest();
     }
 }

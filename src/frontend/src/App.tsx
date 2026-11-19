@@ -2,13 +2,16 @@ import {useEffect, useState} from 'react';
 import {Icon} from './components';
 import {Invoices} from './Invoices';
 import {Plans} from './Plans';
+import {Reports} from './Reports';
 import {SubscriptionDetail} from './SubscriptionDetail';
 import {Subscriptions} from './Subscriptions';
+import {UserMenu} from './UserMenu';
 
 const navigation = [
     {id: 'subscriptions', label: 'Đăng ký dịch vụ', icon: 'subscriptions'},
     {id: 'plans', label: 'Gói giá', icon: 'plans'},
     {id: 'invoices', label: 'Hóa đơn', icon: 'invoices'},
+    {id: 'reports', label: 'Báo cáo', icon: 'reports'},
 ] as const;
 
 export function App() {
@@ -57,10 +60,12 @@ export function App() {
                 <div
                     className="breadcrumb">Workspace<span>/</span><strong>{current?.label || 'Không tìm thấy'}</strong>{id && <>
                     <span>/</span><span>Chi tiết</span></>}</div>
+                <UserMenu/>
                 <span className="topbar-label">SUBSCRIPTION MANAGEMENT</span></div>
             <main id="main-content" tabIndex={-1} key={`${section}/${id || ''}`}>
                 {section === 'subscriptions' ? id ? <SubscriptionDetail id={id}/> :
-                    <Subscriptions/> : section === 'plans' ? <Plans/> : section === 'invoices' ? <Invoices/> :
+                    <Subscriptions/> : section === 'plans' ? <Plans/> : section === 'invoices' ?
+                    <Invoices/> : section === 'reports' ? <Reports/> :
                     <div className="empty"><h1>Không tìm thấy trang</h1><a href="#subscriptions">Về danh sách đăng
                         ký</a></div>}
             </main>

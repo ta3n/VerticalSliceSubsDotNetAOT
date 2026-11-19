@@ -1,0 +1,164 @@
+{
+  "realm": "subscriptions",
+  "displayName": "Subscription Management",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Reads and writes everything"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "frontend",
+      "name": "Subscription Management web",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8080/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "api",
+      "name": "Subscription Management API",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "loadtest",
+      "name": "k6 load tests and tooling",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "secret": "loadtest-secret",
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@subscriptions.local",
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "viewer@subscriptions.local",
+      "firstName": "Viewer",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "viewer",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ]
+    },
+    {
+      "username": "service-account-loadtest",
+      "enabled": true,
+      "serviceAccountClientId": "loadtest",
+      "realmRoles": [
+        "admin"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-using SubscriptionManagement.Secrets;
 using SubscriptionManagement.Payments;
+using SubscriptionManagement.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +16,14 @@ builder.AddServiceDefaults(
     ["Wolverine*", "Marten"]
 );
 
+// Access-token (Keycloak) authentication; off unless Auth:Authority is set, by the Aspire AppHost.
+builder.AddAccessTokenAuth();
+
 builder.AddPayments();
 
 var app = builder.Build();
+
+app.UseAccessTokenAuth();
 
 app.MapPayments();
 

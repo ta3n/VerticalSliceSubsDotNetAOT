@@ -1,5 +1,6 @@
 import {useCallback, useState} from 'react';
 import {api, type Invoice, request, type Subscription} from './api';
+import {auth} from './auth';
 import {date, ErrorNotice, Icon, Loading, money, PageHeading, Status} from './components';
 import {InvoiceTable, RenewalProgress} from './Invoices';
 import {useAction, useResource} from './hooks';
@@ -65,7 +66,8 @@ export function SubscriptionDetail({id}: { id: string }) {
                     </div>
                 </dl>
                 <div className="detail-actions">
-                    {subscription.status === 1 && <>
+                    {!auth.canWrite && <p className="muted">Tài khoản của bạn chỉ có quyền xem.</p>}
+                    {auth.canWrite && subscription.status === 1 && <>
                         <button className="button secondary" disabled={action.pending}
                                 onClick={() => update('pause')}>Tạm dừng
                         </button>
@@ -75,9 +77,11 @@ export function SubscriptionDetail({id}: { id: string }) {
                         <button className="button primary" disabled={action.pending}
                                 onClick={() => update('renewals')}>Gia hạn tự động<Icon name="arrow"/></button>
                     </>}
-                    {subscription.status === 3 && <button className="button primary" disabled={action.pending}
+                    {auth.canWrite && subscription.status === 3 &&
+                        <button className="button primary" disabled={action.pending}
                                                           onClick={() => update('resume')}>Tiếp tục dịch vụ</button>}
-                    {subscription.status !== 2 && <button className="button danger-button" disabled={action.pending}
+                    {auth.canWrite && subscription.status !== 2 &&
+                        <button className="button danger-button" disabled={action.pending}
                                                           onClick={() => update('cancel')}>Hủy đăng ký</button>}
                     {subscription.status === 2 &&
                         <p className="muted">Đăng ký đã hủy. Bạn có thể tạo đăng ký mới từ danh sách.</p>}

@@ -2,9 +2,21 @@
 // heavier test: if this fails, the numbers of a load test mean nothing.
 //   SMOKE_VUS (1) · SMOKE_ITERATIONS (3, per VU)
 // Passes when every check passes, no request fails unexpectedly and p95 stays under 1 s.
-import { check, group } from 'k6';
+import {check, group} from 'k6';
 import http from 'k6/http';
-import { BASE, MISSING_ID, api, envNumber, expectProblem, expectStatus, params, planBody, subscriptionBody, unique } from './lib/api.js';
+import {
+  api,
+  authHeaders,
+  BASE,
+  envNumber,
+  expectProblem,
+  expectStatus,
+  MISSING_ID,
+  params,
+  planBody,
+  subscriptionBody,
+  unique
+} from './lib/api.js';
 
 export const options = {
   scenarios: {
@@ -49,7 +61,7 @@ export default function () {
     const id = created.json('id');
 
     // Correlation: an inbound X-Trace-Id is echoed back.
-    const traced = http.get(`${BASE}/subscriptions/${id}`, Object.assign(params('GET /subscriptions/{id}'), { headers: { 'X-Trace-Id': 'smoke-trace-1' } }));
+    const traced = http.get(`${BASE}/subscriptions/${id}`, Object.assign(params('GET /subscriptions/{id}'), {headers: Object.assign({}, authHeaders(), {'X-Trace-Id': 'smoke-trace-1'})}));
     check(traced, { 'subscriptions: get 200 + X-Trace-Id echoed': (r) => r.status === 200 && r.headers['X-Trace-Id'] === 'smoke-trace-1' });
 
     const invalid = api.createSubscription({ serviceName: '', price: 0, startDate: '2026-09-05', trialEndsAt: '2026-09-05' }, [400]);

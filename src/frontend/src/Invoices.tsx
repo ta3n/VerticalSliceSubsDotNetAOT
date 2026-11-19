@@ -1,5 +1,6 @@
 import {type SubmitEvent, useCallback, useState} from 'react';
 import {api, ApiError, type Invoice, request} from './api';
+import {auth} from './auth';
 import {date, Empty, ErrorNotice, Icon, Loading, money, PageHeading, Status} from './components';
 import {useAction, useResource} from './hooks';
 
@@ -62,7 +63,7 @@ export function InvoiceTable({items, refresh, locked = false}: {
                         <td className="amount">{money(invoice.amount, invoice.currency)}</td>
                         <td><Status value={invoice.status} invoice/></td>
                         <td>
-                            <div className="invoice-actions">{invoice.status === 1 && <>
+                            <div className="invoice-actions">{invoice.status === 1 && auth.canWrite && <>
                                 <button className="text-button" onClick={() => update(invoice, 'pay')}
                                         disabled={action.pending || locked}>Đánh dấu đã trả
                                 </button>

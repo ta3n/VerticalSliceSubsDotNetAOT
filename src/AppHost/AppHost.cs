@@ -86,17 +86,39 @@ api.WithEnvironment("Billing__GrpcAddress", services.Billing.GetEndpoint("grpc")
     .WithEnvironment("Outbox__Enabled", builder.Configuration.Required<bool>("Api:OutboxEnabled").ToString())
     .WaitFor(services.Billing);
 
-// The Vite proxy stays server-side; the browser calls /api on the frontend's own origin.
+// Keycloak (run mode only, see Identity.cs): the services validate its access tokens and the frontend logs in with it.
+var keycloak = builder.ExecutionContext.IsRunMode && builder.Configuration.Required<bool>("Keycloak:Enabled")
+    ? builder.AddIdentity()
+    : null;
+if (keycloak is not null)
+{
+    api.WithIdentity(keycloak);
+    services.Billing.WithIdentity(keycloak);
+    services.Payments.WithIdentity(keycloak);
+    reporting?.WithIdentity(keycloak);
+}
+
+// The Vite proxy stays server-side; the browser calls /api (the API) and /reporting (Reporting) on the frontend's own
+// origin. The Keycloak settings reach the browser as VITE_* variables.
 if (builder.ExecutionContext.IsRunMode)
-    builder.AddViteApp("frontend", "../frontend")
+{
+    var frontend = builder.AddViteApp("frontend", "../frontend")
         .WithNpm(installCommand: "ci")
         .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithEnvironment("API_PROXY_TARGET", api.GetEndpoint("http"))
         .WaitFor(api);
+    if (reporting is not null)
+        frontend.WithEnvironment("REPORTING_PROXY_TARGET", reporting.GetEndpoint("http")).WaitFor(reporting);
+    if (keycloak is not null)
+        frontend.WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint(Identity.OidcEndpoint))
+            .WithEnvironment("VITE_KEYCLOAK_REALM", Identity.Realm)
+            .WithEnvironment("VITE_KEYCLOAK_CLIENT_ID", "frontend")
+            .WaitFor(keycloak);
+}
 
 // Local entry point in front of the API (run mode only: the Kubernetes publisher is not set up for it, see Gateway.cs).
 if (builder.ExecutionContext.IsRunMode)
-    builder.AddGateway(api).WaitFor(api);
+    builder.AddGateway(api, reporting).WaitFor(api);
 
 // Bitwarden Secrets Manager provisions the project and its secrets; the s2s services and the API wait for it (see
 // Bitwarden.cs). Off by default: Bitwarden:Enabled=true needs the three bitwarden-* parameters.

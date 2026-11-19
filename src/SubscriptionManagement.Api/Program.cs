@@ -120,6 +120,9 @@ else
 // compose or Helm. See SubscriptionManagement.ServiceDefaults.
 builder.AddServiceDefaults("subscription-management");
 
+// Access-token (Keycloak) authentication; off unless Auth:Authority is set, by the Aspire AppHost.
+builder.AddAccessTokenAuth();
+
 // API description + Scalar UI; off unless OpenApi:Enabled=true (enabled in appsettings.Development.json).
 var openApiEnabled = builder.Configuration.GetValue<bool>("OpenApi:Enabled");
 if (openApiEnabled) builder.Services.AddOpenApi();
@@ -158,6 +161,8 @@ app.UseStatusCodePages(
     )
 );
 
+app.UseAccessTokenAuth();
+
 CreateSubscriptionEndpoint.Map(app);
 GetSubscriptionEndpoint.Map(app);
 CancelSubscriptionEndpoint.Map(app);
@@ -182,8 +187,8 @@ app.MapHealth();
 
 if (openApiEnabled)
 {
-    app.MapOpenApi(); // /openapi/v1.json
-    app.MapScalarApiReference(); // /scalar
+    app.MapOpenApi().AllowAnonymous(); // /openapi/v1.json
+    app.MapScalarApiReference().AllowAnonymous(); // /scalar
 }
 
 await app.RunAsync();

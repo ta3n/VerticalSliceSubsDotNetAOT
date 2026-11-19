@@ -1,5 +1,5 @@
-using SubscriptionManagement.Secrets;
 using SubscriptionManagement.Billing;
+using SubscriptionManagement.Secrets;
 
 // Two cleartext endpoints, declared in appsettings.json (Kestrel:Endpoints) because gRPC without TLS needs an
 // HTTP/2-only port: "http" (HTTP/1.1, 5128) for probes and REST, "grpc" (HTTP/2, 5138) for BillingService. The launch
@@ -19,9 +19,14 @@ builder.AddServiceDefaults(
     ["Wolverine*"]
 );
 
+// Access-token (Keycloak) authentication; off unless Auth:Authority is set, by the Aspire AppHost.
+builder.AddAccessTokenAuth();
+
 builder.AddBilling();
 
 var app = builder.Build();
+
+app.UseAccessTokenAuth();
 
 app.MapBilling();
 

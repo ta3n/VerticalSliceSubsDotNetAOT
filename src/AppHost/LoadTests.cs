@@ -36,7 +36,11 @@ internal static class LoadTests
         ("pagination", "keyset paging under writes: no duplicates, stable order, flat latency"),
         ("saga", "s2s: renewal saga (success, decline, timeout) + cancel/refund choreography"),
         ("mq", "message broker: ~5000 messages per RabbitMQ queue through the renewal and cancellation flows"),
-        ("endpoints", "every route of the API, Billing and Payments in parallel flows, a coverage threshold per route")
+        ("endpoints", "every route of the API, Billing and Payments in parallel flows, a coverage threshold per route"),
+        (
+            "bigdata",
+            "big dataset in phases (seed, renew, cancel, read): Postgres, the saga, Kafka into Reporting; BIGDATA_PROFILE small|medium|large"
+        )
     ];
 
     public static void AddK6Suite(
@@ -50,6 +54,13 @@ internal static class LoadTests
         var autoStart = (settings["AutoStart"] ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Authentication: every scenario sends a bearer token of the Keycloak `loadtest` client (scripts/lib/api.js) when
+        // Keycloak is on. The issuer is fixed (http://localhost:8081), so the container can ask for it at the host address.
+        var keycloakEnabled =
+            bool.TryParse(builder.Configuration["Keycloak:Enabled"], out var on) && on; // missing = off
+        // Reporting only exists with Kafka:Enabled; the bigdata scenario then also polls it.
+        var reporting = Find(builder, "reporting");
 
         foreach (var (name, purpose) in Suite)
         {
@@ -75,6 +86,25 @@ internal static class LoadTests
 
             foreach (var knob in settings.GetSection(name).GetChildren())
                 k6.WithEnvironment(knob.Key.ToUpperInvariant(), knob.Value ?? "");
+
+            if (keycloakEnabled)
+            {
+                // The plain-HTTP endpoint of Identity.cs, at the address a container reaches the host by.
+                var keycloak = Find(builder, "keycloak");
+                if (keycloak is not null) k6.WaitFor(builder.CreateResourceBuilder(keycloak));
+
+                k6.WithEnvironment("KEYCLOAK_URL", "http://host.docker.internal:8081")
+                    .WithEnvironment("KEYCLOAK_REALM", Identity.Realm)
+                    .WithEnvironment("KEYCLOAK_CLIENT_ID", "loadtest")
+                    .WithEnvironment(
+                        "KEYCLOAK_CLIENT_SECRET",
+                        "loadtest-secret"
+                    ); // the dev realm's client, see the realm import
+            }
+
+            if (name == "bigdata" && reporting is not null)
+                k6.WithEnvironment("REPORTING_URL", builder.CreateResourceBuilder(reporting).GetEndpoint("http"))
+                    .WaitFor(builder.CreateResourceBuilder(reporting));
 
             if (name is "saga" or "endpoints" or "mq")
             {
@@ -103,5 +133,15 @@ internal static class LoadTests
 
             if (!autoStart.Contains(name)) k6.WithExplicitStart();
         }
+    }
+
+    /// <summary>A resource added earlier in the AppHost by name, or null: the suite does not depend on it existing.</summary>
+    private static IResourceWithEndpoints? Find(
+        IDistributedApplicationBuilder builder,
+        string name
+    )
+    {
+        return builder.Resources.OfType<IResourceWithEndpoints>()
+            .FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 }

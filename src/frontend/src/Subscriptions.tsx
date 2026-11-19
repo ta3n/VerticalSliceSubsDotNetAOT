@@ -1,5 +1,6 @@
 import {useCallback, useState} from 'react';
 import {api} from './api';
+import {auth} from './auth';
 import {date, Empty, ErrorNotice, Icon, Loading, money, PageHeading, Status} from './components';
 import {CreateSubscription} from './forms';
 import {useResource} from './hooks';
@@ -16,7 +17,9 @@ export function Subscriptions() {
     return <>
         <PageHeading eyebrow="KHÔNG GIAN QUẢN LÝ" title="Đăng ký dịch vụ"
                      description="Theo dõi dịch vụ và quản lý từng chu kỳ thanh toán.">
-            <button className="button primary" onClick={() => setCreate(true)}><Icon name="plus"/>Tạo đăng ký</button>
+            {auth.canWrite &&
+                <button className="button primary" onClick={() => setCreate(true)}><Icon name="plus"/>Tạo đăng ký
+                </button>}
         </PageHeading>
         <div className="summary" aria-label="Thống kê trang hiện tại">
             <div>

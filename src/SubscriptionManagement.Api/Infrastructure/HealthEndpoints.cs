@@ -58,12 +58,13 @@ public static class HealthEndpoints
         this IEndpointRouteBuilder app
     )
     {
-        app.MapHealthChecks("/health/live", new() { Predicate = _ => false, ResponseWriter = Write });
+        app.MapHealthChecks("/health/live", new() { Predicate = _ => false, ResponseWriter = Write }).AllowAnonymous();
         app.MapHealthChecks(
-            "/health/ready",
-            new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write }
-        );
-        app.MapHealthChecks("/health", new() { ResponseWriter = Write });
+                "/health/ready",
+                new() { Predicate = r => r.Tags.Contains("ready"), ResponseWriter = Write }
+            )
+            .AllowAnonymous();
+        app.MapHealthChecks("/health", new() { ResponseWriter = Write }).AllowAnonymous();
     }
 
     private static async Task Write(

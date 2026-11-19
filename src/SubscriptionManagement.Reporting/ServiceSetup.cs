@@ -69,8 +69,8 @@ public static class ServiceSetup
         this IEndpointRouteBuilder app
     )
     {
-        app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
-        app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") });
+        app.MapHealthChecks("/health/live", new() { Predicate = _ => false }).AllowAnonymous();
+        app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") }).AllowAnonymous();
 
         GetRevenueSummaryEndpoint.Map(app);
     }

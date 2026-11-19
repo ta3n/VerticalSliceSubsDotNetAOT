@@ -1,3 +1,4 @@
+using JasperFx;
 using JasperFx.Core;
 using JasperFx.Resources;
 using Microsoft.EntityFrameworkCore;
@@ -100,7 +101,7 @@ public static class ServiceSetup
                 opts.UseEntityFrameworkCoreWolverineManagedMigrations();
                 opts.Services.AddResourceSetupOnStartup();
 
-                opts.OnException<JasperFx.ConcurrencyException>()
+                opts.OnException<ConcurrencyException>()
                     .RetryWithCooldown(50.Milliseconds(), 250.Milliseconds(), 1.Seconds());
                 // Database or downstream outage: retry in place, then reschedule; after that the envelope is dead-lettered.
                 opts.OnException<NpgsqlException>()
@@ -136,10 +137,11 @@ public static class ServiceSetup
         this IEndpointRouteBuilder app
     )
     {
-        app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
-        app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") });
+        app.MapHealthChecks("/health/live", new() { Predicate = _ => false }).AllowAnonymous();
+        app.MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") }).AllowAnonymous();
 
-        app.MapGrpcService<BillingGrpcService>();
+        // Between services, inside the system: the API calls it without a user token.
+        app.MapGrpcService<BillingGrpcService>().AllowAnonymous();
         ListCreditNotesEndpoint.Map(app);
     }
 }

@@ -1,5 +1,6 @@
 import {useCallback, useState} from 'react';
 import {api} from './api';
+import {auth} from './auth';
 import {Empty, ErrorNotice, Icon, Loading, money, PageHeading} from './components';
 import {CreatePlan} from './forms';
 import {useResource} from './hooks';
@@ -10,7 +11,9 @@ export function Plans() {
     return <>
         <PageHeading eyebrow="DANH MỤC DỊCH VỤ" title="Gói giá"
                      description="Một nơi cho các mức giá và chu kỳ dịch vụ của bạn.">
-            <button className="button primary" onClick={() => setCreate(true)}><Icon name="plus"/>Thêm gói giá</button>
+            {auth.canWrite &&
+                <button className="button primary" onClick={() => setCreate(true)}><Icon name="plus"/>Thêm gói giá
+                </button>}
         </PageHeading>
         <section className="panel" aria-labelledby="plans-title">
             <div className="panel-toolbar">

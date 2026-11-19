@@ -9,6 +9,11 @@ export default defineConfig(({mode}) => {
             changeOrigin: true,
             rewrite: (path: string) => path.replace(/^\/api/, ''),
         },
+        // The Reporting service keeps its own path (/reporting/revenue): no rewrite.
+        '/reporting': {
+            target: env.REPORTING_PROXY_TARGET || 'http://localhost:5131',
+            changeOrigin: true,
+        },
     };
     return {plugins: [react()], server: {proxy, strictPort: true}, preview: {proxy}};
 });

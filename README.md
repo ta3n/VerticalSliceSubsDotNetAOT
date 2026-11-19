@@ -143,20 +143,21 @@ unchanged. `billing` waits for `billing-db` and `messaging`; `payments` waits fo
 The API waits for Billing, Redis and the successful migrator; `relay` then waits for the API, migrator and broker.
 The long-running projects are health-checked on `/health/ready`; when monitoring is enabled they also wait for the collector.
 
-| Resource                                                  | Owns / exposes                                                                                                                                                                                   |
-|-----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `postgres` → `subscriptions`, `billing-db`, `payments-db` | The PostgreSQL primary; database names `subscriptions`, `billing`, `payments`                                                                                                                    |
-| `postgres-replica-1`, `postgres-replica-2`                | Streaming replicas (hot standbys, read-only) cloned from the primary with `pg_basebackup` on every start; `Postgres:Standbys` sets how many                                                      |
-| `pgbouncer`                                               | PgBouncer 1.24 in transaction-pooling mode in front of the primary, used by the **API only** (`PgBouncer:Enabled=false` connects it straight to the primary)                                     |
-| `postgres-exporter-replica-N`, `pgbouncer-exporter`       | Prometheus exporters for each standby (lag in seconds, state) and for PgBouncer's admin console (pools, waiting clients, query/wait time)                                                        |
-| `messaging`                                               | RabbitMQ 4.3 with management plugin and a persistent data volume; management URL is in Aspire                                                                                                    |
-| `kafka`, `reporting`                                      | Kafka (confluent-local, KRaft, persistent volume) with Kafka UI on http://localhost:9100 (an endpoint of `kafka`), and the Reporting service on its own database; off with `Kafka:Enabled=false` |
-| `billing`                                                 | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128`                                                                                                          |
-| `payments`                                                | Payment snapshot and event reads on `http://localhost:5129`                                                                                                                                      |
-| `relay`                                                   | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire                                                                                                                     |
-| `frontend`                                                | React + TypeScript Vite app at `http://localhost:5173`; installs npm dependencies and proxies `/api` to the Aspire API endpoint                                                                  |
-| `k6-saga`                                                 | On-demand s2s scenario; waits for Billing, Payments and Relay                                                                                                                                    |
-| `k6-mq`                                                   | On-demand message-broker load (see `mq` below); waits for Billing, Payments and Relay                                                                                                            |
+| Resource                                                  | Owns / exposes                                                                                                                                                                                                                                |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `postgres` → `subscriptions`, `billing-db`, `payments-db` | The PostgreSQL primary; database names `subscriptions`, `billing`, `payments`                                                                                                                                                                 |
+| `postgres-replica-1`, `postgres-replica-2`                | Streaming replicas (hot standbys, read-only) cloned from the primary with `pg_basebackup` on every start; `Postgres:Standbys` sets how many                                                                                                   |
+| `pgbouncer`                                               | PgBouncer 1.24 in transaction-pooling mode in front of the primary, used by the **API only** (`PgBouncer:Enabled=false` connects it straight to the primary)                                                                                  |
+| `postgres-exporter-replica-N`, `pgbouncer-exporter`       | Prometheus exporters for each standby (lag in seconds, state) and for PgBouncer's admin console (pools, waiting clients, query/wait time)                                                                                                     |
+| `messaging`                                               | RabbitMQ 4.3 with management plugin and a persistent data volume; management URL is in Aspire                                                                                                                                                 |
+| `kafka`, `reporting`                                      | Kafka (confluent-local, KRaft, persistent volume) with Kafka UI on http://localhost:9100 (an endpoint of `kafka`), and the Reporting service on its own database; off with `Kafka:Enabled=false`                                              |
+| `keycloak`                                                | Keycloak identity provider (run mode): realm `subscriptions` imported from `src/AppHost/keycloak/`, plain HTTP on http://localhost:8081, admin console login `admin` and the generated `keycloak-password`; off with `Keycloak:Enabled=false` |
+| `billing`                                                 | gRPC HTTP/2 on `http://localhost:5138`; REST/probes HTTP/1.1 on `http://localhost:5128`                                                                                                                                                       |
+| `payments`                                                | Payment snapshot and event reads on `http://localhost:5129`                                                                                                                                                                                   |
+| `relay`                                                   | Outbox draining and broker-to-HTTP commands; grouped under the API in Aspire                                                                                                                                                                  |
+| `frontend`                                                | React + TypeScript Vite app at `http://localhost:5173`; installs npm dependencies and proxies `/api` to the Aspire API endpoint                                                                                                               |
+| `k6-saga`                                                 | On-demand s2s scenario; waits for Billing, Payments and Relay                                                                                                                                                                                 |
+| `k6-mq`                                                   | On-demand message-broker load (see `mq` below); waits for Billing, Payments and Relay                                                                                                                                                         |
 
 Postgres and RabbitMQ data survive restarts in volumes; do not delete the volumes to rerun a scenario. Generated
 credentials are managed by Aspire/user secrets. The AppHost lives in `src/AppHost/AppHost.cs` and `Services.cs`;
@@ -191,6 +192,7 @@ The AppHost's operational settings live in `src/AppHost/appsettings.json`; overr
 | `Api:PostgresMaxPoolSize`                      | 1000                      | API Npgsql pool per instance (client side of PgBouncer); startup requires `PgBouncer:PoolSize` + `Replicas` × 3 × service pool < `MaxConnections` − 3 (with `PgBouncer:Enabled=false` the API pools count instead)                                                                                                                                          |
 | `Api:OutboxEnabled`                            | true                      | Sets the API's `Outbox:Enabled`; enables renewal/cancellation events in Aspire                                                                                                                                                                                                                                                                              |
 | `Kafka:Enabled`                                | true                      | Kafka broker, Reporting service and the Kafka copies of the facts (Relay, Payments); `false` leaves RabbitMQ alone                                                                                                                                                                                                                                          |
+| `Keycloak:Enabled`                             | true                      | Keycloak, token validation in the API, Billing, Payments and Reporting, and the frontend login; `false` leaves everything open                                                                                                                                                                                                                              |
 | `Services:PostgresMaxPoolSize`                 | 10                        | Pool per instance of Billing, Payments and Relay; shared with each service's message persistence                                                                                                                                                                                                                                                            |
 | `Bitwarden:Enabled`                            | false                     | Bitwarden Secrets Manager resource; needs user secrets `Parameters:bitwarden-project`, `-organization-id`, `-access-token` (see `src/AppHost/Bitwarden.cs`). Billing, Payments and Relay load every secret of the project into their configuration at startup (`SubscriptionManagement.Secrets`; key `A__B` overrides `A:B`); the API does not (Native AOT) |
 | `Kubernetes:Enabled`                           | false                     | Adds an Aspire Kubernetes environment: `aspire publish --apphost src/AppHost -o <dir> -- --Kubernetes:Enabled=true` writes a Helm chart of the whole AppHost (config files become ConfigMaps); `aspire deploy` installs it                                                                                                                                  |
@@ -211,6 +213,40 @@ The AppHost's operational settings live in `src/AppHost/appsettings.json`; overr
 | `LoadTest:mq:MQ_FLOWS`                         | 2500                      | Flows per type (success / decline / timeout / rejected): 22 × n messages over 11 queues = 5000 per queue on average                                                                                                                                                                                                                                         |
 | `LoadTest:mq:MQ_VUS`                           | 100                       | VUs per flow type; the pressure on the API (watch the queues' backlog)                                                                                                                                                                                                                                                                                      |
 | `LoadTest:mq:MQ_SETTLE_S`                      | 180                       | Wait after the last flow so the delayed saga timeouts fire (thousands of 30 s timers are delivered over 2-3 minutes)                                                                                                                                                                                                                                        |
+
+#### Identity (Keycloak)
+
+Under the AppHost, Keycloak (run mode only) holds the realm `subscriptions`, imported from
+`src/AppHost/keycloak/subscriptions-realm.json` on every start: the public client `frontend` (Authorization Code +
+PKCE),
+the audience `api`, the confidential client `loadtest` (service account with role `admin`, secret `loadtest-secret`,
+used
+by k6) and two users: `admin`/`admin` (reads and writes) and `viewer`/`viewer` (read-only). Access tokens carry the
+realm
+roles in a `roles` claim. The API, Billing, Payments and Reporting validate them (`Auth:Authority`, `Auth:Audience`,
+set by the AppHost; without `Auth:Authority` a service stays open, as in the tests and a plain `dotnet run`):
+
+* every endpoint needs a valid token except `/health/*`, `/openapi`, `/scalar` and the gRPC between services (inside the
+  system, no user token); `GET`/`HEAD`/`OPTIONS` need any user, every other method needs the role `admin`, so a viewer
+  gets
+  `403` (the one `POST` that only reads, `/subscriptions/search`, is marked read-only);
+* the same works through the YARP gateway (`/api/*`, `/reporting/*`) and the Vite proxy; the dev realm and its passwords
+  are for local use only, and the identity provider is not part of `aspire publish` (realm import is run mode only);
+* Keycloak listens on the fixed host port 8081 (the token issuer is `http://localhost:8081/realms/subscriptions`), so
+  run
+  the AppHost without `--isolated`; Aspire's own HTTPS endpoint is not used.
+
+```bash
+curl -s -X POST http://localhost:8081/realms/subscriptions/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=loadtest -d client_secret=loadtest-secret -d username=admin -d password=admin
+```
+
+The React UI signs in through Keycloak when `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM` and `VITE_KEYCLOAK_CLIENT_ID` are
+set (the AppHost does); without them it runs unauthenticated. Every `/api/*` and `/reporting/*` request carries the
+access
+token, and users without the `admin` role get a read-only UI. The "Báo cáo" page shows the Reporting service's revenue
+summary (`GET /reporting/revenue`, proxied by Vite through `REPORTING_PROXY_TARGET`); it is fed by Kafka, so it is
+eventually consistent.
 
 #### Monitoring and load testing (Grafana)
 
@@ -298,6 +334,7 @@ the same files run as Aspire resources or from the host. The existing API scenar
 | `pagination` | Does keyset paging stay consistent and flat under writes?                                                 | 20 readers walking 10 pages + 2 writers                                                                                                      | no duplicate/out-of-order row, deep page p95 < 200 ms                                                                                                                                                                                          |
 | `saga`       | Do renewal orchestration and cancel/refund choreography settle correctly?                                 | 1 VU × 3 iterations, prices 10 / 6000 / 9500                                                                                                 | checks >99%, zero unexpected HTTP errors or saga failures; records `saga_settle_ms`                                                                                                                                                            |
 | `mq`         | How do the RabbitMQ queues behave with thousands of messages each?                                        | 4 flow types × `MQ_FLOWS` (2500) in parallel: success + refund, decline, timeout, rejected settlement                                        | checks >99%, <1% failures; per-queue counts: InvoiceIssued / ChargePayment 4n, PaymentSucceeded / SettleInvoice / CancelRenewal / CancelPayment / PaymentRefunded 2n, the other four n. Watch "Backlog by queue" on the Request flow dashboard |
+| `bigdata`    | How does the system change as the dataset grows to tens or hundreds of thousands of rows? (see below)     |
 | `endpoints`  | Does every route hold up when all of them are used at once, and is any route missing from the load tests? | 7 parallel flows (catalog, reads, lifecycle, invoices incl. the Relay's settle/void, errors, health, + saga with `S2S=true`), 40 VUs × 1 min | checks >99%, <1% failures, p95 < 1 s, **every route called at least once** (`calls_<name>` metric per route), zero saga failures                                                                                                               |
 
 Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RAMPUP_VUS`, `BP_MAX_RATE`, `ENDPOINTS_VUS`, …). Three ways to run one:
@@ -311,6 +348,22 @@ Each script documents its knobs in its header (`SPIKE_VUS`, `SOAK_DURATION`, `RA
   scripts/k6-test.sh spike`), e.g. `SOAK_DURATION=1h task aspire:k6 -- soak`. With `K6_PROMETHEUS_RW_SERVER_URL` set
   (the Aspire env file does) k6 also remote-writes to Prometheus; a JSON summary lands in `artifacts/k6/`.
 * **Against compose or Kubernetes**: `ENV_FILE=scripts/.env.compose scripts/k6-test.sh smoke`, `task k6 -- smoke`.
+
+#### Big-data run (`k6-bigdata`)
+
+`scripts/bigdata-test.js` grows the system to a large dataset in phases: seed (`BIGDATA_SUBSCRIPTIONS`), renew
+(`BIGDATA_RENEWAL_PERCENT`, a random subscription each, so invoices flow through the RabbitMQ saga and the Kafka stream
+into Reporting), then cancel/refund and a mixed read workload on the big table while a monitor measures how far
+Reporting
+lags behind (it is "caught up" once the read model holds the scheduled renewals and has stopped growing). Profiles:
+`BIGDATA_PROFILE=small` (2k, smoke) | `medium` (50k, default) | `large` (250k); every `BIGDATA_*` knob overrides the
+profile (see the header of the script). Run it with ▶ on `k6-bigdata` in the Aspire dashboard or
+`BIGDATA_PROFILE=small task aspire:bigdata`, and watch Grafana → "Big data": phase throughput and latency, random-page
+search latency while the table grows, Reporting lag and time to consistency, Postgres size / cache hit / locks,
+PgBouncer,
+Redis and RabbitMQ backlog. With Keycloak on, every k6 scenario sends a `loadtest` client-credentials token. A `small`
+run
+here: 2,000 subscriptions and 400 renewals without a failed request, Reporting caught up 7 s after the last renewal.
 
 Run the complete saga suite (including a real timeout) with:
 

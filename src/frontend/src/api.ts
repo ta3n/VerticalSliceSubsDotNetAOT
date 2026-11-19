@@ -1,3 +1,5 @@
+import {accessToken} from './auth';
+
 export interface Subscription {
     id: string;
     serviceName: string;
@@ -38,6 +40,22 @@ export interface Renewal {
     updatedAt: string | null;
 }
 
+export interface CurrencyRevenue {
+    currency: string;
+    invoicesIssued: number;
+    invoiced: number;
+    collected: number;
+    refunded: number;
+}
+
+export interface RevenueSummary {
+    currencies: CurrencyRevenue[];
+    paymentsSucceeded: number;
+    paymentsFailed: number;
+    paymentSuccessRate: number | null;
+    subscriptionsCanceled: number;
+}
+
 export class ApiError extends Error {
     constructor(message: string, public status: number, public errors?: Record<string, string[]>, public traceId?: string) {
         super(message);
@@ -51,12 +69,24 @@ export function decimalBody(fields: Record<string, unknown>, field: 'price' | 'a
     return `${json.slice(0, -1)}${json.length > 2 ? ',' : ''}${JSON.stringify(field)}:${value}}`;
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// 401/403 mean the token is missing, expired or lacks the role: say so instead of the server's generic problem text.
+const authMessages: Record<number, string> = {
+    401: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+    403: 'Bạn không có quyền thực hiện thao tác này (tài khoản chỉ có quyền xem).',
+};
+
+/** The single fetch helper: adds the bearer token (when authentication is on) and maps failures to messages. */
+export async function send<T>(url: string, init?: RequestInit): Promise<T> {
     let response: Response;
     try {
-        response = await fetch(`/api${path}`, {
+        const token = await accessToken();
+        response = await fetch(url, {
             ...init,
-            headers: {...(init?.body ? {'Content-Type': 'application/json'} : {}), ...init?.headers},
+            headers: {
+                ...(init?.body ? {'Content-Type': 'application/json'} : {}),
+                ...(token ? {Authorization: `Bearer ${token}`} : {}),
+                ...init?.headers,
+            },
         });
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') throw error;
@@ -70,12 +100,14 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch { /* Proxy failures may return plain text. */
     }
     if (!response.ok) {
-        throw new ApiError(data?.detail || data?.title || `Yêu cầu thất bại (HTTP ${response.status}).`,
+        throw new ApiError(authMessages[response.status] || data?.detail || data?.title || `Yêu cầu thất bại (HTTP ${response.status}).`,
             response.status, data?.errors, data?.traceId || response.headers.get('X-Trace-Id') || undefined);
     }
     if (data === undefined || data === null) throw new Error('Máy chủ trả về dữ liệu không hợp lệ.');
     return data as T;
 }
+
+export const request = <T>(path: string, init?: RequestInit) => send<T>(`/api${path}`, init);
 
 export const api = {
     search: (status: string, cursor: string | null, signal?: AbortSignal) =>
@@ -88,4 +120,6 @@ export const api = {
         items: Invoice[]
     }>(`/subscriptions/${encodeURIComponent(id)}/invoices`, {signal}),
     renewal: (id: string, signal?: AbortSignal) => request<Renewal>(`/invoices/${encodeURIComponent(id)}/renewal`, {signal}),
+    // The Reporting service, not the API: its own proxy entry (/reporting) in dev and in the gateway.
+    revenue: (signal?: AbortSignal) => send<RevenueSummary>('/reporting/revenue', {signal}),
 };
