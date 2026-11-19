@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/17.0.0">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -9,14 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\SubscriptionManagement.Api\SubscriptionManagement.Api.csproj" />
-        <ProjectReference Include="..\SubscriptionManagement.Migrator\SubscriptionManagement.Migrator.csproj" />
-        <ProjectReference Include="..\SubscriptionManagement.Billing\SubscriptionManagement.Billing.csproj" />
-        <ProjectReference Include="..\SubscriptionManagement.Payments\SubscriptionManagement.Payments.csproj" />
-        <ProjectReference Include="..\SubscriptionManagement.Relay\SubscriptionManagement.Relay.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.AppHost" Version="17.0.0" />
         <PackageReference Include="Aspire.Hosting.Docker" Version="17.0.0" />
         <PackageReference Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
         <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="17.0.0" />
